@@ -1,0 +1,125 @@
+# CLAUDE.md — MLMS
+
+MLMS is a self-hosted MCP server giving LLM agents persistent cross-session memory across 4 CoALA layers.
+
+---
+
+## Behavioral Rules
+
+1. **Don't assume** — ambiguous intent gets a question, not a guess. Never silently pick an interpretation.
+2. **Minimum code** — solve only what was asked. No speculative features, no single-use abstractions. If 50 lines works, don't write 200.
+3. **Surgical changes** — touch only what the task requires. Don't refactor adjacent code, don't "improve" comments. Unrelated dead code gets flagged, not deleted.
+4. **Goal-driven loops** — when given success criteria, verify them before stopping. Don't report done until tests pass.
+5. **Verify, don't trust** — re-check any claim (agent report, "already fixed", assumed state) against live state before acting on it. "Fixed earlier this session" is never sufficient — verify fresh, every time.
+6. **No irreversible action without a fresh yes** — commit, push, force-push, history-rewrite: explicit per-instance approval required, even for a verified fix, even if a similar action was approved minutes ago. Approval doesn't carry forward to the next instance of the same action.
+
+---
+
+## Key Constants — never change without explicit instruction
+
+```python
+EMBEDDING_DIM            = 4096
+EMBEDDING_MODEL          = "qwen3-embedding-8b"
+EMBEDDING_FALLBACK       = "qwen3-embedding-0.6b"
+
+COSINE_CONFLICT_THRESHOLD = 0.96      # calibration needed
+
+REDIS_SESSION_TTL        = 172800
+REDIS_KEY_PATTERN        = "session:{chat_id}"
+
+LATENCY_P99_TARGET_MS    = 200        # cached path only
+LATENCY_SESSION_CTX_MS   = 5         # get_session_context() hard limit
+PRECISION_AT_5_TARGET    = 0.80      # precision@5 metric: fraction of scenarios where the relevant fact lands in top-5
+```
+
+---
+
+## System Architecture
+
+```mermaid
+graph TD
+  LLM[LLM Client] -->|MCP JSON-RPC only| Server[MCP Server + Business Logic]
+  Server --> EmbAPI[Qwen3-Embedding-8B\nOpenRouter API]
+  Server --> PG[(PostgreSQL\npgvector + TimescaleDB)]
+  Server --> RD[(Redis)]
+
+  PG --> F[facts\nSemantic Memory]
+  PG --> TE[timeline_events\nEpisodic / project scale]
+  PG --> SL[session_log\nEpisodic / chat scale]
+  PG --> SK[skills\nProcedural Memory]
+  RD --> SC[session:{chat_id}\nWorking Memory]
+```
+
+---
+
+## memorize() Routing
+
+```mermaid
+flowchart TD
+  IN[memorize called] --> T{type?}
+
+  T -->|fact| EMB[embed content via Qwen3]
+  EMB --> CC{cosine >= 0.96\nwith any is_current=TRUE\nfact in same project?}
+  CC -->|yes — conflict| UPD[UPDATE old: is_current=FALSE\nINSERT new: is_current=TRUE, version+1\nwrap in transaction]
+  CC -->|no| INS[INSERT new: is_current=TRUE, version=1]
+  UPD --> RC[update Redis session context]
+  INS --> RC
+
+  T -->|event| TLE[INSERT timeline_events\nno embedding needed]
+  TLE --> SLE[INSERT session_log entry]
+  SLE --> RE[update Redis]
+
+  T -->|skill| SKI[INSERT skills\nincrement version if name exists]
+  SKI --> SLS[INSERT session_log entry]
+
+  T -->|session_log| EMBL[embed label]
+  EMBL --> SLL[INSERT session_log]
+  SLL --> RL[update Redis last_activity]
+```
+
+---
+
+## Implementation Order — respect architectural dependencies
+
+Step 1 — `docker-compose.yml` (postgres with pgvector+timescaledb extensions, redis)
+Step 2 — alembic migrations (5 tables + hypertables + HNSW indexes)
+Step 3 — `embedding.py` (Qwen3 API + fallback + semantic cache)
+Step 4 — `storage/facts.py` (conflict detection + is_current logic + ACID transaction)
+Step 5 — `storage/timeline.py` (hypertable inserts + temporal range queries)
+Step 6 — `storage/session_log.py` (in-session reads + cross-session cosine search)
+Step 7 — `storage/session_ctx.py` (Redis hash + EXPIRE on every access)
+Step 8 — `storage/skills.py` (versioning: increment version, never DELETE)
+Step 9 — `tools/memorize.py` (routes to correct storage layer per type)
+Step 10 — `tools/get_*.py` (6 read tools)
+Step 11 — `tools/search_memory.py` (cross-layer search — needs all layers ready)
+Step 12 — `server.py` (register all 7 tools, start MCP server)
+Step 13 — `tests/` (unit + integration + 100-scenario benchmark)
+
+---
+
+## Key Decisions Log
+
+All non-obvious architectural decisions (index type changes, schema trade-offs, library limitations)
+must be recorded in `KEY_DECISIONS.md` at the project root.
+Format: date, decision, reason, alternatives rejected, affected files, trade-offs.
+
+---
+
+## Directory Layout
+
+```
+mlms/
+├── CLAUDE.md
+├── docker-compose.yml
+├── pyproject.toml
+├── alembic/versions/          001–005 migrations
+├── src/mlms/
+│   ├── server.py              MCP entry point, 7 tools registered
+│   ├── config.py              all constants above
+│   ├── embedding.py           API + fallback + cache
+│   ├── storage/               facts, timeline, session_log, session_ctx, skills
+│   └── tools/                 memorize, get_facts, get_timeline, get_session_log,
+│                              get_session_context, get_skills, search_memory
+├── tests/unit/ integration/ fixtures/synthetic_100.json
+└── scripts/seed_test_data.py
+```
