@@ -42,6 +42,11 @@ def upgrade() -> None:
 
     op.execute("CREATE INDEX ON session_log (chat_id, time DESC)")
 
+    op.execute(
+        "CREATE INDEX ON session_log USING ivfflat (embedding vector_cosine_ops)"
+        " WITH (lists = 100)"
+    )
+
 
 def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS session_log")
