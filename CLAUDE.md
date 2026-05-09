@@ -18,7 +18,7 @@ MLMS is a self-hosted MCP server giving LLM agents persistent cross-session memo
 ## Key Constants — never change without explicit instruction
 
 ```python
-EMBEDDING_DIM            = 4096
+EMBEDDING_DIM            = 1536       # Matryoshka truncation of Qwen3-Embedding-8B (4096→1536), pgvector HNSW limit is 2000
 EMBEDDING_MODEL          = "qwen3-embedding-8b"
 EMBEDDING_FALLBACK       = "qwen3-embedding-0.6b"
 
@@ -94,6 +94,20 @@ Step 10 — `tools/get_*.py` (6 read tools)
 Step 11 — `tools/search_memory.py` (cross-layer search — needs all layers ready)
 Step 12 — `server.py` (register all 7 tools, start MCP server)
 Step 13 — `tests/` (unit + integration + 100-scenario benchmark)
+
+---
+
+## Anti-Patterns — things Claude gets wrong on this project
+
+- Different embedding models on different tables — breaks cosine similarity (different vector spaces)
+- Physical DELETE on facts — use `is_current=FALSE` (soft delete preserves version history)
+- Conflict detection outside a transaction — race condition, must be atomic
+- Treating `COSINE_CONFLICT_THRESHOLD = 0.96` as immutable — always note it needs calibration
+- Hard-coding tool count, FR count, NFR count — anchors: 7 tools, 8 FR, 5 NFR
+- Writing `ALTER TABLE` for new event metadata — use the existing `metadata JSONB` column
+- Comparing vectors from different embedding model outputs — meaningless cosine values
+- Over-commenting — write self-documenting code. Comments only for non-obvious WHY, never for WHAT. No docstrings on obvious functions. No "# Initialize the connection" above connection = connect(). Code should read like written by a developer, not explained to one.
+- Using `vector(4096)` or `vector(2048)` for embeddings — EMBEDDING_DIM = 1536 (Matryoshka truncation of Qwen3-4096); HNSW limit in pgvector 0.8.x = 2000, so 1536 is the correct value
 
 ---
 
