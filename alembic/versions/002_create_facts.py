@@ -19,7 +19,7 @@ def upgrade() -> None:
         CREATE TABLE facts (
             id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
             content     TEXT        NOT NULL,
-            embedding   VECTOR(4096),
+            embedding   VECTOR(1536),
             tags        TEXT[],
             category    TEXT,
             project_id  UUID        REFERENCES projects(id) ON DELETE CASCADE,
@@ -31,11 +31,6 @@ def upgrade() -> None:
     """)
 
     op.execute("CREATE INDEX ON facts (project_id, is_current)")
-
-    op.execute(
-        "CREATE INDEX ON facts USING ivfflat (embedding vector_cosine_ops)"
-        " WITH (lists = 100)"
-    )
 
 
 def downgrade() -> None:

@@ -29,7 +29,7 @@ def upgrade() -> None:
                 CONSTRAINT session_log_type_check CHECK (type IN ({valid_list})),
             label       TEXT        NOT NULL,
             content     TEXT,
-            embedding   VECTOR(4096),
+            embedding   VECTOR(1536),
             tags        TEXT[],
             meta        JSONB
         )
@@ -41,11 +41,6 @@ def upgrade() -> None:
     )
 
     op.execute("CREATE INDEX ON session_log (chat_id, time DESC)")
-
-    op.execute(
-        "CREATE INDEX ON session_log USING ivfflat (embedding vector_cosine_ops)"
-        " WITH (lists = 100)"
-    )
 
 
 def downgrade() -> None:
