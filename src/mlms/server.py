@@ -21,6 +21,7 @@ from mlms.tools.get_session_log import get_session_log as _get_session_log
 from mlms.tools.get_skills import get_skills as _get_skills
 from mlms.tools.get_timeline import get_timeline as _get_timeline
 from mlms.tools.memorize import memorize as _memorize
+from mlms.tools.revert_fact import revert_fact as _revert_fact
 from mlms.tools.search_memory import search_memory as _search_memory
 
 
@@ -212,6 +213,17 @@ async def get_skills(
     app: _AppCtx = ctx.request_context.lifespan_context
     rows = await _get_skills(domain=domain, limit=limit, conn=app.conn)
     return [r.model_dump(mode="json") for r in rows]
+
+
+@mcp.tool()
+async def revert_fact(
+    fact_id: str,
+    ctx: Context[Any, Any, Any],
+) -> dict[str, Any]:
+    """Revert a fact to its previous version. fact_id must be the current version."""
+    from uuid import UUID
+    app: _AppCtx = ctx.request_context.lifespan_context
+    return await _revert_fact(fact_id=UUID(fact_id), conn=app.conn)
 
 
 @mcp.tool()
