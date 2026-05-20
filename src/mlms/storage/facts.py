@@ -19,6 +19,7 @@ class FactResult:
     id: UUID
     version: int
     is_conflict: bool
+    replaced_id: UUID | None
 
 
 def _vec_literal(vec: list[float]) -> str:
@@ -37,8 +38,8 @@ _SELECT_NEAREST = """
 _UPDATE_RETIRE = "UPDATE facts SET is_current = FALSE, updated_at = %s WHERE id = %s"
 
 _INSERT_FACT = """
-    INSERT INTO facts (id, content, embedding, tags, category, project_id, version, is_current)
-    VALUES (%s, %s, %s::vector, %s, %s, %s, %s, TRUE)
+    INSERT INTO facts (id, content, embedding, tags, category, project_id, version, is_current, replaces_id)
+    VALUES (%s, %s, %s::vector, %s, %s, %s, %s, TRUE, %s)
 """
 
 
@@ -56,7 +57,7 @@ async def upsert_fact(
     vec_lit = _vec_literal(embedding_vec)
     new_id = uuid.uuid4()
     now = datetime.now(UTC)
-    is_conflict = False
+    replaced_id: UUID | None = None
     version = 1
 
     async with conn.transaction():
@@ -66,17 +67,18 @@ async def upsert_fact(
         row = await cur.fetchone()
 
         if row is not None and row["dist"] is not None and row["dist"] <= 1.0 - threshold:
-            is_conflict = True
+            replaced_id = row["id"]
             version = row["version"] + 1
-            await cur.execute(_UPDATE_RETIRE, (now, row["id"]))
+            await cur.execute(_UPDATE_RETIRE, (now, replaced_id))
 
         await cur.execute(
             _INSERT_FACT,
-            (new_id, content, vec_lit, tags, category, project_id, version),
+            (new_id, content, vec_lit, tags, category, project_id, version, replaced_id),
         )
 
     return FactResult(
         id=new_id,
         version=version,
-        is_conflict=is_conflict,
+        is_conflict=replaced_id is not None,
+        replaced_id=replaced_id,
     )
