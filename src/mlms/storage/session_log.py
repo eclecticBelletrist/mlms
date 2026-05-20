@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 import psycopg
 import psycopg.rows
@@ -33,8 +34,8 @@ class SessionEntry:
 
 
 _INSERT = """
-    INSERT INTO session_log (time, chat_id, type, label, content, embedding, tags, meta)
-    VALUES (%s, %s, %s, %s, %s, %s::vector, %s, %s)
+    INSERT INTO session_log (time, chat_id, project_id, type, label, content, embedding, tags, meta)
+    VALUES (%s, %s, %s, %s, %s, %s, %s::vector, %s, %s)
 """
 
 _SELECT_COLS = "SELECT time, chat_id, type, label, content, tags, meta FROM session_log"
@@ -43,6 +44,12 @@ _IN_SESSION = _SELECT_COLS + " WHERE chat_id = %s ORDER BY time DESC LIMIT %s"
 
 _CROSS_SESSION = (
     _SELECT_COLS + " WHERE embedding IS NOT NULL" + " ORDER BY embedding <=> %s::vector LIMIT %s"
+)
+
+_CROSS_SESSION_FILTERED = (
+    _SELECT_COLS
+    + " WHERE embedding IS NOT NULL AND project_id = %s::uuid"
+    + " ORDER BY embedding <=> %s::vector LIMIT %s"
 )
 
 
@@ -56,6 +63,7 @@ async def insert_session_entry(
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
     time: datetime | None = None,
+    project_id: UUID | None = None,
     conn: psycopg.AsyncConnection[Any],
 ) -> SessionInsertResult:
     ts = time if time is not None else datetime.now(UTC)
@@ -64,7 +72,7 @@ async def insert_session_entry(
 
     await conn.execute(
         _INSERT,
-        (ts, chat_id, entry_type, label, content, vec_lit, tags, meta_val),
+        (ts, chat_id, project_id, entry_type, label, content, vec_lit, tags, meta_val),
     )
     return SessionInsertResult(time=ts, chat_id=chat_id)
 
@@ -73,6 +81,7 @@ async def get_session_log(
     *,
     chat_id: str | None = None,
     semantic_query: list[float] | None = None,
+    project_id: UUID | None = None,
     limit: int = 20,
     conn: psycopg.AsyncConnection[Any],
 ) -> list[SessionEntry]:
@@ -87,7 +96,10 @@ async def get_session_log(
         await cur.execute(_IN_SESSION, (chat_id, limit))
     else:
         assert semantic_query is not None
-        await cur.execute(_CROSS_SESSION, (_vec_literal(semantic_query), limit))
+        if project_id is not None:
+            await cur.execute(_CROSS_SESSION_FILTERED, (project_id, _vec_literal(semantic_query), limit))
+        else:
+            await cur.execute(_CROSS_SESSION, (_vec_literal(semantic_query), limit))
 
     rows: list[dict[str, Any]] = await cur.fetchall()
     return [

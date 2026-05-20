@@ -89,9 +89,9 @@ class TestInsertSessionEntry:
     async def test_embedding_none_sends_none(self) -> None:
         conn, _ = _make_conn()
         await insert_session_entry(chat_id=_CHAT, entry_type="insight", label="T", conn=conn)
-        # embedding is 6th param (index 5): (ts, chat_id, type, label, content, embedding, tags, meta)
+        # embedding is 7th param (index 6): (ts, chat_id, project_id, type, label, content, embedding, tags, meta)
         call_params = conn.execute.call_args[0][1]
-        assert call_params[5] is None
+        assert call_params[6] is None
 
     async def test_embedding_vec_converted_to_string_literal(self) -> None:
         conn, _ = _make_conn()
@@ -103,8 +103,8 @@ class TestInsertSessionEntry:
             conn=conn,
         )
         call_params = conn.execute.call_args[0][1]
-        assert isinstance(call_params[5], str)
-        assert call_params[5].startswith("[")
+        assert isinstance(call_params[6], str)
+        assert call_params[6].startswith("[")
 
     async def test_meta_none_passed_as_none(self) -> None:
         conn, _ = _make_conn()
@@ -227,6 +227,33 @@ class TestGetSessionLogCrossSession:
         conn, _ = _make_conn([])
         result = await get_session_log(semantic_query=_EMBEDDING, conn=conn)
         assert result == []
+
+
+# ── get_session_log — cross-session with project_id filter ────────────────────
+
+import uuid as _uuid
+
+
+class TestGetSessionLogProjectFilter:
+    _PROJECT = _uuid.uuid4()
+
+    async def test_project_id_filter_uses_project_scoped_query(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, project_id=self._PROJECT, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "project_id = " in sql
+
+    async def test_project_id_filter_passes_project_id_as_first_param(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, project_id=self._PROJECT, conn=conn)
+        params: list[Any] = cur.execute.call_args[0][1]
+        assert params[0] == self._PROJECT
+
+    async def test_no_project_id_omits_project_filter(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "project_id" not in sql
 
 
 # ── validation — mutually exclusive modes ─────────────────────────────────────

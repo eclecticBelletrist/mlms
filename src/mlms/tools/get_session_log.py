@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 import psycopg
 from pydantic import BaseModel
@@ -26,6 +27,7 @@ async def get_session_log(
     limit: int = 50,
     entry_type: str | None = None,
     semantic_query: str | None = None,
+    project_id: str | None = None,
     conn: psycopg.AsyncConnection[Any],
     redis: Any,
 ) -> list[SessionLogEntry]:
@@ -41,6 +43,7 @@ async def get_session_log(
     entries = await _storage_get_session_log(
         chat_id=chat_id,
         semantic_query=vec,
+        project_id=UUID(project_id) if project_id is not None else None,
         limit=limit,
         conn=conn,
     )

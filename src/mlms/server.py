@@ -169,6 +169,7 @@ async def get_session_log(
     limit: int = 50,
     entry_type: str | None = None,
     semantic_query: str | None = None,
+    project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Retrieve session log entries. Two exclusive modes — do NOT combine chat_id and semantic_query.
 
@@ -178,6 +179,7 @@ async def get_session_log(
 
     Mode 2 — cross-session search: provide semantic_query, omit chat_id
       semantic_query: natural-language search, e.g. "authentication decisions"
+      project_id: optional scope — "a1b2c3d4-0000-0000-0000-000000000001"
       limit: default 50
     """
     app: _AppCtx = ctx.request_context.lifespan_context
@@ -186,6 +188,7 @@ async def get_session_log(
         limit=limit,
         entry_type=entry_type,
         semantic_query=semantic_query,
+        project_id=project_id,
         conn=app.conn,
         redis=app.redis,
     )

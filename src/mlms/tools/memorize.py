@@ -65,6 +65,7 @@ async def memorize(
                 entry_type="action",
                 label=title[:100],
                 content=content,
+                project_id=project_id,
                 conn=conn,
             )
             await _refresh_redis(chat_id, str(project_id), redis=redis)
@@ -87,6 +88,7 @@ async def memorize(
                 entry_type="action",
                 label=f"skill:{name}"[:100],
                 content=content,
+                project_id=UUID(pid_str) if pid_str else None,
                 conn=conn,
             )
             await _refresh_redis(chat_id, pid_str or "", redis=redis)
@@ -103,6 +105,7 @@ async def memorize(
             label=label,
             content=content,
             embedding_vec=vec,
+            project_id=UUID(pid_str) if pid_str else None,
             conn=conn,
         )
         await _refresh_redis(chat_id, pid_str or "", redis=redis)
