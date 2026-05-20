@@ -28,6 +28,7 @@ from mlms.tools.get_session_log import get_session_log
 from mlms.tools.get_skills import get_skills
 from mlms.tools.get_timeline import get_timeline
 from mlms.tools.memorize import memorize
+from mlms.tools.revert_fact import revert_fact
 from mlms.tools.search_memory import search_memory
 
 pytestmark = pytest.mark.skipif(
@@ -37,6 +38,7 @@ pytestmark = pytest.mark.skipif(
 
 _DIM = 1536
 _VEC_A: list[float] = [1.0] + [0.0] * (_DIM - 1)
+_VEC_LIT = "[" + ",".join(str(x) for x in _VEC_A) + "]"
 
 
 @pytest.fixture
@@ -126,3 +128,25 @@ async def test_smoke_search_memory(
         )
     assert len(results) >= 1
     assert results[0].layer == "fact"
+
+
+async def test_smoke_revert_fact(
+    pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
+) -> None:
+    # Pre-built chain: v1 (retired) ← v2 (current)
+    v1_id = uuid.uuid4()
+    await pg.execute(
+        "INSERT INTO facts (id, project_id, content, embedding, version, is_current)"
+        " VALUES (%s, %s, 'v1', %s::vector, 1, FALSE)",
+        (v1_id, project_id, _VEC_LIT),
+    )
+    v2_id = uuid.uuid4()
+    await pg.execute(
+        "INSERT INTO facts"
+        " (id, project_id, content, embedding, version, is_current, replaces_id)"
+        " VALUES (%s, %s, 'v2', %s::vector, 2, TRUE, %s)",
+        (v2_id, project_id, _VEC_LIT, v1_id),
+    )
+    result = await revert_fact(fact_id=v2_id, conn=pg)
+    assert result["ok"] is True
+    assert result["reverted_to"] == str(v1_id)
