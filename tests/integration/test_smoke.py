@@ -5,6 +5,7 @@ MLMS_INTEGRATION=1 pytest tests/integration/test_smoke.py -v
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from collections.abc import AsyncGenerator
@@ -22,6 +23,7 @@ from mlms.storage.session_ctx import SessionContext, set_session_context
 from mlms.storage.session_log import insert_session_entry
 from mlms.storage.skills import insert_skill
 from mlms.storage.timeline import insert_event
+from mlms.tools.export_project import export_project
 from mlms.tools.get_facts import get_facts
 from mlms.tools.get_session_ctx import get_session_context
 from mlms.tools.get_session_log import get_session_log
@@ -150,3 +152,16 @@ async def test_smoke_revert_fact(
     result = await revert_fact(fact_id=v2_id, conn=pg)
     assert result["ok"] is True
     assert result["reverted_to"] == str(v1_id)
+
+
+async def test_smoke_export_project(
+    pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
+) -> None:
+    await upsert_fact(
+        content="export smoke content", project_id=project_id, embedding_vec=_VEC_A, conn=pg
+    )
+    raw = await export_project(project_id=str(project_id), conn=pg)
+    data = json.loads(raw)
+    assert data["project_id"] == str(project_id)
+    assert "exported_at" in data
+    assert len(data["facts"]) >= 1
