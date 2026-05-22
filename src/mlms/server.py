@@ -15,6 +15,7 @@ import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
 
 from mlms.config import settings
+from mlms.tools.export_project import export_project as _export_project
 from mlms.tools.get_facts import get_facts as _get_facts
 from mlms.tools.get_session_ctx import get_session_context as _get_session_ctx
 from mlms.tools.get_session_log import get_session_log as _get_session_log
@@ -248,6 +249,16 @@ async def search_memory(
     app: _AppCtx = ctx.request_context.lifespan_context
     rows = await _search_memory(query=query, filters=filters, conn=app.conn, redis=app.redis)
     return [r.model_dump(mode="json") for r in rows]
+
+
+@mcp.tool()
+async def export_project(
+    project_id: str,
+    ctx: Context[Any, Any, Any],
+) -> str:
+    """Export all current facts, timeline events, and skills for a project as JSON."""
+    app: _AppCtx = ctx.request_context.lifespan_context
+    return await _export_project(project_id=project_id, conn=app.conn)
 
 
 if __name__ == "__main__":
