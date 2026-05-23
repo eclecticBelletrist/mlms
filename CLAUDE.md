@@ -29,7 +29,7 @@ REDIS_KEY_PATTERN        = "session:{chat_id}"
 
 LATENCY_P99_TARGET_MS    = 200        # cached path only
 LATENCY_SESSION_CTX_MS   = 5         # get_session_context() hard limit
-PRECISION_AT_5_TARGET    = 0.80      # precision@5 metric: fraction of scenarios where the relevant fact lands in top-5
+PRECISION_AT_5_TARGET    = 0.80      # Recall@5 metric — renamed from precision@5, sparse ground truth (1-2 relevant per scenario)
 ```
 
 ---
