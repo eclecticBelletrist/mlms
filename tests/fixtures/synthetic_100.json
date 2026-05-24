@@ -1,0 +1,5422 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-05-13T21:15:18.397732+00:00",
+  "total": 100,
+  "categories": {
+    "lexical": 25,
+    "semantic_drift": 25,
+    "conflict": 25,
+    "cross_session": 25
+  },
+  "models_used": [
+    "claude-sonnet-4.6",
+    "gpt-5.2",
+    "grok-4.20"
+  ],
+  "scenarios": [
+    {
+      "id": "lexical_001",
+      "category": "lexical",
+      "domain": "Kubernetes",
+      "setup": {
+        "session_log": [],
+        "facts": [
+          {
+            "id": "f001_1",
+            "content": "Лимит памяти для контейнера api-server установлен в 512Mi, лимит CPU — 500m. Requests: memory 256Mi, cpu 250m.",
+            "is_relevant": true
+          },
+          {
+            "id": "f001_2",
+            "content": "Для rolling update деплоймента используется стратегия RollingUpdate с maxSurge=1 и maxUnavailable=0.",
+            "is_relevant": false
+          },
+          {
+            "id": "f001_3",
+            "content": "Liveness probe настроена на HTTP GET /healthz с initialDelaySeconds=10 и periodSeconds=5.",
+            "is_relevant": false
+          },
+          {
+            "id": "f001_4",
+            "content": "Namespace production изолирован NetworkPolicy, разрешающей входящий трафик только из namespace ingress.",
+            "is_relevant": false
+          }
+        ]
+      },
+      "query": "Какой лимит памяти и CPU установлен для контейнера api-server?",
+      "expected": {
+        "relevant_ids": [
+          "f001_1"
+        ],
+        "irrelevant_ids": [
+          "f001_2",
+          "f001_3",
+          "f001_4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_002",
+      "category": "lexical",
+      "domain": "PostgreSQL",
+      "setup": {
+        "session_log": [],
+        "facts": [
+          {
+            "id": "f002_1",
+            "content": "Индекс GIN используется на колонке tags типа jsonb в таблице articles для ускорения операторов @> и ?. Создан командой: CREATE INDEX idx_articles_tags ON articles USING GIN (tags). Размер индекса после наполнения — около 240 МБ при 5 млн строк.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002_2",
+            "content": "Для полнотекстового поиска по колонке body применяется tsvector с конфигурацией russian и индексом GiST.",
+            "is_relevant": false
+          },
+          {
+            "id": "f002_3",
+            "content": "Параметр work_mem выставлен в 64MB, shared_buffers — 4GB для инстанса с 32 ГБ RAM.",
+            "is_relevant": false
+          },
+          {
+            "id": "f002_4",
+            "content": "Партиционирование таблицы events выполнено по диапазону дат (RANGE) с ежемесячными партициями начиная с 2023-01.",
+            "is_relevant": false
+          },
+          {
+            "id": "f002_5",
+            "content": "Репликация настроена как streaming replication с одним синхронным standby и synchronous_commit=on.",
+            "is_relevant": false
+          }
+        ]
+      },
+      "query": "Индекс GIN на колонке tags таблицы articles — как создан и какой занимает размер?",
+      "expected": {
+        "relevant_ids": [
+          "f002_1"
+        ],
+        "irrelevant_ids": [
+          "f002_2",
+          "f002_3",
+          "f002_4",
+          "f002_5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_003",
+      "category": "lexical",
+      "domain": "Nginx",
+      "setup": {
+        "session_log": [],
+        "facts": [
+          {
+            "id": "f003_1",
+            "content": "worker_processes auto; worker_connections 4096; use epoll; — текущая конфигурация nginx для production-сервера с 8 CPU.",
+            "is_relevant": true
+          },
+          {
+            "id": "f003_2",
+            "content": "SSL-терминация настроена с протоколами TLSv1.2 и TLSv1.3, cipher suite ECDHE-ECDSA-AES128-GCM-SHA256 приоритетный.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003_3",
+            "content": "Upstream backend определён с балансировкой least_conn и keepalive 32 соединения.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003_4",
+            "content": "Кэширование статики настроено через proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=static:10m max_size=2g.",
+            "is_relevant": false
+          }
+        ]
+      },
+      "query": "nginx worker_processes auto worker_connections конфигурация",
+      "expected": {
+        "relevant_ids": [
+          "f003_1"
+        ],
+        "irrelevant_ids": [
+          "f003_2",
+          "f003_3",
+          "f003_4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_004",
+      "category": "lexical",
+      "domain": "Python packaging",
+      "setup": {
+        "session_log": [],
+        "facts": [
+          {
+            "id": "f004_1",
+            "content": "Virtual environment создаётся командой python -m venv .venv, активируется через source .venv/bin/activate.",
+            "is_relevant": true
+          },
+          {
+            "id": "f004_2",
+            "content": "Зависимости фиксируются в requirements.txt командой pip freeze > requirements.txt после установки всех пакетов.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004_3",
+            "content": "Для публикации пакета на PyPI используется twine: twine upload dist/* после сборки через python -m build.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004_4",
+            "content": "pyproject.toml содержит секцию [build-system] с requires=[\"setuptools\",\"wheel\"] и build-backend=\"setuptools.build_meta\".",
+            "is_relevant": false
+          }
+        ]
+      },
+      "query": "Как создать и активировать virtual environment в Python?",
+      "expected": {
+        "relevant_ids": [
+          "f004_1"
+        ],
+        "irrelevant_ids": [
+          "f004_2",
+          "f004_3",
+          "f004_4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_005",
+      "category": "lexical",
+      "domain": "Prometheus",
+      "setup": {
+        "session_log": [],
+        "facts": [
+          {
+            "id": "f005_1",
+            "content": "Retention period для Prometheus TSDB установлен в 30 дней (--storage.tsdb.retention.time=30d). Объём данных на диске при текущей нагрузке — около 18 ГБ.",
+            "is_relevant": true
+          },
+          {
+            "id": "f005_2",
+            "content": "Alertmanager сконфигурирован с двумя receivers: PagerDuty для critical и Slack для warning. Группировка по alertname и cluster.",
+            "is_relevant": false
+          },
+          {
+            "id": "f005_3",
+            "content": "Scrape interval глобально выставлен в 15s, evaluation_interval — 15s. Для job node-exporter переопределён scrape_timeout: 10s.",
+            "is_relevant": false
+          },
+          {
+            "id": "f005_4",
+            "content": "Recording rule для p99 латентности: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)).",
+            "is_relevant": false
+          },
+          {
+            "id": "f005_5",
+            "content": "Remote write настроен на Thanos Receiver по адресу http://thanos-receive:19291/api/v1/receive с queue_config max_samples_per_send=10000.",
+            "is_relevant": false
+          }
+        ]
+      },
+      "query": "Retention period Prometheus TSDB и объём данных на диске",
+      "expected": {
+        "relevant_ids": [
+          "f005_1"
+        ],
+        "irrelevant_ids": [
+          "f005_2",
+          "f005_3",
+          "f005_4",
+          "f005_5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_006",
+      "category": "lexical",
+      "domain": "Terraform",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex006_f1",
+            "content": "В Terraform backend S3 использует таблицу DynamoDB для state locking (параметр dynamodb_table).",
+            "is_relevant": true
+          },
+          {
+            "id": "lex006_f2",
+            "content": "Для форматирования конфигов Terraform используй `terraform fmt -recursive`.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex006_f3",
+            "content": "Чтобы посмотреть план изменений, запускай `terraform plan` и при необходимости `-target` для ресурса.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex006_f4",
+            "content": "Модульность: выноси повторяющиеся ресурсы в module и передавай переменные через `variables.tf`/`outputs.tf`.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Как включить state locking в Terraform backend S3 через DynamoDB table?",
+      "expected": {
+        "relevant_ids": [
+          "lex006_f1"
+        ],
+        "irrelevant_ids": [
+          "lex006_f2",
+          "lex006_f3",
+          "lex006_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_007",
+      "category": "lexical",
+      "domain": "Redis",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex007_f1",
+            "content": "Для Redis persistence мы используем AOF в режиме `appendfsync everysec`: это даёт компромисс между надёжностью и задержкой. В конфиге выставлено `appendonly yes`, `appendfsync everysec`, и включена периодическая rewrite-оптимизация (авто-порог по росту файла), чтобы AOF не разрастался бесконтрольно.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex007_f2",
+            "content": "Политика eviction настроена на `allkeys-lru`, чтобы при нехватке памяти удалялись наименее используемые ключи.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex007_f3",
+            "content": "Для изоляции окружений используем отдельные logical DB (SELECT 0/1), но предпочтительнее разные инстансы/неймспейсы ключей.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex007_f4",
+            "content": "Репликация: read-replica подключается через `replicaof <host> <port>`, а failover делает Sentinel.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex007_f5",
+            "content": "Для мониторинга задержек включаем slowlog: `slowlog-log-slower-than 10000` и `slowlog-max-len 128`.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Мы используем Redis persistence AOF с appendfsync everysec (appendonly yes).",
+      "expected": {
+        "relevant_ids": [
+          "lex007_f1"
+        ],
+        "irrelevant_ids": [
+          "lex007_f2",
+          "lex007_f3",
+          "lex007_f4",
+          "lex007_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_008",
+      "category": "lexical",
+      "domain": "AWS IAM",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex008_f1",
+            "content": "Для доступа к S3 через IAM policy мы выдаём минимальные права на bucket и prefix. Пример:\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\"s3:GetObject\",\"s3:PutObject\"],\n      \"Resource\": \"arn:aws:s3:::ml-artifacts-bucket/models/*\"\n    }\n  ]\n}\n```",
+            "is_relevant": true
+          },
+          {
+            "id": "lex008_f2",
+            "content": "Для ротации credentials используем IAM access keys с автоматическим отключением старых ключей через Lambda/CloudWatch Events.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex008_f3",
+            "content": "Для кросс-аккаунтного доступа используем IAM role + trust policy, а не shared user keys.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex008_f4",
+            "content": "S3 bucket policy применяется на уровне бакета и может ограничивать доступ по VPC endpoint или условию `aws:PrincipalOrgID`.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "IAM policy для S3 GetObject/PutObject на arn:aws:s3:::ml-artifacts-bucket/models/*",
+      "expected": {
+        "relevant_ids": [
+          "lex008_f1"
+        ],
+        "irrelevant_ids": [
+          "lex008_f2",
+          "lex008_f3",
+          "lex008_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_009",
+      "category": "lexical",
+      "domain": "systemd",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex009_f1",
+            "content": "В systemd для автозапуска сервиса включаем юнит командой `systemctl enable <service>`.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex009_f2",
+            "content": "Для просмотра логов сервиса используем `journalctl -u <service> -f`.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex009_f3",
+            "content": "Если нужен рестарт при падении, в unit-файле ставим `Restart=on-failure` и `RestartSec=5`.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex009_f4",
+            "content": "Таймеры systemd заменяют cron: создаём `.timer` и соответствующий `.service`.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex009_f5",
+            "content": "Для изменения unit-файла без правки пакета используем `systemctl edit <service>` (drop-in).",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Как в systemd включить автозапуск сервиса через systemctl enable?",
+      "expected": {
+        "relevant_ids": [
+          "lex009_f1"
+        ],
+        "irrelevant_ids": [
+          "lex009_f2",
+          "lex009_f3",
+          "lex009_f4",
+          "lex009_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_010",
+      "category": "lexical",
+      "domain": "React",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex010_f1",
+            "content": "В React мы используем controlled component для формы: значение поля хранится в state, а изменения обрабатываются через `onChange`. Это упрощает валидацию, условное отключение кнопок и отправку данных, потому что источник истины — state компонента/хука.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex010_f2",
+            "content": "Для оптимизации рендера используем `React.memo` и `useCallback`, но только после профилирования.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex010_f3",
+            "content": "Для роутинга применяем React Router v6 с nested routes и `Outlet`.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex010_f4",
+            "content": "Сайд-эффекты (загрузка данных) выносим в `useEffect`, а отмену запросов делаем через AbortController.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Мы используем controlled component в React: value в state и onChange handler.",
+      "expected": {
+        "relevant_ids": [
+          "lex010_f1"
+        ],
+        "irrelevant_ids": [
+          "lex010_f2",
+          "lex010_f3",
+          "lex010_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_011",
+      "category": "lexical",
+      "domain": "Docker",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Docker daemon configuration uses --log-driver=json-file for all containers by default.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Docker networks support bridge, host, and overlay drivers with different isolation levels.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "Docker images are built from Dockerfile with 12 common instructions including FROM, RUN, COPY.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "The --log-driver=json-file option in Docker rotates logs at 10m size by default and keeps 5 files.",
+            "is_relevant": true
+          },
+          {
+            "id": "f5",
+            "content": "Docker volumes provide persistent storage independent of container lifecycle.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "What is the default Docker log driver and its rotation settings?",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f4"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_012",
+      "category": "lexical",
+      "domain": "Git",
+      "setup": {
+        "facts": [
+          {
+            "id": "g1",
+            "content": "Git merge --no-ff creates a merge commit even for fast-forward cases to preserve branch history.",
+            "is_relevant": true
+          },
+          {
+            "id": "g2",
+            "content": "Git rebase rewrites commit history and changes SHA values of rebased commits.",
+            "is_relevant": false
+          },
+          {
+            "id": "g3",
+            "content": "Git cherry-pick applies specific commit changes without merging entire branches.",
+            "is_relevant": false
+          },
+          {
+            "id": "g4",
+            "content": "To avoid fast-forward merges and always record merge commits, developers configure git config merge.ff false or use the --no-ff flag explicitly during git merge operations.",
+            "is_relevant": true
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Git merge should use --no-ff to preserve history",
+      "expected": {
+        "relevant_ids": [
+          "g1",
+          "g4"
+        ],
+        "irrelevant_ids": [
+          "g2",
+          "g3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_013",
+      "category": "lexical",
+      "domain": "Jenkins",
+      "setup": {
+        "facts": [
+          {
+            "id": "j1",
+            "content": "Jenkins pipeline script uses node('linux') { stage('Build') { sh 'make' } } structure.",
+            "is_relevant": false
+          },
+          {
+            "id": "j2",
+            "content": "Jenkins credentials are managed via credentialId('aws-key') inside withCredentials block in declarative pipelines.",
+            "is_relevant": true
+          },
+          {
+            "id": "j3",
+            "content": "Jenkins agents can be configured with 4 executors and specific labels for different job types.",
+            "is_relevant": false
+          },
+          {
+            "id": "j4",
+            "content": "The withCredentials([usernamePassword(credentialsId: 'aws-key', usernameVariable: 'AWS_USER', passwordVariable: 'AWS_PASS')]) syntax securely injects secrets during Jenkins pipeline execution.",
+            "is_relevant": true
+          },
+          {
+            "id": "j5",
+            "content": "Jenkins Blue Ocean provides visual pipeline editor but does not alter credential binding mechanics.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "withCredentials and credentialId in Jenkins",
+      "expected": {
+        "relevant_ids": [
+          "j2",
+          "j4"
+        ],
+        "irrelevant_ids": [
+          "j1",
+          "j3",
+          "j5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_014",
+      "category": "lexical",
+      "domain": "Apache Kafka",
+      "setup": {
+        "facts": [
+          {
+            "id": "k1",
+            "content": "Kafka topic partitions are set to 12 at creation with replication.factor=3 for high availability in production.",
+            "is_relevant": true
+          },
+          {
+            "id": "k2",
+            "content": "Kafka consumer groups enable parallel processing where each consumer reads from assigned partitions.",
+            "is_relevant": false
+          },
+          {
+            "id": "k3",
+            "content": "Kafka brokers use log.retention.hours=168 (7 days) by default for all topics unless overridden.",
+            "is_relevant": false
+          },
+          {
+            "id": "k4",
+            "content": "When creating a Kafka topic the command kafka-topics.sh --create --topic events --partitions 12 --replication-factor 3 ensures both scalability and fault tolerance.",
+            "is_relevant": true
+          },
+          {
+            "id": "k5",
+            "content": "Kafka streams API processes records with exactly-once semantics when configured properly.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Kafka topic partitions and replication-factor",
+      "expected": {
+        "relevant_ids": [
+          "k1",
+          "k4"
+        ],
+        "irrelevant_ids": [
+          "k2",
+          "k3",
+          "k5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_015",
+      "category": "lexical",
+      "domain": "Grafana",
+      "setup": {
+        "facts": [
+          {
+            "id": "gr1",
+            "content": "Grafana alert rule uses query A with Reduce expression and threshold 85% to trigger notifications on CPU panels.",
+            "is_relevant": true
+          },
+          {
+            "id": "gr2",
+            "content": "Grafana datasources support Prometheus, InfluxDB, and Loki with specific query languages for each.",
+            "is_relevant": false
+          },
+          {
+            "id": "gr3",
+            "content": "Grafana dashboard JSON contains templating variables, panel gridPos, and uid fields for import/export.",
+            "is_relevant": false
+          },
+          {
+            "id": "gr4",
+            "content": "To configure CPU utilization alert in Grafana: add alert rule on query showing average CPU, set Reduce to Max, condition IS ABOVE 85 for 5m, and choose notification channel — this setup triggers when the metric exceeds the threshold.",
+            "is_relevant": true
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Grafana alert rule CPU threshold",
+      "expected": {
+        "relevant_ids": [
+          "gr1",
+          "gr4"
+        ],
+        "irrelevant_ids": [
+          "gr2",
+          "gr3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_016",
+      "category": "lexical",
+      "domain": "Ansible",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Модуль ansible.builtin.apt используется для управления пакетами на Debian-based системах.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Ansible handlers запускаются в конце play, если были уведомлены через notify.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "Ansible inventory может быть статическим файлом или динамическим скриптом.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Роли в Ansible структурируют playbook по директориям: tasks, handlers, vars, defaults.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой модуль Ansible используется для управления пакетами?",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_017",
+      "category": "lexical",
+      "domain": "Elasticsearch",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Elasticsearch хранит данные в индексах, каждый индекс состоит из одного или нескольких шардов; документы внутри индекса имеют тип JSON и идентифицируются уникальным полем _id.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Elasticsearch поддерживает full-text поиск с использованием анализаторов, которые токенизируют и нормализуют текст перед индексированием.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "Кластер Elasticsearch состоит из узлов: master, data, coordinating и ingest.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Mapping в Elasticsearch определяет типы полей документа: keyword, text, integer, date и др.",
+            "is_relevant": false
+          },
+          {
+            "id": "f5",
+            "content": "Snapshot API в Elasticsearch позволяет создавать резервные копии индексов в удалённое хранилище.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Elasticsearch использует индексы для хранения документов",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_018",
+      "category": "lexical",
+      "domain": "MySQL",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Параметр innodb_buffer_pool_size в MySQL рекомендуется устанавливать в 70–80% от объёма RAM сервера; при 32 ГБ RAM оптимальное значение — 24576M.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "MySQL поддерживает репликацию типа master-slave и групповую репликацию (Group Replication) для обеспечения высокой доступности.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "Индексы в MySQL типа FULLTEXT позволяют выполнять полнотекстовый поиск по столбцам типа CHAR, VARCHAR и TEXT.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "EXPLAIN в MySQL показывает план выполнения запроса: тип доступа, используемые индексы и количество проверяемых строк.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "MySQL innodb_buffer_pool_size",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_019",
+      "category": "lexical",
+      "domain": "HashiCorp Vault",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "HashiCorp Vault поддерживает несколько backend storage для хранения секретов: Integrated Storage (Raft), Consul, PostgreSQL и другие; Raft является рекомендуемым вариантом для production-развёртываний без внешних зависимостей.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Vault использует политики (policies) на языке HCL для управления доступом к секретам по принципу наименьших привилегий.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "Dynamic secrets в Vault генерируются по требованию: например, временные credentials для AWS IAM или PostgreSQL с ограниченным TTL.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Vault Agent автоматически обновляет токены аутентификации и записывает секреты в файловую систему или переменные окружения.",
+            "is_relevant": false
+          },
+          {
+            "id": "f5",
+            "content": "Для инициализации Vault необходимо выполнить vault operator init, что генерирует unseal keys и root token.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Как Vault хранит секреты в backend storage?",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_020",
+      "category": "lexical",
+      "domain": "Istio",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Istio использует Envoy как sidecar-прокси, автоматически инжектируя его в каждый pod через MutatingWebhookConfiguration; конфигурация прокси задаётся через ресурс VirtualService:\n```yaml\napiVersion: networking.istio.io/v1alpha3\nkind: VirtualService\nspec:\n  http:\n  - route:\n    - destination:\n        host: my-service\n```",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Istio поддерживает mutual TLS (mTLS) между сервисами, что обеспечивает шифрование трафика внутри mesh без изменения кода приложений.",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "DestinationRule в Istio определяет политики трафика для сервиса: балансировку нагрузки, circuit breaking и настройки TLS.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Istio Gateway управляет входящим и исходящим трафиком на границе mesh, работая совместно с VirtualService для маршрутизации.",
+            "is_relevant": false
+          },
+          {
+            "id": "f5",
+            "content": "Kiali — веб-интерфейс для визуализации сервисного графа Istio, показывающий метрики трафика, health-статусы и конфигурацию mesh.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Istio использует Envoy как sidecar-прокси",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_021",
+      "category": "lexical",
+      "domain": "OpenTelemetry",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex21_f1",
+            "content": "OTLP exporter: отправляем traces по OTLP/gRPC в otel-collector:4317; resource attribute service.name=checkout-api.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex21_f2",
+            "content": "Для метрик используем Prometheus exporter в OpenTelemetry Collector и scrapes идут с /metrics, без OTLP.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex21_f3",
+            "content": "Sampling: в SDK включён parentbased_traceidratio sampler со значением 0.1 (10%).",
+            "is_relevant": false
+          },
+          {
+            "id": "lex21_f4",
+            "content": "Логи не шлём через OTLP: используем filelog receiver в Collector и парсим JSON-строки.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex21_f5",
+            "content": "В Collector включён batch processor (send_batch_size 8192) и memory_limiter для защиты от OOM.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой у нас OTLP exporter для traces и куда он шлёт OTLP/gRPC (host:port) для checkout-api?",
+      "expected": {
+        "relevant_ids": [
+          "lex21_f1"
+        ],
+        "irrelevant_ids": [
+          "lex21_f2",
+          "lex21_f3",
+          "lex21_f4",
+          "lex21_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_022",
+      "category": "lexical",
+      "domain": "OpenSSH",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex22_f1",
+            "content": "SSH client config для prod: используем ProxyJump bastion.prod, чтобы ходить на внутренние хосты; включены ControlMaster auto и ControlPersist 10m для multiplexing; IdentitiesOnly yes, IdentityFile ~/.ssh/prod_ed25519; ServerAliveInterval 30 и ServerAliveCountMax 3.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex22_f2",
+            "content": "На sshd (сервер) выключаем PasswordAuthentication и PermitRootLogin, оставляем только PubkeyAuthentication.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex22_f3",
+            "content": "Ключи генерим через ssh-keygen -t ed25519 -a 64 и добавляем комментарий с именем сервиса.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex22_f4",
+            "content": "Для копирования артефактов используем scp -C и ограничиваем алгоритмы шифрования aes256-gcm@openssh.com.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex22_f5",
+            "content": "known_hosts обновляем через ssh-keyscan и фиксируем fingerprint в репозитории инфраструктуры.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "В нашем SSH client config для prod настроены ProxyJump через bastion.prod, ControlMaster auto/ControlPersist 10m и IdentitiesOnly yes с IdentityFile ~/.ssh/prod_ed25519.",
+      "expected": {
+        "relevant_ids": [
+          "lex22_f1"
+        ],
+        "irrelevant_ids": [
+          "lex22_f2",
+          "lex22_f3",
+          "lex22_f4",
+          "lex22_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_023",
+      "category": "lexical",
+      "domain": "RabbitMQ",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex23_f1",
+            "content": "RabbitMQ quorum queues: создаём очередь с аргументом x-queue-type=quorum; пример (AMQP):\n```json\n{\"queue\":\"events.v1\",\"durable\":true,\"arguments\":{\"x-queue-type\":\"quorum\"}}\n```\nДля consumer выставляем QoS prefetch_count=50 и используем manual ack (basic.ack) после обработки.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex23_f2",
+            "content": "Exchanges: для fanout используем exchange events.broadcast и биндимся несколькими очередями для разных сервисов.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex23_f3",
+            "content": "TLS на RabbitMQ: включаем listener на 5671, задаём cacertfile/certfile/keyfile и verify_peer.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex23_f4",
+            "content": "Management plugin включён, UI доступен на 15672, мониторим длину очередей и rate publish/ack.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex23_f5",
+            "content": "Retry/Dead-letter: используем DLX + TTL (x-message-ttl) и отдельную parking-queue для ядовитых сообщений.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex23_f6",
+            "content": "Publisher confirms: включаем confirm_select и ждём basic.ack/basic.nack для гарантированной доставки.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "RabbitMQ quorum queues: x-queue-type=quorum, consumer QoS prefetch_count=50, manual ack…",
+      "expected": {
+        "relevant_ids": [
+          "lex23_f1"
+        ],
+        "irrelevant_ids": [
+          "lex23_f2",
+          "lex23_f3",
+          "lex23_f4",
+          "lex23_f5",
+          "lex23_f6"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_024",
+      "category": "lexical",
+      "domain": "SQLite",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex24_f1",
+            "content": "SQLite: для конкурентных read/write включаем WAL mode и ставим busy_timeout 5s, чтобы запросы ждали вместо ошибки database is locked.",
+            "is_relevant": true
+          },
+          {
+            "id": "lex24_f2",
+            "content": "SQLite: делаем периодический VACUUM после массовых удалений, чтобы вернуть место на диске.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex24_f3",
+            "content": "SQLite backup: используем online backup API (sqlite3_backup) вместо копирования файла во время записи.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex24_f4",
+            "content": "SQLite индексы: создаём composite index (user_id, created_at) для ускорения выборок по пользователю.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex24_f5",
+            "content": "SQLite: включаем foreign_keys=ON через PRAGMA при старте приложения.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Как в SQLite мы решаем проблему \"database is locked\" — WAL mode и busy_timeout 5s?",
+      "expected": {
+        "relevant_ids": [
+          "lex24_f1"
+        ],
+        "irrelevant_ids": [
+          "lex24_f2",
+          "lex24_f3",
+          "lex24_f4",
+          "lex24_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "lexical_025",
+      "category": "lexical",
+      "domain": "Cloudflare Workers",
+      "setup": {
+        "facts": [
+          {
+            "id": "lex25_f1",
+            "content": "Cloudflare Workers: edge caching делаем через Cache API (caches.default). Для GET /api/config сначала проверяем cache.match(request); при miss — fetch к origin, затем cache.put(request, response.clone()) с заголовком Cache-Control: public, max-age=300. Деплой через wrangler: в wrangler.toml задаём name, compatibility_date и route (например, \"example.com/api/*\").",
+            "is_relevant": true
+          },
+          {
+            "id": "lex25_f2",
+            "content": "Cloudflare Workers KV используем только для feature flags; TTL ставим 3600 и читаем через env.FLAGS.get().",
+            "is_relevant": false
+          },
+          {
+            "id": "lex25_f3",
+            "content": "Cloudflare Durable Objects применяем для синхронизации счётчиков и rate limiting, не для кэширования GET.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex25_f4",
+            "content": "В Workers включаем HMAC-подпись запросов к origin и проверяем timestamp для защиты от replay attack.",
+            "is_relevant": false
+          },
+          {
+            "id": "lex25_f5",
+            "content": "Логи с Workers отправляем в Logpush (HTTP destination) и фильтруем по зоне и пути.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Cloudflare Workers: для /api/config используем Cache API (caches.default) с cache.match/cache.put и Cache-Control max-age=300; route в wrangler.toml — example.com/api/*.",
+      "expected": {
+        "relevant_ids": [
+          "lex25_f1"
+        ],
+        "irrelevant_ids": [
+          "lex25_f2",
+          "lex25_f3",
+          "lex25_f4",
+          "lex25_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_001",
+      "category": "semantic_drift",
+      "domain": "Apache Airflow",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "DAG uses TaskGroup with trigger_rule='none_failed_or_skipped' and pool_slots=2",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Scheduler configured with parsing_processes=4",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "email_on_failure=True for all DAGs",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "S3 remote logging enabled with encryption",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "sudden task failures during peak hours",
+          "airflow dag dependencies",
+          "task concurrency limits"
+        ]
+      },
+      "query": "How did we keep overnight batch jobs from failing when load suddenly increased?",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_002",
+      "category": "semantic_drift",
+      "domain": "MongoDB",
+      "setup": {
+        "facts": [
+          {
+            "id": "m1",
+            "content": "Collection sharded by hashed _id with chunk size 64MB and balancer window 02:00-06:00",
+            "is_relevant": true
+          },
+          {
+            "id": "m2",
+            "content": "WiredTiger cache size 50% of RAM",
+            "is_relevant": false
+          },
+          {
+            "id": "m3",
+            "content": "Read concern majority for reporting queries",
+            "is_relevant": false
+          },
+          {
+            "id": "m4",
+            "content": "TTL index on last_updated field",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "database becoming slow on large writes",
+          "sharding strategy",
+          "distributed collection config"
+        ]
+      },
+      "query": "Production writes started causing hot spots and uneven load across nodes until we changed the distribution method.",
+      "expected": {
+        "relevant_ids": [
+          "m1"
+        ],
+        "irrelevant_ids": [
+          "m2",
+          "m3",
+          "m4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_003",
+      "category": "semantic_drift",
+      "domain": "FastAPI",
+      "setup": {
+        "facts": [
+          {
+            "id": "a1",
+            "content": "from fastapi import Depends; def get_current_user(): ... ; app.add_middleware(TrustedHostMiddleware, allowed_hosts=['*.internal'])",
+            "is_relevant": true
+          },
+          {
+            "id": "a2",
+            "content": "uvicorn workers=4",
+            "is_relevant": false
+          },
+          {
+            "id": "a3",
+            "content": "CORS middleware with allow_origins=['https://app.example.com']",
+            "is_relevant": false
+          },
+          {
+            "id": "a4",
+            "content": "Pydantic model with extra='forbid'",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "authentication errors after deployment",
+          "api security headers",
+          "dependency injection for auth"
+        ]
+      },
+      "query": "Users kept getting 403 after we moved the service behind the new proxy",
+      "expected": {
+        "relevant_ids": [
+          "a1"
+        ],
+        "irrelevant_ids": [
+          "a2",
+          "a3",
+          "a4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_004",
+      "category": "semantic_drift",
+      "domain": "Ceph",
+      "setup": {
+        "facts": [
+          {
+            "id": "c1",
+            "content": "osd_pool_default_size = 3\nosd_pool_default_min_size = 2\ncrush_rule = replicated_rule",
+            "is_relevant": true
+          },
+          {
+            "id": "c2",
+            "content": "rgw_keystone_url configured",
+            "is_relevant": false
+          },
+          {
+            "id": "c3",
+            "content": "mon osd down out interval = 300",
+            "is_relevant": false
+          },
+          {
+            "id": "c4",
+            "content": "bluestore_block_db_size = 1G",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "object storage cluster losing data on node failure",
+          "replication factor",
+          "ceph osd pool settings"
+        ]
+      },
+      "query": "Object store started losing writes every time one server restarted — what fixed the redundancy?",
+      "expected": {
+        "relevant_ids": [
+          "c1"
+        ],
+        "irrelevant_ids": [
+          "c2",
+          "c3",
+          "c4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "easy",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_005",
+      "category": "semantic_drift",
+      "domain": "ArgoCD",
+      "setup": {
+        "facts": [
+          {
+            "id": "g1",
+            "content": "syncPolicy: automated: prune: true; selfHeal: true; retry: limit: 5; backoff: duration: 30s; syncOptions: ['CreateNamespace=true']",
+            "is_relevant": true
+          },
+          {
+            "id": "g2",
+            "content": "applicationSet generators use git files",
+            "is_relevant": false
+          },
+          {
+            "id": "g3",
+            "content": "repoServer serviceAccount with clusterRole",
+            "is_relevant": false
+          },
+          {
+            "id": "g4",
+            "content": "ha enabled with 3 replicas",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "deployments stuck in progressing state",
+          "gitops sync behavior",
+          "argo application retry logic"
+        ]
+      },
+      "query": "New microservices were not being rolled out automatically after repository changes until the controller settings were adjusted.",
+      "expected": {
+        "relevant_ids": [
+          "g1"
+        ],
+        "irrelevant_ids": [
+          "g2",
+          "g3",
+          "g4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_006",
+      "category": "semantic_drift",
+      "domain": "Envoy Proxy",
+      "setup": {
+        "facts": [
+          {
+            "id": "f001",
+            "content": "В Envoy Proxy для upstream-кластера payments-backend настроен idle_timeout: 600s в секции common_http_protocol_options; при превышении бездействия соединение закрывается автоматически.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002",
+            "content": "Envoy использует circuit breaker с порогом max_connections: 1024 и max_pending_requests: 512 для кластера payments-backend.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003",
+            "content": "TLS-терминация на Envoy настроена с сертификатом от Let's Encrypt, обновление через cert-manager каждые 60 дней.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004",
+            "content": "Логирование доступа в Envoy направлено в stdout в формате JSON для последующей агрегации.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "Envoy конфигурация upstream",
+          "idle соединение зависает",
+          "таймаут upstream кластера",
+          "common_http_protocol_options разбор"
+        ]
+      },
+      "query": "Почему соединения к бэкенду обрываются через одно и то же время бездействия?",
+      "expected": {
+        "relevant_ids": [
+          "f001"
+        ],
+        "irrelevant_ids": [
+          "f002",
+          "f003",
+          "f004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "semantic_drift_007",
+      "category": "semantic_drift",
+      "domain": "ClickHouse",
+      "setup": {
+        "facts": [
+          {
+            "id": "f001",
+            "content": "Таблица events использует движок MergeTree с ORDER BY (date, user_id) и TTL date + INTERVAL 90 DAY DELETE.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002",
+            "content": "ClickHouse кластер развёрнут в режиме replicated с ZooKeeper-кворумом из 3 нод.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003",
+            "content": "Для ClickHouse настроен user-profile с max_memory_usage: 10GB на запрос.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004",
+            "content": "Резервное копирование ClickHouse выполняется через clickhouse-backup в S3 раз в сутки.",
+            "is_relevant": false
+          },
+          {
+            "id": "f005",
+            "content": "В ClickHouse включён query_log для профилирования медленных запросов.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "движок таблиц ClickHouse",
+          "производительность аналитических запросов",
+          "партиционирование и сортировка MergeTree",
+          "автоочистка устаревших записей TTL"
+        ]
+      },
+      "query": "Аналитика тормозит на больших объёмах — как организовано хранение и автоматическая очистка старых записей?",
+      "expected": {
+        "relevant_ids": [
+          "f001"
+        ],
+        "irrelevant_ids": [
+          "f002",
+          "f003",
+          "f004",
+          "f005"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_008",
+      "category": "semantic_drift",
+      "domain": "HAProxy",
+      "setup": {
+        "facts": [
+          {
+            "id": "f001",
+            "content": "HAProxy backend api-pool: balance roundrobin; server app1 10.0.1.11:8080 weight 1 maxconn 200; server app2 10.0.1.12:8080 weight 1 maxconn 200; server app3 10.0.1.13:8080 weight 1 maxconn 200.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002",
+            "content": "HAProxy настроен на health-check каждые 2 секунды с порогом fall 3 rise 2 для всех серверов в пуле.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003",
+            "content": "Sticky session в HAProxy реализован через cookie SERVERID insert indirect nocache.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004",
+            "content": "HAProxy stats page доступна на порту 8404 с базовой HTTP-аутентификацией.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "балансировщик нагрузки HAProxy",
+          "roundrobin стратегия распределения",
+          "конфигурация backend пула",
+          "лимиты соединений на узел"
+        ]
+      },
+      "query": "равномерное распределение входящего трафика между серверами приложений",
+      "expected": {
+        "relevant_ids": [
+          "f001"
+        ],
+        "irrelevant_ids": [
+          "f002",
+          "f003",
+          "f004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_009",
+      "category": "semantic_drift",
+      "domain": "Apache Pulsar",
+      "setup": {
+        "facts": [
+          {
+            "id": "f001",
+            "content": "В Apache Pulsar для подписки orders-sub настроен ackTimeout: 30s и redeliveryBackoff с начальным интервалом 5s и максимумом 60s; при отсутствии acknowledgment сообщение доставляется повторно.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002",
+            "content": "Apache Pulsar топик persistent://prod/orders/events партиционирован на 16 партиций для параллельной обработки.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003",
+            "content": "Retention policy в Pulsar для namespace prod/orders: retentionTimeInMinutes: 10080 (7 дней), retentionSizeInMB: 51200.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004",
+            "content": "Pulsar Functions используется для real-time обогащения событий заказов перед записью в sink-топик.",
+            "is_relevant": false
+          },
+          {
+            "id": "f005",
+            "content": "Аутентификация в Apache Pulsar настроена через JWT-токены с ротацией каждые 24 часа.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "гарантии доставки сообщений",
+          "ack механизм Pulsar",
+          "повторная отправка при сбое консьюмера",
+          "redelivery backoff настройка"
+        ]
+      },
+      "query": "Почему одни и те же сообщения обрабатываются несколько раз после сбоя потребителя?",
+      "expected": {
+        "relevant_ids": [
+          "f001"
+        ],
+        "irrelevant_ids": [
+          "f002",
+          "f003",
+          "f004",
+          "f005"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_010",
+      "category": "semantic_drift",
+      "domain": "Helm",
+      "setup": {
+        "facts": [
+          {
+            "id": "f001",
+            "content": "Для Helm-релиза frontend зафиксирована история из 10 ревизий (revisionHistoryLimit: 10); откат выполняется командой helm rollback frontend 7.",
+            "is_relevant": true
+          },
+          {
+            "id": "f002",
+            "content": "Helm chart frontend хранится в OCI-реестре ghcr.io/org/charts/frontend, версия 3.2.1.",
+            "is_relevant": false
+          },
+          {
+            "id": "f003",
+            "content": "В Helm values.yaml для frontend определены resource limits: cpu 500m, memory 256Mi на под.",
+            "is_relevant": false
+          },
+          {
+            "id": "f004",
+            "content": "Helm hooks pre-upgrade и post-upgrade настроены для выполнения миграций базы данных перед и после деплоя.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "история Helm релизов",
+          "откат revision к рабочей версии",
+          "helm rollback команда",
+          "revisionHistoryLimit настройка"
+        ]
+      },
+      "query": "Мы откатились на предыдущий стабильный деплой после того, как новая версия вызвала проблемы.",
+      "expected": {
+        "relevant_ids": [
+          "f001"
+        ],
+        "irrelevant_ids": [
+          "f002",
+          "f003",
+          "f004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_011",
+      "category": "semantic_drift",
+      "domain": "WireGuard VPN (site-to-site networking)",
+      "setup": {
+        "facts": [
+          {
+            "id": "sd011_f1",
+            "content": "Подняли site-to-site VPN на WireGuard между офисом и VPC: peer на шлюзе в облаке, AllowedIPs=10.20.0.0/16, PersistentKeepalive=25s.",
+            "is_relevant": true
+          },
+          {
+            "id": "sd011_f2",
+            "content": "Для DNS внутри офиса используем split-horizon: corp.example резолвится через Unbound на 10.0.0.53.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd011_f3",
+            "content": "MTU на WAN-интерфейсе выставляли 1500; jumbo frames нигде не включали.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd011_f4",
+            "content": "На edge-роутере включён NAT masquerade только для гостевой сети 192.168.50.0/24.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "Инцидент: пропала связность между площадками",
+          "Проверяли VPN-туннель: WireGuard",
+          "Маршруты внутренних подсетей завязаны на AllowedIPs",
+          "Для стабильности включали keepalive на peer"
+        ]
+      },
+      "query": "Почему мы перестали видеть внутренние подсети между площадками?",
+      "expected": {
+        "relevant_ids": [
+          "sd011_f1"
+        ],
+        "irrelevant_ids": [
+          "sd011_f2",
+          "sd011_f3",
+          "sd011_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_012",
+      "category": "semantic_drift",
+      "domain": "Apache Cassandra (distributed database consistency)",
+      "setup": {
+        "facts": [
+          {
+            "id": "sd012_f1",
+            "content": "В Cassandra настроили борьбу с «призрачными» значениями: gc_grace_seconds=86400, tombstone_warn_threshold=1000; раз в неделю запускаем `nodetool repair` на всех нодах; read_repair_chance=0.0 (перешли на регулярный repair).",
+            "is_relevant": true
+          },
+          {
+            "id": "sd012_f2",
+            "content": "Сервис логирует запросы в локальный файл JSON, ротация по 500MB, хранение 7 дней.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd012_f3",
+            "content": "Для бэкапов используем снапшоты на уровне виртуализации раз в сутки.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd012_f4",
+            "content": "В приложении включён кэш на стороне клиента на 30 секунд для GET-эндпоинтов.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd012_f5",
+            "content": "Для мониторинга железа собираем SMART-статистику дисков и алерты по realloc sectors.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "Обсуждали eventual consistency в Cassandra",
+          "Всплывают старые значения — часто дело в tombstones",
+          "Окно gc_grace_seconds влияет на то, что видят реплики",
+          "Решение: регулярный nodetool repair вместо read repair"
+        ]
+      },
+      "query": "В приложении старые записи внезапно возвращаются после изменения — что мы делали, чтобы это прекратилось?",
+      "expected": {
+        "relevant_ids": [
+          "sd012_f1"
+        ],
+        "irrelevant_ids": [
+          "sd012_f2",
+          "sd012_f3",
+          "sd012_f4",
+          "sd012_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_013",
+      "category": "semantic_drift",
+      "domain": "HashiCorp Consul (service discovery)",
+      "setup": {
+        "facts": [
+          {
+            "id": "sd013_f1",
+            "content": "Сделали service discovery через Consul: сервисы регистрируются в локальном agent, проверки здоровья HTTP `/health` каждые 10s. `consul-template` генерирует конфиг прокси из каталога Consul.\n\nПример шаблона:\n```hcl\n{{ range services }}\nupstream {{ .Name }} {\n  {{ range service .Name }}server {{ .Address }}:{{ .Port }} max_fails=3 fail_timeout=5s;{{ end }}\n}\n{{ end }}\n```",
+            "is_relevant": true
+          },
+          {
+            "id": "sd013_f2",
+            "content": "Для очередей фоновых задач используем отдельный пул воркеров; лимит 8 потоков на инстанс.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd013_f3",
+            "content": "Секреты приложения храним в переменных окружения, обновляем при деплое.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd013_f4",
+            "content": "В логах включили correlation-id (X-Request-ID) и пробрасываем его между сервисами.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "Надоело руками обновлять список живых инстансов",
+          "Обсуждали service discovery для микросервисов",
+          "Consul catalog + health checks решают проблему",
+          "consul-template может автоматически генерировать upstream-конфиги"
+        ]
+      },
+      "query": "Не хочется вручную держать список микросервисов…",
+      "expected": {
+        "relevant_ids": [
+          "sd013_f1"
+        ],
+        "irrelevant_ids": [
+          "sd013_f2",
+          "sd013_f3",
+          "sd013_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_014",
+      "category": "semantic_drift",
+      "domain": "Windows Active Directory (SSO / Kerberos)",
+      "setup": {
+        "facts": [
+          {
+            "id": "sd014_f1",
+            "content": "В AD настроили Kerberos constrained delegation для учётки `svc_web`: добавили SPN `HTTP/app01.corp.local`, а NTLM запретили через GPO (политика: Network security: Restrict NTLM).",
+            "is_relevant": true
+          },
+          {
+            "id": "sd014_f2",
+            "content": "В прокси для внешнего трафика включали принудительный редирект на HTTPS и HSTS на 180 дней.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd014_f3",
+            "content": "Для рабочих станций включён BitLocker, ключи восстановления в AAD не сохраняем.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd014_f4",
+            "content": "Почтовый домен настроен на SPF/DKIM/DMARC=quarantine.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd014_f5",
+            "content": "На файловом сервере включили аудит доступа к шару Finance и алерт по массовому удалению.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "Пользователи жаловались: портал постоянно просит логин/пароль",
+          "Разбирали SSO в домене: Kerberos",
+          "Проверяли SPN для HTTP-сервиса портала",
+          "NTLM отключили политикой, чтобы не было fallback-а"
+        ]
+      },
+      "query": "Почему при входе в корпоративный портал постоянно просит пароль заново?",
+      "expected": {
+        "relevant_ids": [
+          "sd014_f1"
+        ],
+        "irrelevant_ids": [
+          "sd014_f2",
+          "sd014_f3",
+          "sd014_f4",
+          "sd014_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_015",
+      "category": "semantic_drift",
+      "domain": "Apache Spark (SQL performance tuning)",
+      "setup": {
+        "facts": [
+          {
+            "id": "sd015_f1",
+            "content": "В Spark SQL джобе оптимизировали тяжёлые соединения: включили AQE и обработку перекоса, добавили переразбиение перед shuffle и подняли порог broadcast.\n- `spark.sql.adaptive.enabled=true`\n- `spark.sql.adaptive.skewJoin.enabled=true`\n- `spark.sql.autoBroadcastJoinThreshold=67108864` (64MB)\n- перед join: `df.repartition(200, \"user_id\")`",
+            "is_relevant": true
+          },
+          {
+            "id": "sd015_f2",
+            "content": "Схему выгрузки отчётов перевели с CSV на Parquet ради экономии места в хранилище.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd015_f3",
+            "content": "Для витрины добавили отдельный слой с агрегатами по дням, обновление раз в сутки.",
+            "is_relevant": false
+          },
+          {
+            "id": "sd015_f4",
+            "content": "В ETL убрали лишние UDF на Python и заменили на встроенные функции SQL.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "После роста объёма отчёты заметно замедлились",
+          "Искали как ускорить join и уменьшить shuffle",
+          "Обсуждали broadcast join и порог размера",
+          "AQE (adaptive) помогает со skew и планом выполнения"
+        ]
+      },
+      "query": "Отчёт по кликам стал выполняться в 5 раз дольше после роста объёма.",
+      "expected": {
+        "relevant_ids": [
+          "sd015_f1"
+        ],
+        "irrelevant_ids": [
+          "sd015_f2",
+          "sd015_f3",
+          "sd015_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_016",
+      "category": "semantic_drift",
+      "domain": "Loki",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "loki_write_max_retained_series=8000; configured via limits_config in loki.yaml",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "loki uses boltdb-shipper for index",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "retention_period=30d",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "querier uses query_range cache",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "high cardinality causing OOM",
+          "series limits enforcement",
+          "loki configuration tweaks"
+        ]
+      },
+      "query": "how did we stop the logging stack from running out of memory under heavy load",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_017",
+      "category": "semantic_drift",
+      "domain": "Traefik",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "entrypoint websecure with tls.certresolver=letsencrypt and http3 enabled on port 443",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "middleware chain: compress, rate-limit, security-headers",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "routers use rule Host(`api.*`)",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "providers.kubernetesingress",
+            "is_relevant": false
+          },
+          {
+            "id": "f5",
+            "content": "metrics.prometheus added",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "SSL termination issues",
+          "automatic certificate renewal",
+          "traefik dynamic config"
+        ]
+      },
+      "query": "we finally got automatic HTTPS working without manual cert management",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_018",
+      "category": "semantic_drift",
+      "domain": "Dapr",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "dapr.io/sidecar-image: daprio/daprd:1.12.0-rc.3\nannotations:\n  dapr.io/enabled: \"true\"\n  dapr.io/app-id: \"order-service\"\n  dapr.io/app-port: \"8080\"\n  dapr.io/enable-metrics: \"true\"",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "pubsub component uses redis",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "state store configured with azure cosmos",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "placement service HA mode",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "microservice communication overhead",
+          "sidecar injection policy",
+          "dapr runtime options"
+        ]
+      },
+      "query": "sidecar injection finally reduced inter-service call latency",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_019",
+      "category": "semantic_drift",
+      "domain": "TimescaleDB",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "hypertable compression policy: compress_segment_by=time_bucket('1h',time), compress_order_by=metric_id,segmentby=host_id AFTER 2h",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "continuous aggregates on 5m, 1h",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "retention policy 90 days",
+            "is_relevant": true
+          },
+          {
+            "id": "f4",
+            "content": "pg_stat_statements tuned",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "time-series storage costs",
+          "automatic data compression",
+          "postgres table policies"
+        ]
+      },
+      "query": "how we cut storage usage for metrics by 70 percent",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f3"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "semantic_drift_020",
+      "category": "semantic_drift",
+      "domain": "Zabbix",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "housekeeper mode disabled; instead we use custom SQL maintenance job that runs DELETE FROM history WHERE clock < unix_timestamp(NOW() - INTERVAL 14 DAY) in a weekly cron inside zabbix-server container",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "trapper items for log monitoring",
+            "is_relevant": false
+          },
+          {
+            "id": "f3",
+            "content": "proxy mode passive",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "alert escalation rules updated",
+            "is_relevant": false
+          },
+          {
+            "id": "f5",
+            "content": "web frontend on separate replica",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "database bloat on history tables",
+          "old records cleanup",
+          "zabbix internal maintenance"
+        ]
+      },
+      "query": "database kept growing until we changed the data retention strategy",
+      "expected": {
+        "relevant_ids": [
+          "f1"
+        ],
+        "irrelevant_ids": [
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_021",
+      "category": "semantic_drift",
+      "domain": "etcd",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_etcd_001",
+            "content": "etcd достиг лимита хранилища 8Gi, параметр --quota-backend-bytes=8589934592 вызвал переход в режим alarm NOSPACE, все write-операции заблокированы до выполнения дефрагментации командой etcdctl defrag",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_etcd_002",
+            "content": "Резервные копии etcd снимаются каждые 6 часов через etcdctl snapshot save, хранятся в S3-бакете с retention 30 дней",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_etcd_003",
+            "content": "Кластер etcd состоит из 3 нод, quorum настроен по умолчанию, TLS-сертификаты обновляются через cert-manager",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_etcd_004",
+            "content": "Мониторинг etcd настроен через Prometheus: метрика etcd_mvcc_db_total_size_in_bytes используется для алертинга при заполнении >75%",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "etcd alarm NOSPACE обнаружен в логах",
+          "запись новых конфигов заблокирована",
+          "квота диска etcd исчерпана",
+          "дефрагментация etcd для освобождения места"
+        ]
+      },
+      "query": "Почему кластер перестал принимать изменения конфигурации?",
+      "expected": {
+        "relevant_ids": [
+          "fact_etcd_001"
+        ],
+        "irrelevant_ids": [
+          "fact_etcd_002",
+          "fact_etcd_003",
+          "fact_etcd_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_022",
+      "category": "semantic_drift",
+      "domain": "Cilium",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_cilium_001",
+            "content": "Cilium установлен в режиме native eBPF routing, kube-proxy полностью заменён, NetworkPolicy применяются на уровне L3/L4 через XDP-хуки ядра",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_cilium_002",
+            "content": "Hubble UI подключён к Cilium для визуализации сетевых потоков между подами в реальном времени",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_cilium_003",
+            "content": "Cilium Cluster Mesh настроен между двумя регионами для cross-cluster service discovery",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_cilium_004",
+            "content": "Обновление Cilium с 1.13 до 1.15 выполнялось rolling upgrade без даунтайма, проверено через cilium status --wait",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "eBPF и обработка пакетов на уровне ядра Linux",
+          "сетевые политики между микросервисами Cilium",
+          "замена kube-proxy на eBPF-решение",
+          "XDP фильтрация трафика"
+        ]
+      },
+      "query": "Мы включили ядерный фильтр пакетов для управления политиками доступа между сервисами",
+      "expected": {
+        "relevant_ids": [
+          "fact_cilium_001"
+        ],
+        "irrelevant_ids": [
+          "fact_cilium_002",
+          "fact_cilium_003",
+          "fact_cilium_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_023",
+      "category": "semantic_drift",
+      "domain": "Varnish Cache",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_varnish_001",
+            "content": "Varnish Cache настроен с TTL=3600s для /static/*, VCL-правило: `if (req.url ~ \"^/static\") { set beresp.ttl = 3600s; }`, hit rate вырос до 94% после применения",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_varnish_002",
+            "content": "Varnish слушает на порту 6081, backend — приложение на порту 8080, Grace period установлен в 120 секунд",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_varnish_003",
+            "content": "Для инвалидации кэша используется PURGE-запрос с ACL-ограничением по IP подсети 10.0.0.0/8",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_varnish_004",
+            "content": "Логирование Varnish настроено через varnishncsa в формате Combined Log, ротация через logrotate каждые 24 часа",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_varnish_005",
+            "content": "ESI (Edge Side Includes) включён в VCL для сборки страниц из фрагментов с разными TTL",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "кэширование ответов для ускорения раздачи",
+          "Varnish TTL и VCL настройка",
+          "снижение latency фронтенда",
+          "высокий hit rate кэша"
+        ]
+      },
+      "query": "время отдачи ресурсов пользователям резко сократилось после последних правок...",
+      "expected": {
+        "relevant_ids": [
+          "fact_varnish_001"
+        ],
+        "irrelevant_ids": [
+          "fact_varnish_002",
+          "fact_varnish_003",
+          "fact_varnish_004",
+          "fact_varnish_005"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_024",
+      "category": "semantic_drift",
+      "domain": "Keycloak",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_keycloak_001",
+            "content": "Keycloak настроен как централизованный Identity Provider с realm `internal-apps`; все сервисы подключены через OIDC client credentials flow; токены подписываются алгоритмом RS256; срок жизни access token — 300 секунд, refresh token — 1800 секунд",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_keycloak_002",
+            "content": "Keycloak развёрнут в HA-режиме на двух нодах с Infinispan-кластером для репликации сессий, базой данных служит отдельный инстанс PostgreSQL 15",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_keycloak_003",
+            "content": "В Keycloak настроены маппинги атрибутов LDAP: поля department и employeeId синхронизируются из корпоративного AD каждые 15 минут",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_keycloak_004",
+            "content": "Тема входа Keycloak кастомизирована под корпоративный стиль, логотип и цвета заменены через FreeMarker-шаблоны",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "SSO для внутренних микросервисов",
+          "OIDC авторизация и токены доступа",
+          "Keycloak realm конфигурация",
+          "единая аутентификация пользователей"
+        ]
+      },
+      "query": "Как мы реализовали единую точку входа для всех внутренних приложений?",
+      "expected": {
+        "relevant_ids": [
+          "fact_keycloak_001"
+        ],
+        "irrelevant_ids": [
+          "fact_keycloak_002",
+          "fact_keycloak_003",
+          "fact_keycloak_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "semantic_drift_025",
+      "category": "semantic_drift",
+      "domain": "Pulumi",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_pulumi_001",
+            "content": "Pulumi stack `prod` реализован на TypeScript SDK; CI-пайплайн в GitHub Actions выполняет `pulumi up --yes` автоматически при merge в ветку main; state хранится в Pulumi Cloud",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_pulumi_002",
+            "content": "Pulumi ESC используется для управления секретами: переменные окружения инжектируются в стек через `pulumi env run` без записи в репозиторий",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_pulumi_003",
+            "content": "Для preview изменений перед деплоем настроен Pulumi GitHub App: комментарий с diff добавляется к каждому pull request автоматически",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_pulumi_004",
+            "content": "Pulumi policy pack `cost-guard` запрещает создание инстансов дороже $0.5/час, нарушения блокируют `pulumi up` с exit code 1",
+            "is_relevant": false
+          }
+        ],
+        "session_log": [
+          "IaC пайплайн на TypeScript",
+          "Pulumi деплой в CI",
+          "GitHub Actions триггер на push в main",
+          "автоматическое применение инфраструктуры"
+        ]
+      },
+      "query": "Вся инфраструктура описана кодом и разворачивается без ручного вмешательства при обновлении репозитория",
+      "expected": {
+        "relevant_ids": [
+          "fact_pulumi_001"
+        ],
+        "irrelevant_ids": [
+          "fact_pulumi_002",
+          "fact_pulumi_003",
+          "fact_pulumi_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": true,
+        "ab_test": true,
+        "difficulty": "easy",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_001",
+      "category": "conflict",
+      "domain": "Apache HTTP Server (reverse proxy)",
+      "setup": {
+        "facts": [
+          {
+            "id": "c001_f1_old",
+            "content": "Apache: включён HTTP/2 (Protocols h2 http/1.1).",
+            "is_relevant": false
+          },
+          {
+            "id": "c001_f1_new",
+            "content": "Apache: HTTP/2 отключён; используем только HTTP/1.1.",
+            "is_relevant": true
+          },
+          {
+            "id": "c001_f2",
+            "content": "TLS сертификаты выдаём через ACME (certbot) и обновляем по cron.",
+            "is_relevant": false
+          },
+          {
+            "id": "c001_f3",
+            "content": "Для /health возвращаем 200 без авторизации (Location /health).",
+            "is_relevant": false
+          },
+          {
+            "id": "c001_f4",
+            "content": "Логи пишем в JSON через модуль log_config, чтобы парсить в SIEM.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "HTTP/2 сейчас включён на Apache прокси?",
+      "expected": {
+        "relevant_ids": [
+          "c001_f1_new"
+        ],
+        "irrelevant_ids": [
+          "c001_f1_old",
+          "c001_f2",
+          "c001_f3",
+          "c001_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_002",
+      "category": "conflict",
+      "domain": "GitHub Actions (CI/CD)",
+      "setup": {
+        "facts": [
+          {
+            "id": "c002_f1_old",
+            "content": "CI в GitHub Actions запускается на self-hosted runner с label `onprem-x64` (Ubuntu 20.04).",
+            "is_relevant": false
+          },
+          {
+            "id": "c002_f1_new",
+            "content": "CI переведён на GitHub-hosted runners; используем `runs-on: ubuntu-22.04` и self-hosted отключили из-за поддержки/патчей. Секреты берём из GitHub Environments, а кеш зависимостей через `actions/cache@v4`.",
+            "is_relevant": true
+          },
+          {
+            "id": "c002_f2",
+            "content": "Деплой выполняется только при merge в main; PR билды без деплоя.",
+            "is_relevant": false
+          },
+          {
+            "id": "c002_f3",
+            "content": "Скан уязвимостей включён через CodeQL раз в сутки.",
+            "is_relevant": false
+          },
+          {
+            "id": "c002_f4",
+            "content": "Артефакты билдов храним 30 дней.",
+            "is_relevant": false
+          },
+          {
+            "id": "c002_f5",
+            "content": "Используем matrix builds для python 3.10 и 3.11.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Мы используем self-hosted runner для GitHub Actions, это актуально.",
+      "expected": {
+        "relevant_ids": [
+          "c002_f1_new"
+        ],
+        "irrelevant_ids": [
+          "c002_f1_old",
+          "c002_f2",
+          "c002_f3",
+          "c002_f4",
+          "c002_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_003",
+      "category": "conflict",
+      "domain": "OpenStack Nova (compute scheduling)",
+      "setup": {
+        "facts": [
+          {
+            "id": "c003_f1_old",
+            "content": "Nova scheduler: включены overcommit-коэффициенты CPU=16.0 и RAM=1.5.",
+            "is_relevant": false
+          },
+          {
+            "id": "c003_f1_new",
+            "content": "Nova scheduler overcommit настроен консервативно:\n\n```\n# /etc/nova/nova.conf\n[cpu]\ncpu_allocation_ratio = 4.0\n\n[DEFAULT]\nram_allocation_ratio = 1.0\n```\nПричина: SLA для latency-sensitive VM и частые noisy-neighbor инциденты при 16x.",
+            "is_relevant": true
+          },
+          {
+            "id": "c003_f2",
+            "content": "Compute-ноды размечаем aggregate `gpu=true` для задач с CUDA.",
+            "is_relevant": false
+          },
+          {
+            "id": "c003_f3",
+            "content": "Используем live migration по умолчанию для плановых работ.",
+            "is_relevant": false
+          },
+          {
+            "id": "c003_f4",
+            "content": "Glance хранит образы в backend Swift.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "overcommit CPU/RAM в Nova… какие значения сейчас?",
+      "expected": {
+        "relevant_ids": [
+          "c003_f1_new"
+        ],
+        "irrelevant_ids": [
+          "c003_f1_old",
+          "c003_f2",
+          "c003_f3",
+          "c003_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_004",
+      "category": "conflict",
+      "domain": "MinIO (S3-compatible object storage)",
+      "setup": {
+        "facts": [
+          {
+            "id": "c004_f1_old",
+            "content": "MinIO: erasure coding 4+2 (data=4, parity=2).",
+            "is_relevant": false
+          },
+          {
+            "id": "c004_f1_new",
+            "content": "MinIO: erasure coding 8+4 (data=8, parity=4) для повышения отказоустойчивости на 12 дисках.",
+            "is_relevant": true
+          },
+          {
+            "id": "c004_f2",
+            "content": "Bucket `backups` имеет lifecycle: переход в cold storage через 30 дней.",
+            "is_relevant": false
+          },
+          {
+            "id": "c004_f3",
+            "content": "Включён versioning на bucket'ах с артефактами релизов.",
+            "is_relevant": false
+          },
+          {
+            "id": "c004_f4",
+            "content": "Доступ приложений — через отдельные сервисные аккаунты, не root keys.",
+            "is_relevant": false
+          },
+          {
+            "id": "c004_f5",
+            "content": "Проверка целостности — еженедельный `mc admin heal -r`.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой сейчас erasure coding в MinIO?",
+      "expected": {
+        "relevant_ids": [
+          "c004_f1_new"
+        ],
+        "irrelevant_ids": [
+          "c004_f1_old",
+          "c004_f2",
+          "c004_f3",
+          "c004_f4",
+          "c004_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_005",
+      "category": "conflict",
+      "domain": "Microsoft Intune (Windows device management)",
+      "setup": {
+        "facts": [
+          {
+            "id": "c005_f1_old",
+            "content": "Intune: BitLocker требуется только для ноутбуков; десктопы исключены из политики шифрования.",
+            "is_relevant": true
+          },
+          {
+            "id": "c005_f1_new",
+            "content": "Intune: BitLocker обязателен для всех Windows-устройств (ноутбуки и десктопы). Политика: включить XTS-AES 256, запретить отключение шифрования, escrow ключей восстановления в Azure AD.",
+            "is_relevant": true
+          },
+          {
+            "id": "c005_f2",
+            "content": "Windows Update for Business: кольцо обновлений — 7 дней defer quality updates.",
+            "is_relevant": false
+          },
+          {
+            "id": "c005_f3",
+            "content": "Autopilot используется для первичной настройки, без локальных админов.",
+            "is_relevant": false
+          },
+          {
+            "id": "c005_f4",
+            "content": "Устройства разработчиков получают исключение на Defender ASR rules.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "BitLocker в Intune обязателен только для ноутбуков — это наше текущее правило.",
+      "expected": {
+        "relevant_ids": [
+          "c005_f1_old",
+          "c005_f1_new"
+        ],
+        "irrelevant_ids": [
+          "c005_f2",
+          "c005_f3",
+          "c005_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_006",
+      "category": "conflict",
+      "domain": "Prometheus Alertmanager",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Alertmanager notification routing uses email only for severity=warning.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Current Alertmanager configuration routes notifications via Slack for warning and critical, with email reserved exclusively for critical alerts after the 2024 update.",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "Alertmanager uses inhibit_rules for flapping alerts on node_cpu_high.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Silence duration for maintenance is 4h by default.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "What is the current notification routing policy for warning alerts in Alertmanager?",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f2"
+        ],
+        "irrelevant_ids": [
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_007",
+      "category": "conflict",
+      "domain": "AWS S3 Lifecycle",
+      "setup": {
+        "facts": [
+          {
+            "id": "f5",
+            "content": "S3 bucket lifecycle rule transitions objects to Glacier after 60 days and expires after 365 days.",
+            "is_relevant": true
+          },
+          {
+            "id": "f6",
+            "content": "Updated S3 lifecycle policy (enforced since Q3 2025): objects in prefix \"archive/\" transition to STANDARD_IA after exactly 30 days, then to Glacier Flexible Retrieval after 90 days, and expire after 400 days. Non-archive prefix uses Intelligent-Tiering only.",
+            "is_relevant": true
+          },
+          {
+            "id": "f7",
+            "content": "Bucket versioning is enabled with MFA delete.",
+            "is_relevant": false
+          },
+          {
+            "id": "f8",
+            "content": "Replication rule targets us-east-2 with SSE-KMS.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Our S3 archive bucket should transition to Glacier after how many days according to current policy?",
+      "expected": {
+        "relevant_ids": [
+          "f5",
+          "f6"
+        ],
+        "irrelevant_ids": [
+          "f7",
+          "f8"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_008",
+      "category": "conflict",
+      "domain": "GitLab CI",
+      "setup": {
+        "facts": [
+          {
+            "id": "f9",
+            "content": "GitLab runner autoscaling uses docker+machine executor with 8 concurrent jobs max.",
+            "is_relevant": true
+          },
+          {
+            "id": "f10",
+            "content": "Current GitLab CI runner configuration (v17.2+): uses kubernetes executor for auto-scaling groups, sets concurrent=24, idle_timeout=1800s, and requests 2 vCPU / 8GiB per ephemeral runner via instance_type m6i.large.",
+            "is_relevant": true
+          },
+          {
+            "id": "f11",
+            "content": "CI pipeline includes cache for node_modules with key \"npm-$CI_COMMIT_REF_SLUG\".",
+            "is_relevant": false
+          },
+          {
+            "id": "f12",
+            "content": "Artifacts expiry is 7 days for test jobs.",
+            "is_relevant": false
+          },
+          {
+            "id": "f13",
+            "content": "Protected branches require manual approval before merge.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Current maximum concurrent jobs and executor type for our auto-scaling GitLab runners",
+      "expected": {
+        "relevant_ids": [
+          "f9",
+          "f10"
+        ],
+        "irrelevant_ids": [
+          "f11",
+          "f12",
+          "f13"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_009",
+      "category": "conflict",
+      "domain": "CUDA Toolkit",
+      "setup": {
+        "facts": [
+          {
+            "id": "f14",
+            "content": "CUDA version pinned to 11.8 for all ML training containers because of cuDNN 8.6 compatibility.",
+            "is_relevant": true
+          },
+          {
+            "id": "f15",
+            "content": "In current environment (PyTorch 2.4+ stack) we explicitly pin CUDA 12.4.1 via docker base nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04; this includes driver >= 550, toolkit 12.4, and cuDNN 9.1. The old 11.8 pin causes kernel launch errors on A100 GPUs.",
+            "is_relevant": true
+          },
+          {
+            "id": "f16",
+            "content": "NCCL debug level set to INFO in distributed training.",
+            "is_relevant": false
+          },
+          {
+            "id": "f17",
+            "content": "torch.cuda.get_device_capability() returns (8,0) for our GPUs.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "We should use CUDA version",
+      "expected": {
+        "relevant_ids": [
+          "f14",
+          "f15"
+        ],
+        "irrelevant_ids": [
+          "f16",
+          "f17"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_010",
+      "category": "conflict",
+      "domain": "Kong API Gateway",
+      "setup": {
+        "facts": [
+          {
+            "id": "f18",
+            "content": "Kong route for /api/v1 uses load-balancer with round-robin algorithm and healthchecks every 10s.",
+            "is_relevant": false
+          },
+          {
+            "id": "f19",
+            "content": "Current Kong (3.6+) declarative config for production: route /api/v2/* has plugins: rate-limiting (2000/h per consumer), request-transformer, and load-balancing algorithm=consistent-hashing with upstream hash_on=header (X-User-Id); healthcheck interval changed to 30s with timeout 5s. This replaced the old round-robin setup to reduce hot-spotting.",
+            "is_relevant": true
+          },
+          {
+            "id": "f20",
+            "content": "Global proxy cache ttl is 300 seconds.",
+            "is_relevant": false
+          },
+          {
+            "id": "f21",
+            "content": "ACL plugin uses consumer groups for RBAC.",
+            "is_relevant": false
+          },
+          {
+            "id": "f22",
+            "content": "Logging to file with format json and level warn.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Update our Kong load-balancing strategy for the main API route to the latest recommended algorithm.",
+      "expected": {
+        "relevant_ids": [
+          "f19"
+        ],
+        "irrelevant_ids": [
+          "f18",
+          "f20",
+          "f21",
+          "f22"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_011",
+      "category": "conflict",
+      "domain": "Nexus Repository Manager",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_011_a",
+            "content": "Nexus Repository Manager использует формат хранения артефактов: blob store на основе файловой системы (File).",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_011_b",
+            "content": "Nexus Repository Manager переведён на S3 blob store — артефакты хранятся в объектном хранилище, файловый blob store более не используется.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_011_c",
+            "content": "Nexus настроен с политикой cleanup: артефакты старше 90 дней удаляются автоматически.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_011_d",
+            "content": "Анонимный доступ к Nexus отключён; все клиенты обязаны аутентифицироваться через токен.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой формат blob store используется в Nexus Repository Manager?",
+      "expected": {
+        "relevant_ids": [
+          "fact_011_a",
+          "fact_011_b"
+        ],
+        "irrelevant_ids": [
+          "fact_011_c",
+          "fact_011_d"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_012",
+      "category": "conflict",
+      "domain": "Datadog",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_012_a",
+            "content": "Retention период метрик в Datadog установлен на 15 месяцев. Все кастомные метрики сохраняются с разрешением 1 минута. Конфигурация применена в рамках плана Pro и зафиксирована в контракте с вендором от 2022 года.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_012_b",
+            "content": "Retention период метрик в Datadog изменён на 27 месяцев согласно новому Enterprise-контракту (2024). Кастомные метрики хранятся с разрешением 10 секунд для последних 6 часов, далее — 1 минута. Обновление вступило в силу 01.03.2024.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_012_c",
+            "content": "Datadog APM трассировки семплируются на уровне 20% для всех сервисов, кроме payment-service (100%).",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_012_d",
+            "content": "Datadog Agent версии 7.52.0 развёрнут на всех хостах через Ansible-роль datadog.datadog.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_012_e",
+            "content": "Мониторы Datadog для CPU > 85% настроены с алертом на канал #ops-alerts в Slack.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Текущий retention период хранения метрик в Datadog и их разрешение.",
+      "expected": {
+        "relevant_ids": [
+          "fact_012_b"
+        ],
+        "irrelevant_ids": [
+          "fact_012_a",
+          "fact_012_c",
+          "fact_012_d",
+          "fact_012_e"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_013",
+      "category": "conflict",
+      "domain": "NATS JetStream",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_013_a",
+            "content": "NATS JetStream: максимальный размер сообщения — 1 МБ (1 048 576 байт), лимит хранилища стрима — 50 ГБ, max_msgs = 10 000 000.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_013_b",
+            "content": "NATS JetStream (после ревизии конфига 2024-11): максимальный размер сообщения увеличен до 8 МБ (8 388 608 байт), лимит хранилища стрима — 200 ГБ, max_msgs = 50 000 000.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_013_c",
+            "content": "NATS кластер состоит из 3 нод с Raft-консенсусом; quorum = 2.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_013_d",
+            "content": "TLS между клиентами и NATS-сервером включён; используется mutual TLS с сертификатами от внутреннего CA.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "лимит размера сообщения и объём хранилища в NATS JetStream",
+      "expected": {
+        "relevant_ids": [
+          "fact_013_a",
+          "fact_013_b"
+        ],
+        "irrelevant_ids": [
+          "fact_013_c",
+          "fact_013_d"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_014",
+      "category": "conflict",
+      "domain": "Fluentd",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_014_a",
+            "content": "Для отправки логов в S3 используется output-плагин fluent-plugin-s3 версии 1.6.1.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_014_b",
+            "content": "Output-плагин для S3 заменён на fluent-plugin-s3 версии 1.7.2. Конфиг:\n<match **>\n  @type s3\n  s3_bucket prod-logs-bucket\n  s3_region eu-west-1\n  path logs/%Y/%m/%d/\n  <buffer time>\n    timekey 3600\n    timekey_wait 10m\n  </buffer>\n</match>",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_014_c",
+            "content": "Fluentd запущен как DaemonSet в Kubernetes; ресурсы: requests cpu=100m, memory=256Mi; limits cpu=500m, memory=512Mi.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_014_d",
+            "content": "Входящий порт Fluentd для forward-протокола: 24224 (TCP и UDP).",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_014_e",
+            "content": "Fluentd использует парсер multiline для сборки Java stack trace из нескольких строк.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой output-плагин и какая версия используются в Fluentd для отправки логов в S3?",
+      "expected": {
+        "relevant_ids": [
+          "fact_014_a",
+          "fact_014_b"
+        ],
+        "irrelevant_ids": [
+          "fact_014_c",
+          "fact_014_d",
+          "fact_014_e"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_015",
+      "category": "conflict",
+      "domain": "Patroni",
+      "setup": {
+        "facts": [
+          {
+            "id": "fact_015_a",
+            "content": "Таймаут автоматического failover в Patroni (ttl) установлен на 30 секунд. loop_wait = 10 с, retry_timeout = 10 с. Конфигурация действовала с момента первоначального деплоя кластера.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_015_b",
+            "content": "Таймаут failover в Patroni пересмотрен после инцидента 2024-09: ttl = 60 секунд, loop_wait = 15 с, retry_timeout = 20 с. Изменение внесено для снижения ложных срабатываний при кратковременных сетевых задержках.",
+            "is_relevant": true
+          },
+          {
+            "id": "fact_015_c",
+            "content": "Patroni использует etcd3 как DCS (Distributed Configuration Store); кластер etcd — 3 ноды.",
+            "is_relevant": false
+          },
+          {
+            "id": "fact_015_d",
+            "content": "Синхронная репликация в Patroni включена (synchronous_mode: true) для гарантии zero data loss при failover.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какие значения ttl, loop_wait и retry_timeout заданы в Patroni для управления failover?",
+      "expected": {
+        "relevant_ids": [
+          "fact_015_a",
+          "fact_015_b"
+        ],
+        "irrelevant_ids": [
+          "fact_015_c",
+          "fact_015_d"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_016",
+      "category": "conflict",
+      "domain": "Apache Flink (state backend)",
+      "setup": {
+        "facts": [
+          {
+            "id": "conflict_016_f1",
+            "content": "Flink state backend (current): RocksDBStateBackend (embedded RocksDB) for production jobs.",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_016_f2",
+            "content": "Flink state backend (old): HashMapStateBackend (in-memory) because it was simpler to debug.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_016_f3",
+            "content": "Checkpoint interval is set to 60s for the main streaming pipeline.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_016_f4",
+            "content": "We keep a max of 10 completed checkpoints to limit storage usage.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_016_f5",
+            "content": "Default parallelism for the ETL job is 8 unless overridden per deployment.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой state backend сейчас используем во Flink в проде?",
+      "expected": {
+        "relevant_ids": [
+          "conflict_016_f1"
+        ],
+        "irrelevant_ids": [
+          "conflict_016_f2",
+          "conflict_016_f3",
+          "conflict_016_f4",
+          "conflict_016_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_017",
+      "category": "conflict",
+      "domain": "Sentry (self-hosted deployment version pinning)",
+      "setup": {
+        "facts": [
+          {
+            "id": "conflict_017_f1",
+            "content": "Sentry (current): production is pinned to 24.2.0; we upgraded after validating replay + profiling and kept the same DSN per project.",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_017_f2",
+            "content": "Sentry (old): production is pinned to 23.7.2; do not upgrade because of a regression we saw in issue grouping.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_017_f3",
+            "content": "Inbound email for Sentry is disabled; we only create issues via SDK/event ingestion.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_017_f4",
+            "content": "We retain events for 30 days; attachments are pruned weekly.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_017_f5",
+            "content": "The on-call channel for Sentry incidents is #ops-observability.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Нужна текущая закреплённая версия Sentry для прод-развёртывания.",
+      "expected": {
+        "relevant_ids": [
+          "conflict_017_f1"
+        ],
+        "irrelevant_ids": [
+          "conflict_017_f2",
+          "conflict_017_f3",
+          "conflict_017_f4",
+          "conflict_017_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_018",
+      "category": "conflict",
+      "domain": "BIND9 (DNS recursion policy)",
+      "setup": {
+        "facts": [
+          {
+            "id": "conflict_018_f1",
+            "content": "BIND9 (current) named.conf:\n```\noptions {\n  recursion no;\n  allow-recursion { none; };\n};\n```\nAuthoritative-only; no recursive resolution on this server.",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_018_f2",
+            "content": "BIND9 (old) named.conf:\n```\noptions {\n  recursion yes;\n  allow-recursion { 10.0.0.0/8; 192.168.0.0/16; };\n};\n```\nWe used it as an internal resolver.",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_018_f3",
+            "content": "Zone files are stored under /etc/bind/zones and reloaded via `rndc reload`.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_018_f4",
+            "content": "We enable query logging only during incident triage, then turn it off to reduce IO.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "recursion в named.conf…",
+      "expected": {
+        "relevant_ids": [
+          "conflict_018_f1",
+          "conflict_018_f2"
+        ],
+        "irrelevant_ids": [
+          "conflict_018_f3",
+          "conflict_018_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "easy",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_019",
+      "category": "conflict",
+      "domain": "SonarQube (quality gate coverage threshold)",
+      "setup": {
+        "facts": [
+          {
+            "id": "conflict_019_f1",
+            "content": "SonarQube coverage threshold (current): Quality Gate fails if coverage on new code is < 75%.",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_019_f2",
+            "content": "SonarQube coverage threshold (old): Quality Gate fails if coverage on new code is < 80%.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_019_f3",
+            "content": "We run analysis with `sonar-scanner` on merge requests only, not on every commit to feature branches.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_019_f4",
+            "content": "The SonarQube project key format is `team-service-name` (lowercase, hyphen-separated).",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_019_f5",
+            "content": "PR decoration is enabled for GitHub, showing issues inline in the review UI.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Какой сейчас порог coverage в Quality Gate SonarQube для new code?",
+      "expected": {
+        "relevant_ids": [
+          "conflict_019_f1"
+        ],
+        "irrelevant_ids": [
+          "conflict_019_f2",
+          "conflict_019_f3",
+          "conflict_019_f4",
+          "conflict_019_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_020",
+      "category": "conflict",
+      "domain": "HashiCorp Nomad (job network mode)",
+      "setup": {
+        "facts": [
+          {
+            "id": "conflict_020_f1",
+            "content": "Nomad (current): jobs run with bridge networking to isolate allocations; services expose only declared ports via the Nomad network stanza and we avoid host networking except for low-level agents.\nExample snippet:\n```\ngroup \"api\" {\n  network {\n    mode = \"bridge\"\n    port \"http\" { to = 8080 }\n  }\n}\n```",
+            "is_relevant": true
+          },
+          {
+            "id": "conflict_020_f2",
+            "content": "Nomad (old): jobs used host networking (mode = \"host\") so apps could bind directly to node ports; this was later changed due to port collisions and harder multi-tenancy.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_020_f3",
+            "content": "Node pools: we separate workloads into `general` and `batch` pools to reduce noisy-neighbor impact.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_020_f4",
+            "content": "We cap restart attempts to 3 within 10 minutes for most services to avoid crash-looping indefinitely.",
+            "is_relevant": false
+          },
+          {
+            "id": "conflict_020_f5",
+            "content": "Nomad GC is scheduled daily during low-traffic hours to clean up old allocations.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Для Nomad job'ов используем bridge networking, а не host — подтвердить текущее значение.",
+      "expected": {
+        "relevant_ids": [
+          "conflict_020_f1"
+        ],
+        "irrelevant_ids": [
+          "conflict_020_f2",
+          "conflict_020_f3",
+          "conflict_020_f4",
+          "conflict_020_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_021",
+      "category": "conflict",
+      "domain": "BGP routing",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "BGP local preference for AS64496 set to 150 (outdated policy).",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Current BGP configuration for neighbor AS64496 uses local-preference 220 with route-map LOCAL_PREF_IN permitting prefix-list PRODUCTION only; community 64496:220 is attached on ingress.",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "Default MED value remains 0 for all eBGP peers.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "All outbound routes to AS64496 have MED explicitly set to 50.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "What is the current local preference for AS64496?",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f2"
+        ],
+        "irrelevant_ids": [
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_022",
+      "category": "conflict",
+      "domain": "Azure Blob Storage",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "Azure blob versioning was disabled on all containers in rg-prod.",
+            "is_relevant": false
+          },
+          {
+            "id": "f2",
+            "content": "Since 2024-02-01, versioning is enforced via Azure Policy 'RequireBlobVersioning' at subscription scope; all new containers in rg-prod must have versioning enabled and immutability policy with retention 90 days.",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "Soft delete retention is 7 days.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Current soft-delete policy for blobs in rg-prod is 30 days with versioning active.",
+            "is_relevant": true
+          }
+        ],
+        "session_log": []
+      },
+      "query": "Our Azure storage containers have versioning turned off.",
+      "expected": {
+        "relevant_ids": [
+          "f2",
+          "f4"
+        ],
+        "irrelevant_ids": [
+          "f1",
+          "f3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "conflict_023",
+      "category": "conflict",
+      "domain": "Java JVM",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "GC algorithm is set to G1GC with MaxGCPauseMillis=200.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "-XX:+UseZGC -XX:ZCollectionInterval=10 -XX:ZUncommitDelay=30; current production JVM flags for the trading service explicitly disable G1 and set ZGC with pause target 5ms.",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "Heap size is -Xmx4g.",
+            "is_relevant": true
+          },
+          {
+            "id": "f4",
+            "content": "Current heap configuration: -Xms8g -Xmx24g -XX:MaxGCPauseMillis=5 (ZGC).",
+            "is_relevant": true
+          }
+        ],
+        "session_log": []
+      },
+      "query": "current GC and heap settings for trading service",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ],
+        "irrelevant_ids": []
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_024",
+      "category": "conflict",
+      "domain": "VictoriaMetrics",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "scrape_interval: 60s for all jobs.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "In vmagent.yml the global scrape_interval is 15s; job 'api' overrides to 10s with max_scrape_size 64MB and stream parsing enabled.",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "retention is 30d.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Current -retentionPeriod=180d for vmstorage and downsampling is configured with 1m:5m:30d rollup.",
+            "is_relevant": false
+          }
+        ],
+        "session_log": []
+      },
+      "query": "vmagent scrape interval for api job",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f2"
+        ],
+        "irrelevant_ids": [
+          "f3",
+          "f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "conflict_025",
+      "category": "conflict",
+      "domain": "Puppet",
+      "setup": {
+        "facts": [
+          {
+            "id": "f1",
+            "content": "All nodes include the base::ntp class using ntpd.",
+            "is_relevant": true
+          },
+          {
+            "id": "f2",
+            "content": "Current site.pp manifest: node default { include base::chrony; } with class base::chrony that sets servers => ['time1.prod.example.com','time2.prod.example.com'], iburst => true and restrict => ['-4 default kod notrap nomodify'].",
+            "is_relevant": true
+          },
+          {
+            "id": "f3",
+            "content": "Hiera key ntp::servers uses pool.ntp.org.",
+            "is_relevant": false
+          },
+          {
+            "id": "f4",
+            "content": "Hiera lookup for chrony::servers returns ['time1.prod.example.com','time2.prod.example.com'] with class base::chrony only.",
+            "is_relevant": true
+          }
+        ],
+        "session_log": []
+      },
+      "query": "NTP configuration for our servers is based on ntpd.",
+      "expected": {
+        "relevant_ids": [
+          "f1",
+          "f2",
+          "f4"
+        ],
+        "irrelevant_ids": [
+          "f3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_001",
+      "category": "cross_session",
+      "domain": "Terraform Cloud (remote state backend)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session-tf-cloud-alpha",
+          "facts": [
+            {
+              "id": "fact-tc-001",
+              "content": "Terraform Cloud сохраняет состояние инфраструктуры в облачном хранилище рабочих пространств (workspaces), изолируя его от локальной машины оператора.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-tc-002",
+              "content": "В Terraform Cloud доступ к workspace контролируется через team-токены и переменные окружения типа 'sensitive', которые не отображаются в логах plan/apply.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-tc-003",
+              "content": "Terraform Cloud поддерживает VCS-интеграцию (GitHub, GitLab, Bitbucket): push в указанную ветку автоматически триггерит спекулятивный plan.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-tc-004",
+              "content": "При использовании remote backend в блоке terraform { backend \"remote\" {} } локальная команда terraform apply делегирует выполнение агентам Terraform Cloud, а state-файл никогда не записывается на диск исполнителя.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session-infra-ops-beta",
+          "session_log": []
+        }
+      },
+      "query": "где хранится state файл при работе с remote backend?",
+      "expected": {
+        "relevant_ids": [
+          "fact-tc-001"
+        ],
+        "irrelevant_ids": [
+          "fact-tc-002",
+          "fact-tc-003",
+          "fact-tc-004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_002",
+      "category": "cross_session",
+      "domain": "containerd (container runtime)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session-containerd-config-01",
+          "facts": [
+            {
+              "id": "fact-ctr-001",
+              "content": "В конфигурации containerd (/etc/containerd/config.toml) параметр `snapshotter` в секции `[plugins.'io.containerd.grpc.v1.cri'.containerd]` определяет механизм слоёв файловой системы; если не задан явно, используется overlayfs.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-ctr-002",
+              "content": "containerd поддерживает несколько snapshotters: overlayfs (Linux по умолчанию), native (для систем без overlayfs), zfs и devmapper; выбор влияет на производительность I/O образов.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-ctr-003",
+              "content": "Для интеграции containerd с Kubernetes в качестве CRI необходимо убедиться, что в config.toml включён плагин `io.containerd.grpc.v1.cri` и указан корректный путь к CNI-конфигурации.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-ctr-004",
+              "content": "Логи containerd по умолчанию пишутся в journald; уровень логирования задаётся параметром `log_level` в корневой секции config.toml (допустимые значения: trace, debug, info, warn, error).",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session-k8s-node-setup-07",
+          "session_log": []
+        }
+      },
+      "query": "как containerd выбирает snapshotter по умолчанию?",
+      "expected": {
+        "relevant_ids": [
+          "fact-ctr-001",
+          "fact-ctr-002"
+        ],
+        "irrelevant_ids": [
+          "fact-ctr-003",
+          "fact-ctr-004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_003",
+      "category": "cross_session",
+      "domain": "eBPF (kernel tracing)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session-ebpf-observability-22",
+          "facts": [
+            {
+              "id": "fact-ebpf-001",
+              "content": "С помощью bpftrace или libbpf можно перехватывать kprobe/tracepoint события ядра Linux без модификации исходного кода приложения — это основной паттерн low-overhead kernel observability.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-ebpf-002",
+              "content": "eBPF-программы проходят верификацию в ядре перед загрузкой: верификатор проверяет ацикличность графа инструкций и безопасность обращений к памяти, ограничивая глубину стека до 512 байт.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-ebpf-003",
+              "content": "bpftrace-скрипт для подсчёта системных вызовов по имени: `tracepoint:syscalls:sys_enter_* { @[probe] = count(); }` — позволяет за секунды выявить аномальную активность процесса на уровне ядра.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-ebpf-004",
+              "content": "Для сетевого мониторинга eBPF-программы типа XDP (eXpress Data Path) подключаются к сетевому интерфейсу на уровне драйвера, обеспечивая фильтрацию пакетов со скоростью до 24 Mpps на ядро.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-ebpf-005",
+              "content": "CO-RE (Compile Once – Run Everywhere) позволяет компилировать eBPF-программы один раз и запускать на разных версиях ядра за счёт BTF (BPF Type Format) и механизма relocations.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session-platform-debug-09",
+          "session_log": []
+        }
+      },
+      "query": "eBPF инструменты для отслеживания вызовов ядра",
+      "expected": {
+        "relevant_ids": [
+          "fact-ebpf-001",
+          "fact-ebpf-003"
+        ],
+        "irrelevant_ids": [
+          "fact-ebpf-002",
+          "fact-ebpf-004",
+          "fact-ebpf-005"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_004",
+      "category": "cross_session",
+      "domain": "CockroachDB (distributed SQL)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session-cockroachdb-tuning-03",
+          "facts": [
+            {
+              "id": "fact-crdb-001",
+              "content": "CockroachDB по умолчанию использует сериализуемую изоляцию (SERIALIZABLE); начиная с v23.1 доступна команда `SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL READ COMMITTED` для снижения уровня изоляции на уровне сессии.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-crdb-002",
+              "content": "CockroachDB хранит данные в RocksDB (Pebble с v21.1) в виде key-value пар с MVCC-версионированием; каждая строка таблицы кодируется с префиксом table ID + primary key.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-crdb-003",
+              "content": "Транзакционная модель CockroachDB основана на протоколе Parallel Commits и clock uncertainty intervals (по умолчанию 500 ms); при конфликтах запись ретраится автоматически до 5 раз.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-crdb-004",
+              "content": "Для горизонтального масштабирования CockroachDB узлы объединяются в кластер через флаг `--join`; рекомендуемое минимальное число узлов для production — 3, для обеспечения кворума Raft.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session-backend-db-review-14",
+          "session_log": []
+        }
+      },
+      "query": "Как в CockroachDB настраивается гарантия согласованности чтений внутри транзакции?",
+      "expected": {
+        "relevant_ids": [
+          "fact-crdb-001"
+        ],
+        "irrelevant_ids": [
+          "fact-crdb-002",
+          "fact-crdb-003",
+          "fact-crdb-004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_005",
+      "category": "cross_session",
+      "domain": "Knative Serving (serverless)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session-knative-prod-setup-05",
+          "facts": [
+            {
+              "id": "fact-kn-001",
+              "content": "Knative Serving поддерживает KPA (Knative Pod Autoscaler), который масштабирует реплики на основе concurrency (одновременных запросов) или RPS (requests-per-second); порог задаётся аннотацией `autoscaling.knative.dev/target`.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact-kn-002",
+              "content": "Для подключения кастомных метрик в Knative Serving используется аннотация `autoscaling.knative.dev/class: hpa.autoscaling.knative.dev` — это делегирует скейлинг стандартному Kubernetes HPA.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-kn-003",
+              "content": "Knative Eventing позволяет маршрутизировать CloudEvents между источниками и потребителями через Broker/Trigger или Channel/Subscription; поддерживаются источники: ApiServerSource, PingSource, KafkaSource.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-kn-004",
+              "content": "Revision в Knative Serving — неизменяемый снимок конфигурации Service; traffic splitting задаётся в spec.traffic и позволяет канареечно распределять нагрузку между ревизиями (например, 90%/10%).",
+              "is_relevant": false
+            },
+            {
+              "id": "fact-kn-005",
+              "content": "Scale-to-zero в Knative KPA активируется, если в течение `scale-to-zero-grace-period` (по умолчанию 30 секунд) нет входящих запросов; первый запрос после простоя вызывает cold start задержку.",
+              "is_relevant": true
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session-cloud-native-arch-11",
+          "session_log": []
+        }
+      },
+      "query": "автоскейлинг по входящей нагрузке HTTP в Knative",
+      "expected": {
+        "relevant_ids": [
+          "fact-kn-001",
+          "fact-kn-005"
+        ],
+        "irrelevant_ids": [
+          "fact-kn-002",
+          "fact-kn-003",
+          "fact-kn-004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_006",
+      "category": "cross_session",
+      "domain": "Samba (SMB file sharing on Linux)",
+      "setup": {
+        "source_session": {
+          "chat_id": "chat_src_006",
+          "facts": [
+            {
+              "id": "cs006_f1",
+              "content": "For the public Windows share we decided to allow guest access: in smb.conf set `map to guest = Bad User` and on the share use `guest ok = yes` + `read only = yes`. Users should not be prompted for credentials on that share.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs006_f2",
+              "content": "We keep Samba logs at `/var/log/samba/log.%m` and cap them via logrotate weekly.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs006_f3",
+              "content": "For SSH we require key-based auth and disable password login on all bastions.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs006_f4",
+              "content": "The backup job uses rsync over SSH at 02:00 UTC daily.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "chat_query_006",
+          "session_log": []
+        }
+      },
+      "query": "Почему Windows-клиенты всё равно требуют логин/пароль при заходе на нашу «публичную» файловую папку на линуксовом сервере?",
+      "expected": {
+        "relevant_ids": [
+          "cs006_f1"
+        ],
+        "irrelevant_ids": [
+          "cs006_f2",
+          "cs006_f3",
+          "cs006_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_007",
+      "category": "cross_session",
+      "domain": "AWS Lambda (serverless execution)",
+      "setup": {
+        "source_session": {
+          "chat_id": "chat_src_007",
+          "facts": [
+            {
+              "id": "cs007_f1",
+              "content": "To eliminate latency spikes from cold starts, we standardized on **Provisioned Concurrency** for the `prod` alias of our Lambda. Baseline is 5 provisioned instances; scaling is handled by Application Auto Scaling on the alias. We explicitly avoided “scheduled warm-up pings” because they are unreliable under burst traffic and add noise to metrics.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs007_f2",
+              "content": "CloudWatch Logs retention for Lambda log groups is 14 days; anything longer must be shipped to S3.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs007_f3",
+              "content": "Our API rate limiting is enforced at the edge, not inside the function code.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs007_f4",
+              "content": "All secrets for serverless workloads are injected via environment variables from a secure store during deployment.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs007_f5",
+              "content": "We tag all cost centers with `owner`, `service`, and `env` on AWS resources.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "chat_query_007",
+          "session_log": []
+        }
+      },
+      "query": "We should keep the function \"warm\" in production so the first request isn’t slow.",
+      "expected": {
+        "relevant_ids": [
+          "cs007_f1"
+        ],
+        "irrelevant_ids": [
+          "cs007_f2",
+          "cs007_f3",
+          "cs007_f4",
+          "cs007_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_008",
+      "category": "cross_session",
+      "domain": "nftables (Linux firewall ruleset)",
+      "setup": {
+        "source_session": {
+          "chat_id": "chat_src_008",
+          "facts": [
+            {
+              "id": "cs008_f1",
+              "content": "Edge firewall policy is implemented with nftables (not iptables). Minimal ruleset (IPv4) we ship:\n\n```nft\nflush ruleset\n\ntable inet filter {\n  chain input {\n    type filter hook input priority 0; policy drop;\n    ct state established,related accept\n    iif \"lo\" accept\n    tcp dport {22,443} accept\n    udp dport 53 accept\n    ip protocol icmp accept\n  }\n\n  chain forward {\n    type filter hook forward priority 0; policy drop;\n    ct state established,related accept\n    # block noisy L2 name discovery between VLANs\n    udp dport {5353,5355} drop   # mDNS, LLMNR\n    # allow DNS + HTTPS from app VLAN to infra VLAN\n    iifname \"vlan_app\" oifname \"vlan_infra\" tcp dport 443 accept\n    iifname \"vlan_app\" oifname \"vlan_infra\" udp dport 53 accept\n  }\n}\n```\nThis specifically prevents cross-segment mDNS/LLMNR chatter while keeping required DNS/HTTPS paths.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs008_f2",
+              "content": "We set `net.ipv4.ip_forward=1` on routing nodes and persist it via sysctl.d.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs008_f3",
+              "content": "MTU is 1500 end-to-end except on the storage network where it is 9000.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "chat_query_008",
+          "session_log": []
+        }
+      },
+      "query": "inter‑VLAN блокировка «мультикастного шума» и оставить только нужные сервисы",
+      "expected": {
+        "relevant_ids": [
+          "cs008_f1"
+        ],
+        "irrelevant_ids": [
+          "cs008_f2",
+          "cs008_f3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_009",
+      "category": "cross_session",
+      "domain": "Caddy (web server with automatic HTTPS)",
+      "setup": {
+        "source_session": {
+          "chat_id": "chat_src_009",
+          "facts": [
+            {
+              "id": "cs009_f1",
+              "content": "We chose Caddy so TLS certificates are obtained and renewed automatically via ACME (no separate cron or certbot timers).",
+              "is_relevant": true
+            },
+            {
+              "id": "cs009_f2",
+              "content": "For static assets we set long cache headers (immutable) on `/assets/*`.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs009_f3",
+              "content": "The redirect rule is: HTTP → HTTPS with a permanent redirect.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs009_f4",
+              "content": "Access logs are in JSON for easier ingestion by log processors.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "chat_query_009",
+          "session_log": []
+        }
+      },
+      "query": "Как сделать, чтобы HTTPS-сертификаты сами продлевались без отдельного планировщика задач?",
+      "expected": {
+        "relevant_ids": [
+          "cs009_f1"
+        ],
+        "irrelevant_ids": [
+          "cs009_f2",
+          "cs009_f3",
+          "cs009_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_010",
+      "category": "cross_session",
+      "domain": "Neo4j (graph database)",
+      "setup": {
+        "source_session": {
+          "chat_id": "chat_src_010",
+          "facts": [
+            {
+              "id": "cs010_f1",
+              "content": "Neo4j performance baseline decisions:\n- Create a schema index for lookup predicates, e.g. `CREATE INDEX user_email IF NOT EXISTS FOR (u:User) ON (u.email);`\n- Prefer anchored patterns (start from a selective node) instead of variable-length expansions from unbounded sets.\n- Use `PROFILE`/`EXPLAIN` to verify the planner uses the index and avoids `AllNodesScan`.\n- Memory tuning: set `dbms.memory.pagecache.size` to fit the graph store; keep heap moderate to reduce GC pauses.\nThese steps target the common symptom “graph queries feel like table scans”.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs010_f2",
+              "content": "Backups are taken nightly and copied to offsite storage with a 30-day retention policy.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs010_f3",
+              "content": "We use UUIDv4 for external IDs in services to avoid leaking sequence information.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs010_f4",
+              "content": "Application logs should include request_id and user_id for correlation.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs010_f5",
+              "content": "For message queues we prefer at-least-once delivery semantics with idempotent consumers.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "chat_query_010",
+          "session_log": []
+        }
+      },
+      "query": "The graph database feels like it’s doing full scans; we need fast lookups by user email and to avoid expensive traversals.",
+      "expected": {
+        "relevant_ids": [
+          "cs010_f1"
+        ],
+        "irrelevant_ids": [
+          "cs010_f2",
+          "cs010_f3",
+          "cs010_f4",
+          "cs010_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_011",
+      "category": "cross_session",
+      "domain": "Apache Solr",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA-chat47",
+          "facts": [
+            {
+              "id": "f1",
+              "content": "Enabling docValues on string fields greatly speeds up faceting and grouping operations in high-cardinality indexes.",
+              "is_relevant": false
+            },
+            {
+              "id": "f2",
+              "content": "For semantic search on dense vectors, set the vector field type to KNN with HNSW algorithm and efConstruction=200, m=16 parameters to balance recall vs index size.",
+              "is_relevant": true
+            },
+            {
+              "id": "f3",
+              "content": "Always warm the query cache after major index merges using registered listeners.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA-chat92",
+          "session_log": []
+        }
+      },
+      "query": "Что улучшит скорость приближенного поиска по эмбеддингам при большом количестве похожих документов?",
+      "expected": {
+        "relevant_ids": [
+          "f2"
+        ],
+        "irrelevant_ids": [
+          "f1",
+          "f3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_012",
+      "category": "cross_session",
+      "domain": "Linkerd2",
+      "setup": {
+        "source_session": {
+          "chat_id": "projB-chat18",
+          "facts": [
+            {
+              "id": "g1",
+              "content": "The mesh uses a control plane with destination service that performs service discovery via k8s API watches.",
+              "is_relevant": false
+            },
+            {
+              "id": "g2",
+              "content": "To enforce mTLS between services without sidecar injection for certain legacy workloads, configure the Server resource with podSelector and the AuthorizationPolicy to require identity from specific service accounts while falling back to plaintext only for explicitly allowed endpoints.",
+              "is_relevant": true
+            },
+            {
+              "id": "g3",
+              "content": "Linkerd's tap CLI can inspect live traffic with protocol-aware decoding.",
+              "is_relevant": false
+            },
+            {
+              "id": "g4",
+              "content": "Retry budgets are applied at the route level to prevent thundering herd.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projB-chat29",
+          "session_log": []
+        }
+      },
+      "query": "We must enable encrypted communication for old applications that cannot run proxies but still need strict caller identity checks.",
+      "expected": {
+        "relevant_ids": [
+          "g2"
+        ],
+        "irrelevant_ids": [
+          "g1",
+          "g3",
+          "g4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_013",
+      "category": "cross_session",
+      "domain": "FFmpeg",
+      "setup": {
+        "source_session": {
+          "chat_id": "projC-chat55",
+          "facts": [
+            {
+              "id": "h1",
+              "content": "The -vf scale=iw/2:ih/2 filter halves video resolution using bicubic interpolation by default.",
+              "is_relevant": false
+            },
+            {
+              "id": "h2",
+              "content": "libx264 preset=veryslow and crf=18 combined with -vf format=yuv420p produces high quality H.264 output compatible with almost all players while keeping reasonable file sizes for 1080p source material at around 4-6 Mbps bitrate.",
+              "is_relevant": true
+            },
+            {
+              "id": "h3",
+              "content": "Use -c:a aac -b:a 192k for stereo audio.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projC-chat61",
+          "session_log": []
+        }
+      },
+      "query": "ffmpeg command for good quality encode...",
+      "expected": {
+        "relevant_ids": [
+          "h2"
+        ],
+        "irrelevant_ids": [
+          "h1",
+          "h3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_014",
+      "category": "cross_session",
+      "domain": "Apache ZooKeeper",
+      "setup": {
+        "source_session": {
+          "chat_id": "projD-chat03",
+          "facts": [
+            {
+              "id": "i1",
+              "content": "Ephemeral nodes are deleted when the session expires.",
+              "is_relevant": false
+            },
+            {
+              "id": "i2",
+              "content": "For distributed lock implementation, create sequential ephemeral znodes under a parent lock node, then watch for the lowest sequence number; the owner holds the lock until it deletes its znode. Use the multi-update API to atomically create the lock node and set initial data in one operation.",
+              "is_relevant": true
+            },
+            {
+              "id": "i3",
+              "content": "The leader election recipe relies on the same sequential znode ordering.",
+              "is_relevant": false
+            },
+            {
+              "id": "i4",
+              "content": "Set tickTime=2000 and initLimit=10 in zoo.cfg for most clusters.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projD-chat12",
+          "session_log": []
+        }
+      },
+      "query": "Как правильно реализовать mutex через координационный сервис с эфемерными упорядоченными нодами?",
+      "expected": {
+        "relevant_ids": [
+          "i2"
+        ],
+        "irrelevant_ids": [
+          "i1",
+          "i3",
+          "i4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_015",
+      "category": "cross_session",
+      "domain": "QUIC",
+      "setup": {
+        "source_session": {
+          "chat_id": "projE-chat77",
+          "facts": [
+            {
+              "id": "j1",
+              "content": "0-RTT allows clients to send data before handshake completes but requires careful anti-replay protection.",
+              "is_relevant": false
+            },
+            {
+              "id": "j2",
+              "content": "In nginx with quic module, enable http3 and set ssl_protocols TLSv1.3; listen 443 quic reuseport; add_header Alt-Svc 'h3=\":443\"; ma=86400'; tune initial congestion window to 100 packets via quic_initial_max_data to reduce latency on high-bandwidth low-latency links.",
+              "is_relevant": true
+            },
+            {
+              "id": "j3",
+              "content": "HTTP/3 uses UDP port 443 by default.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projE-chat88",
+          "session_log": []
+        }
+      },
+      "query": "Настраиваем HTTP/3 в веб-сервере: параметры для быстрого старта соединения и снижения RTT на хороших каналах.",
+      "expected": {
+        "relevant_ids": [
+          "j2"
+        ],
+        "irrelevant_ids": [
+          "j1",
+          "j3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "grok-4.20",
+        "verified_by": "claude-sonnet-4.6",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_016",
+      "category": "cross_session",
+      "domain": "Celery (distributed task queue)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session_celery_config_2024",
+          "facts": [
+            {
+              "id": "fact_cel_001",
+              "content": "Celery workers terminate unexpectedly under high concurrency. Root cause: default broker connection pool exhaustion. Fix: set broker_pool_limit=None in celery config to disable pooling, or increase limit via CELERY_BROKER_POOL_LIMIT=20. Tested with 64 concurrent workers on RabbitMQ broker.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_cel_002",
+              "content": "Task result backend configured as Redis with result_expires=3600. Using redis://redis-cluster:6379/1 as CELERY_RESULT_BACKEND.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_cel_003",
+              "content": "Celery beat scheduler uses DatabaseScheduler from django-celery-beat for dynamic periodic tasks stored in PostgreSQL.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_cel_004",
+              "content": "Canvas workflow: chain() used for sequential task pipelines, chord() for fan-out/fan-in with a callback aggregator task.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session_python_workers_debug_2024",
+          "session_log": []
+        }
+      },
+      "query": "Почему воркеры Python-очереди задач падают при большой нагрузке и как это исправить?",
+      "expected": {
+        "relevant_ids": [
+          "fact_cel_001"
+        ],
+        "irrelevant_ids": [
+          "fact_cel_002",
+          "fact_cel_003",
+          "fact_cel_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_017",
+      "category": "cross_session",
+      "domain": "Bazel (build system)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session_bazel_monorepo_setup",
+          "facts": [
+            {
+              "id": "fact_baz_001",
+              "content": "Remote cache hit rate improved from 34% to 91% after enabling content-addressable storage endpoint: build --remote_cache=grpcs://cache.internal:9092. Action cache reuse requires hermetic toolchains.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_baz_002",
+              "content": "Monorepo build time reduced from 18 min to 2.3 min with remote execution cluster (8 workers). Incremental builds skip unchanged targets via Skyframe dependency graph.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_baz_003",
+              "content": "Gazelle plugin auto-generates BUILD files for Go packages. Run: bazel run //:gazelle -- update-repos -from_file=go.mod.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_baz_004",
+              "content": "Bazel query 'deps(//services/...)' used to visualise dependency graph and detect circular imports before merge.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session_ci_performance_review",
+          "session_log": []
+        }
+      },
+      "query": "Агент применяет инкрементальную сборку монорепозитория с кешированием артефактов на удалённом сервере.",
+      "expected": {
+        "relevant_ids": [
+          "fact_baz_001",
+          "fact_baz_002"
+        ],
+        "irrelevant_ids": [
+          "fact_baz_003",
+          "fact_baz_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_018",
+      "category": "cross_session",
+      "domain": "gRPC (load balancing)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session_grpc_infra_notes",
+          "facts": [
+            {
+              "id": "fact_grpc_001",
+              "content": "Client-side LB policy set to round_robin via service config JSON: {\"loadBalancingPolicy\": \"round_robin\"}. Default pick_first causes all traffic to hit a single upstream.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_grpc_002",
+              "content": "gRPC keepalive tuning: GRPC_ARG_KEEPALIVE_TIME_MS=20000, GRPC_ARG_KEEPALIVE_TIMEOUT_MS=10000 to detect dead connections behind NAT.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_grpc_003",
+              "content": "Reflection service enabled in dev environment for grpcurl introspection. Disabled in production builds.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session_service_mesh_alternatives",
+          "session_log": []
+        }
+      },
+      "query": "распределение запросов между репликами сервиса на стороне клиента gRPC",
+      "expected": {
+        "relevant_ids": [
+          "fact_grpc_001"
+        ],
+        "irrelevant_ids": [
+          "fact_grpc_002",
+          "fact_grpc_003"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_019",
+      "category": "cross_session",
+      "domain": "OpenVPN (site-to-site tunneling)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session_openvpn_troubleshooting",
+          "facts": [
+            {
+              "id": "fact_ovpn_001",
+              "content": "Директива float в конфиге сервера OpenVPN позволяет клиенту менять свой публичный endpoint (IP:port) без разрыва сессии. Без неё смена IP у мобильного клиента вызывает TLS-реконнект с новым рукопожатием и потерю состояния туннеля на 5–15 секунд.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_ovpn_002",
+              "content": "Использован tun-адаптер с subnet-топологией (topology subnet) вместо net30 для поддержки более 64 клиентов на одном сервере без расточительства адресного пространства.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_ovpn_003",
+              "content": "TLS-аутентификация усилена: tls-crypt вместо tls-auth для защиты от DoS на этапе handshake. Ключ сгенерирован командой openvpn --genkey tls-crypt.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_ovpn_004",
+              "content": "Split-tunneling настроен через push route: клиентам проталкивается только маршрут 10.8.0.0/16, весь остальной трафик идёт напрямую без шифрования.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session_network_stability_audit",
+          "session_log": []
+        }
+      },
+      "query": "Почему VPN-соединение обрывается при переключении сети на клиентском устройстве?",
+      "expected": {
+        "relevant_ids": [
+          "fact_ovpn_001"
+        ],
+        "irrelevant_ids": [
+          "fact_ovpn_002",
+          "fact_ovpn_003",
+          "fact_ovpn_004"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_020",
+      "category": "cross_session",
+      "domain": "Trivy (container image scanning)",
+      "setup": {
+        "source_session": {
+          "chat_id": "session_devsecops_pipeline_2024",
+          "facts": [
+            {
+              "id": "fact_trv_001",
+              "content": "Проверка CVE в образах интегрирована в pipeline: trivy image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed myapp:latest. Сборка падает только на исправленных уязвимостях, unfixed — игнорируются.",
+              "is_relevant": true
+            },
+            {
+              "id": "fact_trv_002",
+              "content": "SARIF-отчёт выгружается в GitHub Advanced Security: trivy image --format sarif -o trivy-results.sarif. Результаты видны в Security → Code scanning alerts.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_trv_003",
+              "content": "База данных уязвимостей Trivy кешируется в артефакте CI на 24 часа (trivy --cache-dir .trivy-cache) для ускорения повторных запусков.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_trv_004",
+              "content": "Trivy также сканирует IaC-конфиги (Terraform, Helm) через trivy config ./infra — отдельный шаг в pipeline после lint.",
+              "is_relevant": false
+            },
+            {
+              "id": "fact_trv_005",
+              "content": "Для air-gapped окружений используется автономная БД: trivy image --offline-scan с предзагруженным db через trivy db download.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "session_security_tooling_review",
+          "session_log": []
+        }
+      },
+      "query": "Автоматическое обнаружение уязвимостей в Docker-образах на этапе непрерывной интеграции с блокировкой сборки.",
+      "expected": {
+        "relevant_ids": [
+          "fact_trv_001"
+        ],
+        "irrelevant_ids": [
+          "fact_trv_002",
+          "fact_trv_003",
+          "fact_trv_004",
+          "fact_trv_005"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "claude-sonnet-4.6",
+        "verified_by": "gpt-5.2",
+        "auto_fixed": true
+      }
+    },
+    {
+      "id": "cross_session_021",
+      "category": "cross_session",
+      "domain": "Apache Tomcat (Java servlet container)",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA_chat_1041",
+          "facts": [
+            {
+              "id": "cs021_f1",
+              "content": "Для липкой сессии за балансировщиком полагаемся на cookie JSESSIONID; включать Tomcat session replication не нужно.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs021_f2",
+              "content": "Логи приложения пишем в JSON и ротируем через logrotate раз в сутки.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs021_f3",
+              "content": "HTTP коннекторы слушают только 127.0.0.1, наружу отдаёт отдельный reverse-proxy.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs021_f4",
+              "content": "В prod отключаем auto-deploy и разворачиваем WAR через CI, чтобы избежать hot-reload.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA_chat_2110",
+          "session_log": []
+        }
+      },
+      "query": "Как настроено «прилипание» пользователей к одному инстансу, если перед приложением стоит балансировщик?",
+      "expected": {
+        "relevant_ids": [
+          "cs021_f1"
+        ],
+        "irrelevant_ids": [
+          "cs021_f2",
+          "cs021_f3",
+          "cs021_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_022",
+      "category": "cross_session",
+      "domain": "Wireshark (network packet analysis)",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA_chat_1042",
+          "facts": [
+            {
+              "id": "cs022_f1",
+              "content": "Для диагностики проблем с DNS в захватах используем Wireshark display filter: \"dns.flags.rcode != 0 || dns.qry.name contains \\\"internal\\\"\"; так быстро видно NXDOMAIN/SERVFAIL и запросы к внутренним зонам.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs022_f2",
+              "content": "PCAP-файлы храним не дольше 7 дней из-за PII; перед шарингом прогоняем через anonymizer.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs022_f3",
+              "content": "Вместо полного capture на проде предпочитаем ring buffer по 200MB × 5 файлов.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs022_f4",
+              "content": "Для проверки MTU делаем ping с DF и размером 1472 байта.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs022_f5",
+              "content": "Для HTTP/2 смотрим заголовки через 'Follow HTTP/2 Stream'.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA_chat_2111",
+          "session_log": []
+        }
+      },
+      "query": "Нужно быстро выловить в pcap ответы DNS с ошибками и только по доменам нашей внутренней зоны — какой фильтр мы применяем?",
+      "expected": {
+        "relevant_ids": [
+          "cs022_f1"
+        ],
+        "irrelevant_ids": [
+          "cs022_f2",
+          "cs022_f3",
+          "cs022_f4",
+          "cs022_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_023",
+      "category": "cross_session",
+      "domain": "HashiCorp Packer (image building)",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA_chat_1043",
+          "facts": [
+            {
+              "id": "cs023_f1",
+              "content": "Packer собирает базовый образ с предустановленным Docker и cloud-init; финальный шаг — очистка machine-id перед публикацией.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs023_f2",
+              "content": "Секреты для сборки не кладём в template: передаём через environment variables на раннере.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs023_f3",
+              "content": "Пример команды сборки:\n```bash\npacker init .\npacker build -var \"ssh_username=ubuntu\" -only=vsphere-iso.ubuntu2204 .\n```\n",
+              "is_relevant": false
+            },
+            {
+              "id": "cs023_f4",
+              "content": "Валидация шаблонов обязательна в CI: `packer fmt -check` и `packer validate`.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs023_f5",
+              "content": "Багфикс: добавили `cloud-init clean --logs` чтобы не тащить старые network state в новый инстанс.",
+              "is_relevant": true
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA_chat_2112",
+          "session_log": []
+        }
+      },
+      "query": "Образ для VM: докер уже внутри, а ещё нужно сбросить идентичность и состояние cloud-init…",
+      "expected": {
+        "relevant_ids": [
+          "cs023_f1",
+          "cs023_f5"
+        ],
+        "irrelevant_ids": [
+          "cs023_f2",
+          "cs023_f3",
+          "cs023_f4"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_024",
+      "category": "cross_session",
+      "domain": "OpenSSL (TLS certificates & ciphers)",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA_chat_1044",
+          "facts": [
+            {
+              "id": "cs024_f1",
+              "content": "Для быстрой проверки цепочки сертификатов используем: `openssl s_client -connect host:443 -servername host -showcerts` и смотрим Verify return code.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs024_f2",
+              "content": "Ключи RSA меньше 2048 бит не принимаем; для новых сервисов предпочитаем ECDSA P-256.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs024_f3",
+              "content": "Сертификаты обновляем за 30 дней до истечения и валидируем, что SAN содержит оба: FQDN и внутреннее имя.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA_chat_2113",
+          "session_log": []
+        }
+      },
+      "query": "Чем у нас принято «прозвонить» HTTPS и увидеть, почему валидация сертификата не проходит?",
+      "expected": {
+        "relevant_ids": [
+          "cs024_f1"
+        ],
+        "irrelevant_ids": [
+          "cs024_f2",
+          "cs024_f3"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "medium",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": false
+      }
+    },
+    {
+      "id": "cross_session_025",
+      "category": "cross_session",
+      "domain": "802.1Q VLAN trunking (switch networking)",
+      "setup": {
+        "source_session": {
+          "chat_id": "projA_chat_1045",
+          "facts": [
+            {
+              "id": "cs025_f1",
+              "content": "Между hypervisor и коммутатором порт в trunk: разрешаем VLAN 10,20,30; native VLAN не используем (tagged-only) чтобы избежать VLAN hopping.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs025_f2",
+              "content": "Для management сети выделен отдельный /26 и доступ только через jump-host.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs025_f3",
+              "content": "Если VM не видит gateway, первым делом проверяем, что нужный VLAN добавлен в allowed list на обоих концах линка.",
+              "is_relevant": true
+            },
+            {
+              "id": "cs025_f4",
+              "content": "MTU на uplink 9000, но на access-портах оставляем 1500.",
+              "is_relevant": false
+            },
+            {
+              "id": "cs025_f5",
+              "content": "Пример (вендор-независимо): trunk allowed vlan 10,20,30; access vlan — только один.",
+              "is_relevant": false
+            }
+          ]
+        },
+        "query_session": {
+          "chat_id": "projA_chat_2114",
+          "session_log": []
+        }
+      },
+      "query": "Мы утверждаем, что на линке к хостам всё идёт только с тегами и без «родного» VLAN; какие сети разрешены на транке и что проверяем при потере доступа до шлюза?",
+      "expected": {
+        "relevant_ids": [
+          "cs025_f1",
+          "cs025_f3"
+        ],
+        "irrelevant_ids": [
+          "cs025_f2",
+          "cs025_f4",
+          "cs025_f5"
+        ]
+      },
+      "meta": {
+        "tests_session_augmentation": false,
+        "ab_test": false,
+        "difficulty": "hard",
+        "generated_by": "gpt-5.2",
+        "verified_by": "grok-4.20",
+        "auto_fixed": true
+      }
+    }
+  ]
+}
