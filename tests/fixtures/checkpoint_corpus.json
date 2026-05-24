@@ -1,0 +1,4003 @@
+[
+  {
+    "id": "f001",
+    "domain": "kubernetes",
+    "content": "Параметр `--max-pods` на уровне kubelet по умолчанию ограничивает количество Pod на узле значением 110; превышение лимита приводит к статусу `OutOfpods` при планировании.",
+    "tags": [
+      "kubelet",
+      "scheduling",
+      "limits"
+    ]
+  },
+  {
+    "id": "f002",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data` выполняет эвакуацию рабочей нагрузки с узла перед его обслуживанием, игнорируя DaemonSet Pod и тома типа emptyDir.",
+    "tags": [
+      "kubectl",
+      "node",
+      "maintenance"
+    ]
+  },
+  {
+    "id": "f003",
+    "domain": "kubernetes",
+    "content": "Ошибка `OOMKilled` (exit code 137) возникает, когда контейнер превышает значение `resources.limits.memory`, установленное в спецификации Pod.",
+    "tags": [
+      "resources",
+      "memory",
+      "oomkill"
+    ]
+  },
+  {
+    "id": "f004",
+    "domain": "kubernetes",
+    "content": "Параметр `terminationGracePeriodSeconds` по умолчанию равен 30 секундам; по истечении этого периода kubelet отправляет контейнеру сигнал `SIGKILL`.",
+    "tags": [
+      "lifecycle",
+      "pod",
+      "termination"
+    ]
+  },
+  {
+    "id": "f005",
+    "domain": "kubernetes",
+    "content": "Аннотация `cluster-autoscaler.kubernetes.io/safe-to-evict: \"false\"` запрещает Cluster Autoscaler выселять Pod при масштабировании узлов вниз.",
+    "tags": [
+      "autoscaler",
+      "annotations",
+      "eviction"
+    ]
+  },
+  {
+    "id": "f006",
+    "domain": "kubernetes",
+    "content": "Объект `HorizontalPodAutoscaler` использует метрику `cpu` с целевым значением `averageUtilization`; интервал синхронизации контролируется флагом `--horizontal-pod-autoscaler-sync-period` (по умолчанию 15 секунд).",
+    "tags": [
+      "hpa",
+      "autoscaling",
+      "cpu"
+    ]
+  },
+  {
+    "id": "f007",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl top pod --containers` отображает потребление CPU и памяти на уровне отдельных контейнеров внутри Pod, требуя работающего Metrics Server.",
+    "tags": [
+      "kubectl",
+      "monitoring",
+      "metrics-server"
+    ]
+  },
+  {
+    "id": "f008",
+    "domain": "kubernetes",
+    "content": "Политика `PodDisruptionBudget` с параметром `minAvailable: 2` гарантирует, что не менее двух реплик Pod остаются доступными во время добровольных нарушений.",
+    "tags": [
+      "pdb",
+      "availability",
+      "disruption"
+    ]
+  },
+  {
+    "id": "f009",
+    "domain": "kubernetes",
+    "content": "Поле `imagePullPolicy: Always` вынуждает kubelet обращаться к реестру при каждом запуске контейнера, даже если образ уже присутствует локально.",
+    "tags": [
+      "image",
+      "kubelet",
+      "registry"
+    ]
+  },
+  {
+    "id": "f010",
+    "domain": "kubernetes",
+    "content": "Ошибка `CrashLoopBackOff` означает, что контейнер завершается с ненулевым кодом возврата; kubelet применяет экспоненциальную задержку перезапуска до максимума 5 минут.",
+    "tags": [
+      "pod",
+      "crashloop",
+      "restart"
+    ]
+  },
+  {
+    "id": "f011",
+    "domain": "kubernetes",
+    "content": "Параметр `--etcd-compaction-interval` в etcd по умолчанию равен 5 минутам; без регулярной компакции база данных неограниченно растёт и может достигнуть лимита `--quota-backend-bytes` (по умолчанию 2 ГБ).",
+    "tags": [
+      "etcd",
+      "storage",
+      "compaction"
+    ]
+  },
+  {
+    "id": "f012",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl rollout undo deployment/<name> --to-revision=<n>` откатывает Deployment к указанной ревизии из истории `ReplicaSet`.",
+    "tags": [
+      "deployment",
+      "rollout",
+      "kubectl"
+    ]
+  },
+  {
+    "id": "f013",
+    "domain": "kubernetes",
+    "content": "Поле `readinessProbe.failureThreshold` определяет количество последовательных неудачных проверок, после которых Pod исключается из endpoints Service; значение по умолчанию — 3.",
+    "tags": [
+      "probe",
+      "readiness",
+      "service"
+    ]
+  },
+  {
+    "id": "f014",
+    "domain": "kubernetes",
+    "content": "Класс `StorageClass` с параметром `reclaimPolicy: Retain` сохраняет `PersistentVolume` после удаления `PersistentVolumeClaim`, требуя ручного освобождения ресурса.",
+    "tags": [
+      "storage",
+      "pv",
+      "pvc"
+    ]
+  },
+  {
+    "id": "f015",
+    "domain": "kubernetes",
+    "content": "Флаг `--allow-privileged=false` на уровне API-сервера запрещает создание привилегированных контейнеров (поле `securityContext.privileged: true`) во всём кластере.",
+    "tags": [
+      "security",
+      "api-server",
+      "privileged"
+    ]
+  },
+  {
+    "id": "f016",
+    "domain": "kubernetes",
+    "content": "Объект `NetworkPolicy` с пустым `podSelector` и отсутствующими правилами `ingress` блокирует весь входящий трафик для Pod в пространстве имён, где применена политика.",
+    "tags": [
+      "networkpolicy",
+      "security",
+      "ingress"
+    ]
+  },
+  {
+    "id": "f017",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl exec -it <pod> -- /bin/sh` открывает интерактивную оболочку внутри контейнера; при наличии нескольких контейнеров необходимо указывать флаг `-c <container>`.",
+    "tags": [
+      "kubectl",
+      "exec",
+      "debugging"
+    ]
+  },
+  {
+    "id": "f018",
+    "domain": "kubernetes",
+    "content": "Параметр `spec.strategy.rollingUpdate.maxUnavailable` в Deployment по умолчанию равен 25%, что определяет максимальное количество недоступных Pod во время обновления.",
+    "tags": [
+      "deployment",
+      "rolling-update",
+      "strategy"
+    ]
+  },
+  {
+    "id": "f019",
+    "domain": "kubernetes",
+    "content": "Аннотация `kubectl.kubernetes.io/last-applied-configuration` автоматически добавляется командой `kubectl apply` и хранит последнее применённое состояние объекта в формате JSON.",
+    "tags": [
+      "kubectl",
+      "annotations",
+      "apply"
+    ]
+  },
+  {
+    "id": "f020",
+    "domain": "kubernetes",
+    "content": "Ошибка `Evicted` в статусе Pod возникает при нехватке ресурсов на узле; kubelet выселяет Pod согласно приоритету QoS: сначала `BestEffort`, затем `Burstable`, последними — `Guaranteed`.",
+    "tags": [
+      "eviction",
+      "qos",
+      "resources"
+    ]
+  },
+  {
+    "id": "f021",
+    "domain": "kubernetes",
+    "content": "Поле `spec.dnsPolicy: None` в Pod требует явного указания `spec.dnsConfig` и отключает наследование DNS-конфигурации от узла или кластера.",
+    "tags": [
+      "dns",
+      "pod",
+      "networking"
+    ]
+  },
+  {
+    "id": "f022",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl certificate approve <csr-name>` одобряет `CertificateSigningRequest` и позволяет kubelet получить клиентский сертификат при начальной загрузке (TLS bootstrapping).",
+    "tags": [
+      "tls",
+      "certificates",
+      "kubelet"
+    ]
+  },
+  {
+    "id": "f023",
+    "domain": "kubernetes",
+    "content": "Параметр `--node-status-update-frequency` kubelet по умолчанию равен 10 секундам; `kube-controller-manager` объявляет узел недоступным после `--node-monitor-grace-period` (по умолчанию 40 секунд).",
+    "tags": [
+      "kubelet",
+      "node",
+      "controller-manager"
+    ]
+  },
+  {
+    "id": "f024",
+    "domain": "kubernetes",
+    "content": "Объект `LimitRange` с типом `Container` устанавливает значения `default` и `defaultRequest` для CPU и памяти, автоматически применяемые к контейнерам без явно заданных ресурсов.",
+    "tags": [
+      "limitrange",
+      "resources",
+      "namespace"
+    ]
+  },
+  {
+    "id": "f025",
+    "domain": "kubernetes",
+    "content": "Флаг `--audit-log-maxsize` в kube-apiserver задаёт максимальный размер файла аудита в мегабайтах перед ротацией; при значении 100 файл ротируется по достижении 100 МБ.",
+    "tags": [
+      "audit",
+      "api-server",
+      "logging"
+    ]
+  },
+  {
+    "id": "f026",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl port-forward svc/<service> 8080:80` пробрасывает локальный порт 8080 на порт 80 Service через API-сервер без создания внешнего endpoint.",
+    "tags": [
+      "kubectl",
+      "networking",
+      "port-forward"
+    ]
+  },
+  {
+    "id": "f027",
+    "domain": "kubernetes",
+    "content": "Параметр `spec.volumes[].configMap.defaultMode` задаёт права доступа к файлам, смонтированным из `ConfigMap`; значение по умолчанию — `0644` (восьмеричное).",
+    "tags": [
+      "configmap",
+      "volumes",
+      "permissions"
+    ]
+  },
+  {
+    "id": "f028",
+    "domain": "kubernetes",
+    "content": "Ошибка `ImagePullBackOff` указывает на невозможность загрузить образ контейнера; причиной может быть неверный `imagePullSecret`, недоступный реестр или несуществующий тег образа.",
+    "tags": [
+      "image",
+      "pod",
+      "registry"
+    ]
+  },
+  {
+    "id": "f029",
+    "domain": "kubernetes",
+    "content": "Поле `spec.affinity.podAntiAffinity` с `requiredDuringSchedulingIgnoredDuringExecution` жёстко запрещает размещение Pod с совпадающими метками на одном узле.",
+    "tags": [
+      "affinity",
+      "scheduling",
+      "pod"
+    ]
+  },
+  {
+    "id": "f030",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl get events --sort-by='.lastTimestamp'` выводит события кластера в хронологическом порядке, что полезно при диагностике недавних сбоев.",
+    "tags": [
+      "kubectl",
+      "events",
+      "debugging"
+    ]
+  },
+  {
+    "id": "f031",
+    "domain": "kubernetes",
+    "content": "Параметр `--service-cluster-ip-range` kube-apiserver определяет CIDR-блок для ClusterIP-адресов Service; изменение этого параметра на работающем кластере требует пересоздания всех Service.",
+    "tags": [
+      "networking",
+      "service",
+      "api-server"
+    ]
+  },
+  {
+    "id": "f032",
+    "domain": "kubernetes",
+    "content": "Объект `ResourceQuota` с полем `hard.pods: \"50\"` ограничивает суммарное количество Pod в пространстве имён значением 50; превышение возвращает ошибку `403 Forbidden`.",
+    "tags": [
+      "resourcequota",
+      "namespace",
+      "limits"
+    ]
+  },
+  {
+    "id": "f033",
+    "domain": "kubernetes",
+    "content": "Поле `spec.initContainers` задаёт контейнеры инициализации, которые выполняются последовательно до запуска основных контейнеров; сбой любого из них блокирует запуск Pod.",
+    "tags": [
+      "initcontainers",
+      "pod",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "f034",
+    "domain": "kubernetes",
+    "content": "Команда `etcdctl snapshot save <file>` создаёт резервную копию базы данных etcd; восстановление выполняется командой `etcdctl snapshot restore` с указанием нового каталога данных.",
+    "tags": [
+      "etcd",
+      "backup",
+      "disaster-recovery"
+    ]
+  },
+  {
+    "id": "f035",
+    "domain": "kubernetes",
+    "content": "Параметр `--feature-gates=EphemeralContainers=true` включает поддержку эфемерных контейнеров, добавляемых в работающий Pod командой `kubectl debug` для диагностики.",
+    "tags": [
+      "feature-gates",
+      "debugging",
+      "ephemeral"
+    ]
+  },
+  {
+    "id": "f036",
+    "domain": "kubernetes",
+    "content": "Поле `spec.tolerations` позволяет Pod быть размещённым на узлах с соответствующими `taints`; без допуска планировщик пропускает узел с эффектом `NoSchedule`.",
+    "tags": [
+      "taints",
+      "tolerations",
+      "scheduling"
+    ]
+  },
+  {
+    "id": "f037",
+    "domain": "kubernetes",
+    "content": "Команда `kubectl patch deployment <name> -p '{\"spec\":{\"replicas\":0}}'` немедленно масштабирует Deployment до нуля реплик, останавливая все Pod без удаления объекта.",
+    "tags": [
+      "kubectl",
+      "deployment",
+      "scaling"
+    ]
+  },
+  {
+    "id": "f038",
+    "domain": "kubernetes",
+    "content": "Параметр `--kube-api-burst` и `--kube-api-qps` в kubelet ограничивают скорость запросов к API-серверу; значения по умолчанию — 10 QPS и burst 20.",
+    "tags": [
+      "kubelet",
+      "api-server",
+      "rate-limiting"
+    ]
+  },
+  {
+    "id": "f039",
+    "domain": "kubernetes",
+    "content": "Аннотация `service.beta.kubernetes.io/aws-load-balancer-type: \"nlb\"` на объекте Service типа `LoadBalancer` в AWS указывает облачному контроллеру создать Network Load Balancer вместо Classic.",
+    "tags": [
+      "service",
+      "aws",
+      "load-balancer"
+    ]
+  },
+  {
+    "id": "f040",
+    "domain": "kubernetes",
+    "content": "Поле `spec.containers[].securityContext.readOnlyRootFilesystem: true` монтирует корневую файловую систему контейнера в режиме только для чтения, предотвращая запись в неё без явно объявленных томов.",
+    "tags": [
+      "security",
+      "securitycontext",
+      "container"
+    ]
+  },
+  {
+    "id": "f041",
+    "domain": "postgresql",
+    "content": "Параметр `max_connections` по умолчанию равен 100; каждое соединение потребляет около 5–10 МБ оперативной памяти, что при значении 500 приводит к расходу до 5 ГБ только на обслуживание соединений.",
+    "tags": [
+      "connections",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f042",
+    "domain": "postgresql",
+    "content": "Параметр `shared_buffers` рекомендуется устанавливать в 25% от общего объёма RAM; при значении ниже 128 МБ производительность кэширования страниц существенно деградирует.",
+    "tags": [
+      "shared_buffers",
+      "memory",
+      "performance"
+    ]
+  },
+  {
+    "id": "f043",
+    "domain": "postgresql",
+    "content": "Ошибка `FATAL: remaining connection slots are reserved for non-replication superuser connections` возникает при достижении лимита `max_connections` для обычных пользователей.",
+    "tags": [
+      "connections",
+      "error",
+      "superuser"
+    ]
+  },
+  {
+    "id": "f044",
+    "domain": "postgresql",
+    "content": "Команда `VACUUM FREEZE` принудительно замораживает строки таблицы, предотвращая ошибку `transaction ID wraparound`; выполняется автоматически при достижении `autovacuum_freeze_max_age` (по умолчанию 200 000 000 транзакций).",
+    "tags": [
+      "vacuum",
+      "freeze",
+      "wraparound"
+    ]
+  },
+  {
+    "id": "f045",
+    "domain": "postgresql",
+    "content": "Индекс типа `GIN` для столбца `tsvector` занимает значительно больше места на диске, чем `GiST`, однако обеспечивает скорость поиска `O(log N)` против `O(N)` при полнотекстовых запросах.",
+    "tags": [
+      "index",
+      "GIN",
+      "GiST",
+      "full-text-search"
+    ]
+  },
+  {
+    "id": "f046",
+    "domain": "postgresql",
+    "content": "Параметр `work_mem` задаёт объём памяти для одной операции сортировки или хэш-соединения; при значении 4 МБ и 100 параллельных запросах суммарный расход может достигать 400 МБ.",
+    "tags": [
+      "work_mem",
+      "memory",
+      "sorting"
+    ]
+  },
+  {
+    "id": "f047",
+    "domain": "postgresql",
+    "content": "Функция `pg_stat_activity` возвращает текущее состояние всех активных соединений; поле `wait_event_type` со значением `Lock` указывает на блокировку ресурса.",
+    "tags": [
+      "monitoring",
+      "pg_stat_activity",
+      "locks"
+    ]
+  },
+  {
+    "id": "f048",
+    "domain": "postgresql",
+    "content": "Тип данных `JSONB` хранит JSON в бинарном формате с поддержкой индексации через `GIN`; в отличие от `JSON`, он не сохраняет порядок ключей и дубликаты.",
+    "tags": [
+      "JSONB",
+      "JSON",
+      "data-types"
+    ]
+  },
+  {
+    "id": "f049",
+    "domain": "postgresql",
+    "content": "Параметр `wal_level` должен быть установлен в `logical` для использования логической репликации; значение `minimal` отключает возможность создания слотов репликации.",
+    "tags": [
+      "WAL",
+      "replication",
+      "wal_level"
+    ]
+  },
+  {
+    "id": "f050",
+    "domain": "postgresql",
+    "content": "Команда `EXPLAIN (ANALYZE, BUFFERS)` выводит фактическое число обращений к `shared_buffers` (поле `Buffers: shared hit`) и к диску (поле `Buffers: shared read`).",
+    "tags": [
+      "EXPLAIN",
+      "performance",
+      "buffers"
+    ]
+  },
+  {
+    "id": "f051",
+    "domain": "postgresql",
+    "content": "Параметр `checkpoint_completion_target` (по умолчанию 0.9) определяет долю интервала между контрольными точками, в течение которой должна завершиться запись грязных страниц; значение 1.0 максимально размазывает нагрузку на I/O.",
+    "tags": [
+      "checkpoint",
+      "WAL",
+      "I/O"
+    ]
+  },
+  {
+    "id": "f052",
+    "domain": "postgresql",
+    "content": "Расширение `pg_trgm` добавляет поддержку триграммных индексов типа `GIN` и `GiST`, позволяя выполнять поиск по шаблону `LIKE '%term%'` с использованием индекса.",
+    "tags": [
+      "pg_trgm",
+      "index",
+      "LIKE"
+    ]
+  },
+  {
+    "id": "f053",
+    "domain": "postgresql",
+    "content": "Ошибка `ERROR: deadlock detected` возникает при взаимной блокировке двух и более транзакций; PostgreSQL автоматически выбирает жертву и откатывает одну из них.",
+    "tags": [
+      "deadlock",
+      "error",
+      "transactions"
+    ]
+  },
+  {
+    "id": "f054",
+    "domain": "postgresql",
+    "content": "Параметр `effective_cache_size` не выделяет память, а лишь подсказывает планировщику предполагаемый объём кэша ОС; рекомендуемое значение — 75% от общего объёма RAM.",
+    "tags": [
+      "effective_cache_size",
+      "planner",
+      "memory"
+    ]
+  },
+  {
+    "id": "f055",
+    "domain": "postgresql",
+    "content": "Секционирование таблицы методом `PARTITION BY RANGE` позволяет планировщику исключать нерелевантные секции через механизм `partition pruning` при наличии условия на ключ секционирования.",
+    "tags": [
+      "partitioning",
+      "partition-pruning",
+      "performance"
+    ]
+  },
+  {
+    "id": "f056",
+    "domain": "postgresql",
+    "content": "Команда `pg_dump -Fc` создаёт резервную копию в формате `custom`, поддерживающем параллельное восстановление через `pg_restore -j N`.",
+    "tags": [
+      "backup",
+      "pg_dump",
+      "pg_restore"
+    ]
+  },
+  {
+    "id": "f057",
+    "domain": "postgresql",
+    "content": "Параметр `autovacuum_vacuum_scale_factor` (по умолчанию 0.2) задаёт долю строк таблицы, при достижении которой запускается `autovacuum`; для больших таблиц рекомендуется снижать до 0.01.",
+    "tags": [
+      "autovacuum",
+      "configuration",
+      "bloat"
+    ]
+  },
+  {
+    "id": "f058",
+    "domain": "postgresql",
+    "content": "Функция `pg_relation_size('table_name')` возвращает размер основного файла таблицы в байтах без учёта индексов и TOAST; `pg_total_relation_size` включает все связанные объекты.",
+    "tags": [
+      "storage",
+      "pg_relation_size",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f059",
+    "domain": "postgresql",
+    "content": "Расширение `pg_stat_statements` накапливает статистику выполнения запросов; параметр `pg_stat_statements.max` (по умолчанию 5000) ограничивает число отслеживаемых уникальных запросов.",
+    "tags": [
+      "pg_stat_statements",
+      "monitoring",
+      "performance"
+    ]
+  },
+  {
+    "id": "f060",
+    "domain": "postgresql",
+    "content": "Тип индекса `BRIN` (Block Range INdex) эффективен для физически упорядоченных данных (например, временны́е ряды); занимает на несколько порядков меньше места, чем `B-tree`, но не подходит для случайно распределённых данных.",
+    "tags": [
+      "BRIN",
+      "index",
+      "storage"
+    ]
+  },
+  {
+    "id": "f061",
+    "domain": "postgresql",
+    "content": "Параметр `lock_timeout` задаёт максимальное время ожидания блокировки в миллисекундах; при превышении выбрасывается ошибка `ERROR: canceling statement due to lock timeout`.",
+    "tags": [
+      "lock_timeout",
+      "locks",
+      "error"
+    ]
+  },
+  {
+    "id": "f062",
+    "domain": "postgresql",
+    "content": "Команда `ALTER TABLE ... SET UNLOGGED` переводит таблицу в режим без записи в WAL, что ускоряет операции записи, но делает таблицу невосстановимой после аварийного завершения.",
+    "tags": [
+      "UNLOGGED",
+      "WAL",
+      "performance"
+    ]
+  },
+  {
+    "id": "f063",
+    "domain": "postgresql",
+    "content": "Параметр `random_page_cost` (по умолчанию 4.0) влияет на выбор планировщика между `Index Scan` и `Seq Scan`; для SSD рекомендуется снижать до 1.1.",
+    "tags": [
+      "random_page_cost",
+      "planner",
+      "index"
+    ]
+  },
+  {
+    "id": "f064",
+    "domain": "postgresql",
+    "content": "Логическая репликация через `CREATE PUBLICATION` и `CREATE SUBSCRIPTION` поддерживает репликацию отдельных таблиц, но не передаёт DDL-изменения автоматически.",
+    "tags": [
+      "replication",
+      "logical",
+      "publication"
+    ]
+  },
+  {
+    "id": "f065",
+    "domain": "postgresql",
+    "content": "Ошибка `ERROR: could not write to file \"pg_wal/...\" : No space left on device` приводит к аварийной остановке сервера; WAL-сегменты имеют фиксированный размер 16 МБ по умолчанию.",
+    "tags": [
+      "WAL",
+      "error",
+      "storage"
+    ]
+  },
+  {
+    "id": "f066",
+    "domain": "postgresql",
+    "content": "Параметр `maintenance_work_mem` определяет объём памяти для операций `VACUUM`, `CREATE INDEX` и `ALTER TABLE ADD FOREIGN KEY`; рекомендуемое значение — 256 МБ–1 ГБ.",
+    "tags": [
+      "maintenance_work_mem",
+      "memory",
+      "vacuum"
+    ]
+  },
+  {
+    "id": "f067",
+    "domain": "postgresql",
+    "content": "Функция `pg_cancel_backend(pid)` отправляет сигнал `SIGINT` процессу бэкенда, прерывая текущий запрос; `pg_terminate_backend(pid)` отправляет `SIGTERM`, завершая соединение.",
+    "tags": [
+      "pg_cancel_backend",
+      "pg_terminate_backend",
+      "administration"
+    ]
+  },
+  {
+    "id": "f068",
+    "domain": "postgresql",
+    "content": "Расширение `pgcrypto` предоставляет функцию `crypt()` для хэширования паролей с алгоритмами `bf` (bcrypt), `md5`, `sha256`; хранение паролей в открытом виде в PostgreSQL недопустимо.",
+    "tags": [
+      "pgcrypto",
+      "security",
+      "encryption"
+    ]
+  },
+  {
+    "id": "f069",
+    "domain": "postgresql",
+    "content": "Параметр `max_wal_size` (по умолчанию 1 ГБ) ограничивает максимальный объём WAL между контрольными точками; превышение вызывает внеплановый `checkpoint`.",
+    "tags": [
+      "WAL",
+      "checkpoint",
+      "max_wal_size"
+    ]
+  },
+  {
+    "id": "f070",
+    "domain": "postgresql",
+    "content": "Команда `REINDEX CONCURRENTLY index_name` перестраивает индекс без блокировки таблицы на запись; доступна начиная с PostgreSQL 12.",
+    "tags": [
+      "REINDEX",
+      "index",
+      "concurrency"
+    ]
+  },
+  {
+    "id": "f071",
+    "domain": "postgresql",
+    "content": "Параметр `statement_timeout` задаёт максимальное время выполнения одного запроса в миллисекундах; при превышении выбрасывается ошибка `ERROR: canceling statement due to statement timeout`.",
+    "tags": [
+      "statement_timeout",
+      "performance",
+      "error"
+    ]
+  },
+  {
+    "id": "f072",
+    "domain": "postgresql",
+    "content": "Представление `pg_locks` содержит информацию о текущих блокировках; соединение столбца `relation` с `pg_class.oid` позволяет идентифицировать заблокированный объект.",
+    "tags": [
+      "pg_locks",
+      "monitoring",
+      "locks"
+    ]
+  },
+  {
+    "id": "f073",
+    "domain": "postgresql",
+    "content": "Тип `uuid` занимает 16 байт и хранится в бинарном виде; функция `gen_random_uuid()` (доступна без расширений с PostgreSQL 13) генерирует UUID версии 4.",
+    "tags": [
+      "uuid",
+      "data-types",
+      "functions"
+    ]
+  },
+  {
+    "id": "f074",
+    "domain": "postgresql",
+    "content": "Параметр `max_parallel_workers_per_gather` (по умолчанию 2) ограничивает число рабочих процессов для параллельного выполнения одного запроса; общий лимит задаётся `max_parallel_workers`.",
+    "tags": [
+      "parallelism",
+      "configuration",
+      "performance"
+    ]
+  },
+  {
+    "id": "f075",
+    "domain": "postgresql",
+    "content": "Команда `COPY table FROM '/path/file.csv' WITH (FORMAT csv, HEADER true)` обеспечивает массовую загрузку данных со скоростью, значительно превышающей `INSERT`; требует прав суперпользователя для доступа к файловой системе сервера.",
+    "tags": [
+      "COPY",
+      "bulk-load",
+      "performance"
+    ]
+  },
+  {
+    "id": "f076",
+    "domain": "postgresql",
+    "content": "Ошибка `ERROR: invalid page in block N of relation base/...` свидетельствует о повреждении страницы данных; параметр `zero_damaged_pages = on` позволяет пропускать повреждённые страницы при чтении.",
+    "tags": [
+      "corruption",
+      "error",
+      "recovery"
+    ]
+  },
+  {
+    "id": "f077",
+    "domain": "postgresql",
+    "content": "Расширение `timescaledb` реализует автоматическое секционирование по времени (гипертаблицы) поверх стандартного механизма секционирования PostgreSQL, добавляя функции `time_bucket()` и политики сжатия.",
+    "tags": [
+      "timescaledb",
+      "partitioning",
+      "time-series"
+    ]
+  },
+  {
+    "id": "f078",
+    "domain": "postgresql",
+    "content": "Параметр `idle_in_transaction_session_timeout` завершает соединения, находящиеся в состоянии `idle in transaction` дольше указанного числа миллисекунд, предотвращая удержание блокировок.",
+    "tags": [
+      "idle_in_transaction_session_timeout",
+      "locks",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f079",
+    "domain": "postgresql",
+    "content": "Функция `pg_size_pretty(pg_database_size('dbname'))` возвращает размер базы данных в человекочитаемом формате; `pg_database_size` возвращает значение в байтах.",
+    "tags": [
+      "storage",
+      "monitoring",
+      "functions"
+    ]
+  },
+  {
+    "id": "f080",
+    "domain": "postgresql",
+    "content": "Параметр `wal_compression` (значения `on`, `lz4`, `zstd` начиная с PostgreSQL 15) включает сжатие WAL-записей для страниц полного образа (`FPI`), снижая объём WAL при незначительном росте нагрузки на CPU.",
+    "tags": [
+      "WAL",
+      "compression",
+      "storage"
+    ]
+  },
+  {
+    "id": "f081",
+    "domain": "redis",
+    "content": "Параметр `maxmemory` определяет максимальный объём памяти, доступный Redis; при его достижении применяется политика вытеснения, заданная `maxmemory-policy`.",
+    "tags": [
+      "memory",
+      "configuration",
+      "eviction"
+    ]
+  },
+  {
+    "id": "f082",
+    "domain": "redis",
+    "content": "Политика `allkeys-lru` вытесняет наименее недавно использованные ключи из всего keyspace, тогда как `volatile-lru` применяется только к ключам с установленным TTL.",
+    "tags": [
+      "eviction",
+      "lru",
+      "memory-policy"
+    ]
+  },
+  {
+    "id": "f083",
+    "domain": "redis",
+    "content": "Команда `OBJECT ENCODING key` возвращает внутреннее представление структуры данных: например, `ziplist`, `listpack`, `skiplist`, `hashtable` или `embstr`.",
+    "tags": [
+      "encoding",
+      "internals",
+      "commands"
+    ]
+  },
+  {
+    "id": "f084",
+    "domain": "redis",
+    "content": "Строки длиной до 44 байт хранятся в кодировке `embstr`, которая выделяет единый непрерывный блок памяти для объекта `redisObject` и данных.",
+    "tags": [
+      "encoding",
+      "string",
+      "memory"
+    ]
+  },
+  {
+    "id": "f085",
+    "domain": "redis",
+    "content": "Hash-объекты с числом полей ≤ `hash-max-listpack-entries` (по умолчанию 128) и размером значений ≤ `hash-max-listpack-value` (64 байт) хранятся в формате `listpack`.",
+    "tags": [
+      "hash",
+      "listpack",
+      "encoding"
+    ]
+  },
+  {
+    "id": "f086",
+    "domain": "redis",
+    "content": "Команда `MEMORY USAGE key [SAMPLES count]` возвращает приблизительный объём памяти в байтах, занимаемый ключом, включая overhead структуры данных.",
+    "tags": [
+      "memory",
+      "commands",
+      "profiling"
+    ]
+  },
+  {
+    "id": "f087",
+    "domain": "redis",
+    "content": "Параметр `activerehashing yes` включает инкрементальное перехеширование главной hash-таблицы во время простоя event loop, снижая пиковую задержку.",
+    "tags": [
+      "rehashing",
+      "performance",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f088",
+    "domain": "redis",
+    "content": "Команда `DEBUG JMAP` (доступна только в debug-сборках) выводит карту распределения памяти jemalloc по size-классам.",
+    "tags": [
+      "debug",
+      "jemalloc",
+      "memory"
+    ]
+  },
+  {
+    "id": "f089",
+    "domain": "redis",
+    "content": "Параметр `lazyfree-lazy-eviction yes` переносит освобождение памяти при вытеснении ключей в фоновый поток, уменьшая задержку основного потока.",
+    "tags": [
+      "lazyfree",
+      "eviction",
+      "threading"
+    ]
+  },
+  {
+    "id": "f090",
+    "domain": "redis",
+    "content": "Sorted Set с числом элементов ≤ `zset-max-listpack-entries` (128) и длиной элементов ≤ `zset-max-listpack-value` (64 байт) использует кодировку `listpack` вместо `skiplist`+`hashtable`.",
+    "tags": [
+      "sorted-set",
+      "listpack",
+      "encoding"
+    ]
+  },
+  {
+    "id": "f091",
+    "domain": "redis",
+    "content": "Команда `INFO memory` возвращает поля `used_memory`, `used_memory_rss`, `mem_fragmentation_ratio` и `allocator_frag_ratio` для диагностики фрагментации памяти.",
+    "tags": [
+      "info",
+      "memory",
+      "fragmentation"
+    ]
+  },
+  {
+    "id": "f092",
+    "domain": "redis",
+    "content": "Значение `mem_fragmentation_ratio` > 1.5 свидетельствует о значительной фрагментации памяти на уровне аллокатора; значение < 1.0 указывает на использование swap.",
+    "tags": [
+      "fragmentation",
+      "memory",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f093",
+    "domain": "redis",
+    "content": "Параметр `activedefrag yes` активирует активную дефрагментацию памяти в реальном времени; порог запуска задаётся `active-defrag-ignore-bytes` и `active-defrag-threshold-lower`.",
+    "tags": [
+      "defragmentation",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f094",
+    "domain": "redis",
+    "content": "Команда `OBJECT FREQ key` возвращает счётчик частоты обращений к ключу, используемый политиками вытеснения `lfu`; требует `maxmemory-policy allkeys-lfu` или `volatile-lfu`.",
+    "tags": [
+      "lfu",
+      "eviction",
+      "commands"
+    ]
+  },
+  {
+    "id": "f095",
+    "domain": "redis",
+    "content": "Параметр `lfu-decay-time` (по умолчанию 1) задаёт период в минутах, за который счётчик LFU уменьшается вдвое при отсутствии обращений к ключу.",
+    "tags": [
+      "lfu",
+      "configuration",
+      "eviction"
+    ]
+  },
+  {
+    "id": "f096",
+    "domain": "redis",
+    "content": "Команда `SCAN cursor [MATCH pattern] [COUNT count] [TYPE type]` выполняет итерацию по keyspace без блокировки сервера; параметр `COUNT` является подсказкой, а не гарантией.",
+    "tags": [
+      "scan",
+      "commands",
+      "keyspace"
+    ]
+  },
+  {
+    "id": "f097",
+    "domain": "redis",
+    "content": "Тип `Stream` хранит записи в структуре `listpack`-based radix tree; параметры `stream-node-max-bytes` (4096) и `stream-node-max-entries` (100) контролируют размер узлов.",
+    "tags": [
+      "stream",
+      "radix-tree",
+      "encoding"
+    ]
+  },
+  {
+    "id": "f098",
+    "domain": "redis",
+    "content": "Команда `WAIT numreplicas timeout` блокирует клиента до подтверждения репликации указанным числом реплик или истечения таймаута в миллисекундах.",
+    "tags": [
+      "replication",
+      "commands",
+      "consistency"
+    ]
+  },
+  {
+    "id": "f099",
+    "domain": "redis",
+    "content": "Параметр `tcp-backlog` (по умолчанию 511) задаёт длину очереди незавершённых TCP-соединений; должен быть согласован с `net.core.somaxconn` на уровне ОС.",
+    "tags": [
+      "networking",
+      "tcp",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f100",
+    "domain": "redis",
+    "content": "Команда `CLIENT NO-EVICT ON` запрещает вытеснение конкретного клиентского соединения при достижении `maxmemory-clients`; доступна начиная с Redis 7.0.",
+    "tags": [
+      "client",
+      "eviction",
+      "commands"
+    ]
+  },
+  {
+    "id": "f101",
+    "domain": "redis",
+    "content": "Параметр `maxmemory-clients` (Redis 7.0+) ограничивает суммарный объём памяти, используемый клиентскими буферами; при превышении клиенты вытесняются по LRU.",
+    "tags": [
+      "client",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f102",
+    "domain": "redis",
+    "content": "Команда `OBJECT IDLETIME key` возвращает время в секундах с момента последнего обращения к ключу; недоступна при использовании политик `lfu`.",
+    "tags": [
+      "lru",
+      "commands",
+      "idle"
+    ]
+  },
+  {
+    "id": "f103",
+    "domain": "redis",
+    "content": "Параметр `hz` (по умолчанию 10) задаёт частоту выполнения фоновых задач сервера (expiry, eviction, resize); увеличение до 100 снижает задержку за счёт роста CPU.",
+    "tags": [
+      "hz",
+      "configuration",
+      "performance"
+    ]
+  },
+  {
+    "id": "f104",
+    "domain": "redis",
+    "content": "Параметр `dynamic-hz yes` позволяет Redis автоматически увеличивать `hz` при наличии подключённых клиентов, снижая его в периоды простоя.",
+    "tags": [
+      "hz",
+      "dynamic",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f105",
+    "domain": "redis",
+    "content": "Команда `XADD key MAXLEN ~ count * field value` добавляет запись в Stream с приблизительной обрезкой до `count` элементов; символ `~` разрешает неточную обрезку для производительности.",
+    "tags": [
+      "stream",
+      "commands",
+      "trimming"
+    ]
+  },
+  {
+    "id": "f106",
+    "domain": "redis",
+    "content": "Параметр `list-max-listpack-size` (по умолчанию -2, т.е. 8 КБ на узел) контролирует максимальный размер узла quicklist; отрицательные значения задают размер в байтах.",
+    "tags": [
+      "list",
+      "quicklist",
+      "encoding"
+    ]
+  },
+  {
+    "id": "f107",
+    "domain": "redis",
+    "content": "Команда `DEBUG SLEEP seconds` блокирует event loop Redis на заданное число секунд; используется для тестирования поведения клиентов при таймаутах.",
+    "tags": [
+      "debug",
+      "testing",
+      "commands"
+    ]
+  },
+  {
+    "id": "f108",
+    "domain": "redis",
+    "content": "Параметр `proto-max-bulk-len` (по умолчанию 512 МБ) ограничивает максимальный размер одного bulk-элемента в RESP-протоколе; превышение вызывает ошибку `Protocol error`.",
+    "tags": [
+      "protocol",
+      "resp",
+      "limits"
+    ]
+  },
+  {
+    "id": "f109",
+    "domain": "redis",
+    "content": "Команда `RESET` (Redis 6.2+) сбрасывает состояние соединения: отменяет `MULTI`, `SUBSCRIBE`, `CLIENT TRACKING` и возвращает соединение в исходное состояние без разрыва.",
+    "tags": [
+      "commands",
+      "connection",
+      "reset"
+    ]
+  },
+  {
+    "id": "f110",
+    "domain": "redis",
+    "content": "Параметр `close-on-slave-write yes` (устаревший, заменён `replica-read-only yes`) запрещает запись на реплику; нарушение возвращает ошибку `READONLY You can't write against a read only replica`.",
+    "tags": [
+      "replication",
+      "replica",
+      "errors"
+    ]
+  },
+  {
+    "id": "f111",
+    "domain": "redis",
+    "content": "Команда `LATENCY HISTORY event` возвращает временной ряд задержек для указанного события; мониторинг требует `latency-monitor-threshold` > 0 в конфигурации.",
+    "tags": [
+      "latency",
+      "monitoring",
+      "commands"
+    ]
+  },
+  {
+    "id": "f112",
+    "domain": "redis",
+    "content": "Параметр `slowlog-log-slower-than` задаёт порог в микросекундах для записи команды в slow log; значение 0 логирует все команды, -1 отключает slow log.",
+    "tags": [
+      "slowlog",
+      "performance",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f113",
+    "domain": "redis",
+    "content": "Команда `ACL SETUSER username [rules]` создаёт или модифицирует пользователя; правило `~pattern` ограничивает доступ к ключам по glob-паттерну.",
+    "tags": [
+      "acl",
+      "security",
+      "commands"
+    ]
+  },
+  {
+    "id": "f114",
+    "domain": "redis",
+    "content": "Параметр `aof-use-rdb-preamble yes` включает гибридный формат AOF: RDB-снимок в начале файла + AOF-дельта, что ускоряет восстановление при сохранении полноты лога.",
+    "tags": [
+      "aof",
+      "rdb",
+      "persistence"
+    ]
+  },
+  {
+    "id": "f115",
+    "domain": "redis",
+    "content": "Команда `OBJECT HELP` возвращает список доступных субкоманд `OBJECT`; поддерживаемые субкоманды: `ENCODING`, `FREQ`, `HELP`, `IDLETIME`, `REFCOUNT`.",
+    "tags": [
+      "commands",
+      "object",
+      "reference"
+    ]
+  },
+  {
+    "id": "f116",
+    "domain": "redis",
+    "content": "Параметр `set-max-intset-entries` (по умолчанию 512) определяет максимальное число элементов в Set, при котором используется компактная кодировка `intset` вместо `hashtable`.",
+    "tags": [
+      "set",
+      "intset",
+      "encoding"
+    ]
+  },
+  {
+    "id": "f117",
+    "domain": "redis",
+    "content": "Команда `FUNCTION LOAD [REPLACE] function-code` загружает Lua-библиотеку в Redis 7.0+; функции сохраняются в RDB и AOF, в отличие от `EVAL`-скриптов.",
+    "tags": [
+      "functions",
+      "lua",
+      "commands"
+    ]
+  },
+  {
+    "id": "f118",
+    "domain": "redis",
+    "content": "Параметр `repl-backlog-size` (по умолчанию 1 МБ) задаёт размер кольцевого буфера репликации; при отставании реплики сверх этого размера выполняется полная ресинхронизация.",
+    "tags": [
+      "replication",
+      "backlog",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f119",
+    "domain": "redis",
+    "content": "Команда `CLUSTER KEYSLOT key` вычисляет номер hash slot (0–16383) для заданного ключа по алгоритму CRC16; ключи с `{hashtag}` хешируются только по содержимому фигурных скобок.",
+    "tags": [
+      "cluster",
+      "hashing",
+      "commands"
+    ]
+  },
+  {
+    "id": "f120",
+    "domain": "redis",
+    "content": "Параметр `io-threads` (по умолчанию 1) включает многопоточную обработку I/O в Redis 6.0+; запись в потоках активируется отдельно через `io-threads-do-reads yes`.",
+    "tags": [
+      "io-threads",
+      "performance",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f121",
+    "domain": "kafka",
+    "content": "Параметр `log.retention.hours` определяет время хранения сегментов лога; значение по умолчанию составляет 168 часов (7 дней), после чего сегменты удаляются независимо от наличия непрочитанных сообщений.",
+    "tags": [
+      "retention",
+      "log",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f122",
+    "domain": "kafka",
+    "content": "При превышении лимита `message.max.bytes` (по умолчанию 1 048 588 байт) брокер возвращает ошибку `MESSAGE_TOO_LARGE` и отклоняет запрос продюсера без частичной записи.",
+    "tags": [
+      "producer",
+      "error",
+      "message-size"
+    ]
+  },
+  {
+    "id": "f123",
+    "domain": "kafka",
+    "content": "Команда `kafka-topics.sh --describe --topic <name> --bootstrap-server <host:port>` выводит текущее состояние лидеров партиций, ISR-список и конфигурацию топика.",
+    "tags": [
+      "cli",
+      "topics",
+      "administration"
+    ]
+  },
+  {
+    "id": "f124",
+    "domain": "kafka",
+    "content": "Параметр `num.partitions` задаёт количество партиций по умолчанию для новых топиков; увеличение этого значения повышает параллелизм, но увеличивает нагрузку на ZooKeeper/KRaft-метаданные.",
+    "tags": [
+      "partitions",
+      "configuration",
+      "scalability"
+    ]
+  },
+  {
+    "id": "f125",
+    "domain": "kafka",
+    "content": "Механизм `exactly-once semantics` (EOS) требует включения `enable.idempotence=true` на продюсере и `isolation.level=read_committed` на консьюмере одновременно.",
+    "tags": [
+      "exactly-once",
+      "idempotence",
+      "transactions"
+    ]
+  },
+  {
+    "id": "f126",
+    "domain": "kafka",
+    "content": "Параметр `replica.lag.time.max.ms` (по умолчанию 30 000 мс) определяет максимальное время, в течение которого реплика может отставать от лидера, прежде чем будет исключена из ISR.",
+    "tags": [
+      "replication",
+      "ISR",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f127",
+    "domain": "kafka",
+    "content": "Команда `kafka-consumer-groups.sh --reset-offsets --to-earliest --group <group> --topic <topic> --execute` сбрасывает смещения группы консьюмеров к самому раннему доступному сообщению.",
+    "tags": [
+      "consumer-groups",
+      "offsets",
+      "cli"
+    ]
+  },
+  {
+    "id": "f128",
+    "domain": "kafka",
+    "content": "Параметр `linger.ms` на продюсере задаёт время ожидания перед отправкой батча; значение 0 означает немедленную отправку, что снижает пропускную способность при высокой частоте мелких сообщений.",
+    "tags": [
+      "producer",
+      "batching",
+      "latency"
+    ]
+  },
+  {
+    "id": "f129",
+    "domain": "kafka",
+    "content": "Ошибка `LEADER_NOT_AVAILABLE` возникает в период выборов нового лидера партиции и является временной; продюсер автоматически повторяет запрос согласно значению `retries`.",
+    "tags": [
+      "error",
+      "leader-election",
+      "producer"
+    ]
+  },
+  {
+    "id": "f130",
+    "domain": "kafka",
+    "content": "Параметр `min.insync.replicas` (обычно устанавливается в 2) совместно с `acks=all` гарантирует запись на минимальное число синхронных реплик; при недостаточном числе ISR брокер возвращает `NOT_ENOUGH_REPLICAS`.",
+    "tags": [
+      "durability",
+      "replication",
+      "acks"
+    ]
+  },
+  {
+    "id": "f131",
+    "domain": "kafka",
+    "content": "Kafka хранит данные в сегментах лога фиксированного размера, контролируемого параметром `log.segment.bytes` (по умолчанию 1 073 741 824 байт = 1 ГБ); новый сегмент создаётся при достижении этого предела.",
+    "tags": [
+      "storage",
+      "log-segments",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f132",
+    "domain": "kafka",
+    "content": "Команда `kafka-log-dirs.sh --bootstrap-server <host:port> --topic-list <topic> --describe` возвращает JSON с размером лога и смещениями для каждой партиции на каждом брокере.",
+    "tags": [
+      "cli",
+      "log-dirs",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f133",
+    "domain": "kafka",
+    "content": "Параметр `fetch.min.bytes` на консьюмере задаёт минимальный объём данных, который брокер должен накопить перед ответом; значение по умолчанию 1 байт фактически отключает ожидание.",
+    "tags": [
+      "consumer",
+      "fetch",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f134",
+    "domain": "kafka",
+    "content": "В режиме KRaft (без ZooKeeper) метаданные кластера хранятся во внутреннем топике `__cluster_metadata` с использованием протокола Raft; контроллер-лидер управляет всеми метаданными партиций.",
+    "tags": [
+      "KRaft",
+      "metadata",
+      "architecture"
+    ]
+  },
+  {
+    "id": "f135",
+    "domain": "kafka",
+    "content": "Параметр `compression.type` на продюсере поддерживает значения `none`, `gzip`, `snappy`, `lz4`, `zstd`; `zstd` обеспечивает наилучшее соотношение степени сжатия и скорости декомпрессии.",
+    "tags": [
+      "compression",
+      "producer",
+      "performance"
+    ]
+  },
+  {
+    "id": "f136",
+    "domain": "kafka",
+    "content": "Метрика `kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions` показывает число партиций, у которых количество синхронных реплик меньше `replication.factor`; ненулевое значение сигнализирует о проблемах с репликацией.",
+    "tags": [
+      "monitoring",
+      "JMX",
+      "replication"
+    ]
+  },
+  {
+    "id": "f137",
+    "domain": "kafka",
+    "content": "Параметр `auto.offset.reset` определяет поведение консьюмера при отсутствии сохранённого смещения: `earliest` начинает с начала топика, `latest` — с момента подписки, `none` — генерирует исключение.",
+    "tags": [
+      "consumer",
+      "offsets",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f138",
+    "domain": "kafka",
+    "content": "Команда `kafka-reassign-partitions.sh --execute --reassignment-json-file <file> --bootstrap-server <host:port>` инициирует перемещение партиций между брокерами согласно JSON-плану переназначения.",
+    "tags": [
+      "cli",
+      "partition-reassignment",
+      "administration"
+    ]
+  },
+  {
+    "id": "f139",
+    "domain": "kafka",
+    "content": "Параметр `session.timeout.ms` консьюмера (по умолчанию 45 000 мс в новых версиях) определяет максимальный интервал между heartbeat-сообщениями; превышение вызывает исключение консьюмера из группы и ребалансировку.",
+    "tags": [
+      "consumer",
+      "rebalance",
+      "heartbeat"
+    ]
+  },
+  {
+    "id": "f140",
+    "domain": "kafka",
+    "content": "Kafka Streams использует внутренние топики с суффиксом `-changelog` для хранения состояния `KTable` и `GlobalKTable`; эти топики создаются автоматически с `cleanup.policy=compact`.",
+    "tags": [
+      "kafka-streams",
+      "state-store",
+      "changelog"
+    ]
+  },
+  {
+    "id": "f141",
+    "domain": "kafka",
+    "content": "Параметр `max.poll.records` ограничивает число записей, возвращаемых за один вызов `poll()`; значение по умолчанию 500 может вызывать `poll timeout exceeded` при медленной обработке.",
+    "tags": [
+      "consumer",
+      "poll",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f142",
+    "domain": "kafka",
+    "content": "Ошибка `org.apache.kafka.common.errors.TimeoutException: Expiring X record(s) for <topic>` возникает, когда продюсер не может доставить сообщение в течение `delivery.timeout.ms` (по умолчанию 120 000 мс).",
+    "tags": [
+      "producer",
+      "error",
+      "timeout"
+    ]
+  },
+  {
+    "id": "f143",
+    "domain": "kafka",
+    "content": "Параметр `log.cleanup.policy=compact` активирует log compaction, при котором Kafka сохраняет только последнее сообщение для каждого ключа; сообщения с `null`-значением (tombstone) удаляют ключ из лога.",
+    "tags": [
+      "log-compaction",
+      "storage",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f144",
+    "domain": "kafka",
+    "content": "Команда `kafka-acls.sh --add --allow-principal User:<name> --operation Read --topic <topic> --bootstrap-server <host:port>` добавляет ACL-правило, разрешающее чтение топика указанному пользователю.",
+    "tags": [
+      "security",
+      "ACL",
+      "cli"
+    ]
+  },
+  {
+    "id": "f145",
+    "domain": "kafka",
+    "content": "Параметр `buffer.memory` продюсера (по умолчанию 33 554 432 байт = 32 МБ) задаёт общий объём памяти для буферизации записей; при заполнении буфера вызов `send()` блокируется на `max.block.ms`.",
+    "tags": [
+      "producer",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f146",
+    "domain": "kafka",
+    "content": "Метрика `kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Produce` отражает полное время обработки запроса Produce на брокере, включая ожидание подтверждения от реплик.",
+    "tags": [
+      "monitoring",
+      "JMX",
+      "latency"
+    ]
+  },
+  {
+    "id": "f147",
+    "domain": "kafka",
+    "content": "Параметр `inter.broker.protocol.version` должен быть обновлён после завершения rolling upgrade всех брокеров; несоответствие версий между брокерами ограничивает доступные функции протокола.",
+    "tags": [
+      "upgrade",
+      "configuration",
+      "compatibility"
+    ]
+  },
+  {
+    "id": "f148",
+    "domain": "kafka",
+    "content": "Kafka Connect использует параметр `tasks.max` для определения максимального числа задач коннектора; фактическое число задач не может превышать число партиций исходного топика для source-коннекторов.",
+    "tags": [
+      "kafka-connect",
+      "tasks",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f149",
+    "domain": "kafka",
+    "content": "Параметр `socket.send.buffer.bytes` (по умолчанию 102 400 байт) задаёт размер TCP send buffer на брокере; значение -1 означает использование системного значения `net.core.wmem_default`.",
+    "tags": [
+      "network",
+      "configuration",
+      "performance"
+    ]
+  },
+  {
+    "id": "f150",
+    "domain": "kafka",
+    "content": "Команда `kafka-dump-log.sh --files <path>/00000000000000000000.log --print-data-log` выводит содержимое сегмента лога в читаемом формате, включая offset, timestamp и payload каждого сообщения.",
+    "tags": [
+      "cli",
+      "debugging",
+      "log-segments"
+    ]
+  },
+  {
+    "id": "f151",
+    "domain": "kafka",
+    "content": "Параметр `group.initial.rebalance.delay.ms` (по умолчанию 3000 мс) задаёт задержку перед первой ребалансировкой группы консьюмеров, позволяя дополнительным членам присоединиться до распределения партиций.",
+    "tags": [
+      "consumer-groups",
+      "rebalance",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f152",
+    "domain": "kafka",
+    "content": "Ошибка `UNKNOWN_MEMBER_ID` возникает, когда консьюмер отправляет heartbeat или commit с устаревшим member ID после исключения из группы; клиент должен заново инициировать процедуру JoinGroup.",
+    "tags": [
+      "consumer",
+      "error",
+      "rebalance"
+    ]
+  },
+  {
+    "id": "f153",
+    "domain": "kafka",
+    "content": "Параметр `num.io.threads` (по умолчанию 8) определяет число потоков для обработки сетевых запросов на брокере; увеличение рекомендуется при высоком числе партиций и интенсивном I/O.",
+    "tags": [
+      "broker",
+      "threading",
+      "performance"
+    ]
+  },
+  {
+    "id": "f154",
+    "domain": "kafka",
+    "content": "Kafka MirrorMaker 2 использует коннектор `MirrorSourceConnector` для репликации топиков между кластерами; смещения транслируются через топик `<source>.checkpoints.internal` для обеспечения failover консьюмеров.",
+    "tags": [
+      "mirrormaker",
+      "replication",
+      "disaster-recovery"
+    ]
+  },
+  {
+    "id": "f155",
+    "domain": "kafka",
+    "content": "Параметр `log.index.interval.bytes` (по умолчанию 4096 байт) определяет частоту записи записей в индексный файл `.index`; уменьшение значения ускоряет поиск по смещению за счёт увеличения размера индекса.",
+    "tags": [
+      "storage",
+      "index",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f156",
+    "domain": "kafka",
+    "content": "Команда `kafka-producer-perf-test.sh --topic <topic> --num-records 1000000 --record-size 1024 --throughput -1 --producer-props bootstrap.servers=<host:port>` запускает нагрузочный тест продюсера без ограничения пропускной способности.",
+    "tags": [
+      "performance",
+      "testing",
+      "cli"
+    ]
+  },
+  {
+    "id": "f157",
+    "domain": "kafka",
+    "content": "Параметр `transaction.timeout.ms` (по умолчанию 60 000 мс) задаёт максимальное время транзакции на брокере; по истечении брокер прерывает транзакцию и освобождает связанные ресурсы.",
+    "tags": [
+      "transactions",
+      "configuration",
+      "timeout"
+    ]
+  },
+  {
+    "id": "f158",
+    "domain": "kafka",
+    "content": "Метрика `kafka.controller:type=KafkaController,name=ActiveControllerCount` должна иметь значение 1 ровно на одном брокере кластера; значение 0 на всех брокерах указывает на отсутствие активного контроллера.",
+    "tags": [
+      "monitoring",
+      "JMX",
+      "controller"
+    ]
+  },
+  {
+    "id": "f159",
+    "domain": "kafka",
+    "content": "Параметр `sasl.mechanism` поддерживает значения `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`, `GSSAPI` (Kerberos) и `OAUTHBEARER`; выбор механизма определяет способ аутентификации клиента на брокере.",
+    "tags": [
+      "security",
+      "SASL",
+      "authentication"
+    ]
+  },
+  {
+    "id": "f160",
+    "domain": "kafka",
+    "content": "Команда `kafka-configs.sh --alter --entity-type topics --entity-name <topic> --add-config retention.ms=86400000 --bootstrap-server <host:port>` динамически изменяет время хранения топика до 24 часов без перезапуска брокера.",
+    "tags": [
+      "cli",
+      "dynamic-config",
+      "retention"
+    ]
+  },
+  {
+    "id": "f161",
+    "domain": "fastapi",
+    "content": "FastAPI использует `uvicorn` в качестве ASGI-сервера по умолчанию; запуск производится командой `uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`.",
+    "tags": [
+      "uvicorn",
+      "deployment",
+      "asgi"
+    ]
+  },
+  {
+    "id": "f162",
+    "domain": "fastapi",
+    "content": "Параметр `--reload` в команде `uvicorn main:app --reload` активирует hot-reload и не должен использоваться в production-окружении.",
+    "tags": [
+      "uvicorn",
+      "development",
+      "reload"
+    ]
+  },
+  {
+    "id": "f163",
+    "domain": "fastapi",
+    "content": "Зависимости объявляются через `Depends()`: функция `def get_db(): yield db` передаётся как `db: Session = Depends(get_db)` в сигнатуре endpoint-функции.",
+    "tags": [
+      "depends",
+      "dependency-injection",
+      "session"
+    ]
+  },
+  {
+    "id": "f164",
+    "domain": "fastapi",
+    "content": "FastAPI автоматически генерирует OpenAPI-схему по пути `/openapi.json` и предоставляет Swagger UI по пути `/docs`, а ReDoc — по пути `/redoc`.",
+    "tags": [
+      "openapi",
+      "swagger",
+      "redoc"
+    ]
+  },
+  {
+    "id": "f165",
+    "domain": "fastapi",
+    "content": "Для отключения автоматической документации при инициализации приложения используются параметры `FastAPI(docs_url=None, redoc_url=None, openapi_url=None)`.",
+    "tags": [
+      "openapi",
+      "security",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f166",
+    "domain": "fastapi",
+    "content": "Модели запросов и ответов определяются через `pydantic.BaseModel`; поле с типом `Optional[str] = None` делает параметр необязательным в JSON-теле запроса.",
+    "tags": [
+      "pydantic",
+      "models",
+      "validation"
+    ]
+  },
+  {
+    "id": "f167",
+    "domain": "fastapi",
+    "content": "Исключение `HTTPException(status_code=404, detail='Item not found')` возвращает клиенту JSON-ответ `{\"detail\": \"Item not found\"}` со статусом 404.",
+    "tags": [
+      "exceptions",
+      "http",
+      "error-handling"
+    ]
+  },
+  {
+    "id": "f168",
+    "domain": "fastapi",
+    "content": "Глобальный обработчик исключений регистрируется через декоратор `@app.exception_handler(RequestValidationError)` для перехвата ошибок валидации Pydantic.",
+    "tags": [
+      "exception-handler",
+      "validation",
+      "pydantic"
+    ]
+  },
+  {
+    "id": "f169",
+    "domain": "fastapi",
+    "content": "Middleware добавляется методом `app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])` для настройки CORS-политики.",
+    "tags": [
+      "middleware",
+      "cors",
+      "security"
+    ]
+  },
+  {
+    "id": "f170",
+    "domain": "fastapi",
+    "content": "Background-задачи запускаются через объект `BackgroundTasks`: параметр `background_tasks: BackgroundTasks` добавляется в endpoint, затем вызывается `background_tasks.add_task(func, arg1, arg2)`.",
+    "tags": [
+      "background-tasks",
+      "async",
+      "concurrency"
+    ]
+  },
+  {
+    "id": "f171",
+    "domain": "fastapi",
+    "content": "Для потоковой передачи данных используется `StreamingResponse(generator(), media_type='text/plain')`, где `generator()` — асинхронный или синхронный генератор Python.",
+    "tags": [
+      "streaming",
+      "response",
+      "generator"
+    ]
+  },
+  {
+    "id": "f172",
+    "domain": "fastapi",
+    "content": "Статические файлы раздаются через `app.mount('/static', StaticFiles(directory='static'), name='static')` с использованием класса `starlette.staticfiles.StaticFiles`.",
+    "tags": [
+      "static-files",
+      "mount",
+      "starlette"
+    ]
+  },
+  {
+    "id": "f173",
+    "domain": "fastapi",
+    "content": "Параметры пути объявляются в шаблоне маршрута как `@app.get('/items/{item_id}')` и автоматически приводятся к типу, указанному в сигнатуре функции: `item_id: int`.",
+    "tags": [
+      "path-parameters",
+      "routing",
+      "type-coercion"
+    ]
+  },
+  {
+    "id": "f174",
+    "domain": "fastapi",
+    "content": "Query-параметры с валидацией задаются через `Query(ge=0, le=100, default=10)`; нарушение ограничений возвращает ответ со статусом 422 Unprocessable Entity.",
+    "tags": [
+      "query-parameters",
+      "validation",
+      "query"
+    ]
+  },
+  {
+    "id": "f175",
+    "domain": "fastapi",
+    "content": "Заголовки запроса извлекаются через `Header()`: параметр `x_token: str = Header(...)` автоматически преобразует имя `X-Token` в `x_token` (snake_case).",
+    "tags": [
+      "headers",
+      "request",
+      "header"
+    ]
+  },
+  {
+    "id": "f176",
+    "domain": "fastapi",
+    "content": "Cookie-параметры читаются через `Cookie()`: объявление `session_id: Optional[str] = Cookie(None)` возвращает `None`, если cookie отсутствует.",
+    "tags": [
+      "cookies",
+      "request",
+      "cookie"
+    ]
+  },
+  {
+    "id": "f177",
+    "domain": "fastapi",
+    "content": "Загрузка файлов реализуется через `UploadFile`: параметр `file: UploadFile = File(...)` предоставляет атрибуты `filename`, `content_type` и метод `await file.read()`.",
+    "tags": [
+      "file-upload",
+      "uploadfile",
+      "form"
+    ]
+  },
+  {
+    "id": "f178",
+    "domain": "fastapi",
+    "content": "Form-данные принимаются через `Form()`: параметр `username: str = Form(...)` требует заголовка запроса `Content-Type: application/x-www-form-urlencoded`.",
+    "tags": [
+      "form-data",
+      "form",
+      "content-type"
+    ]
+  },
+  {
+    "id": "f179",
+    "domain": "fastapi",
+    "content": "Роутеры группируются через `APIRouter(prefix='/users', tags=['users'])`; подключение к приложению выполняется методом `app.include_router(router)`.",
+    "tags": [
+      "router",
+      "apirouter",
+      "structure"
+    ]
+  },
+  {
+    "id": "f180",
+    "domain": "fastapi",
+    "content": "Событие запуска приложения регистрируется через `@app.on_event('startup')` (deprecated в пользу `lifespan`); событие завершения — через `@app.on_event('shutdown')`.",
+    "tags": [
+      "lifecycle",
+      "startup",
+      "shutdown"
+    ]
+  },
+  {
+    "id": "f181",
+    "domain": "fastapi",
+    "content": "Начиная с FastAPI 0.93.0, управление жизненным циклом приложения рекомендуется реализовывать через параметр `lifespan` с использованием `@asynccontextmanager`.",
+    "tags": [
+      "lifespan",
+      "asynccontextmanager",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "f182",
+    "domain": "fastapi",
+    "content": "Ответ с кастомным статус-кодом задаётся через декоратор: `@app.post('/items/', status_code=201)`; значение по умолчанию для POST-запросов — 200.",
+    "tags": [
+      "status-code",
+      "response",
+      "http"
+    ]
+  },
+  {
+    "id": "f183",
+    "domain": "fastapi",
+    "content": "Модель ответа указывается через параметр `response_model` декоратора: `@app.get('/items/', response_model=List[ItemOut])` фильтрует поля согласно схеме `ItemOut`.",
+    "tags": [
+      "response-model",
+      "pydantic",
+      "serialization"
+    ]
+  },
+  {
+    "id": "f184",
+    "domain": "fastapi",
+    "content": "Параметр `response_model_exclude_unset=True` в декораторе endpoint исключает из ответа поля Pydantic-модели, которые не были явно установлены.",
+    "tags": [
+      "response-model",
+      "pydantic",
+      "serialization"
+    ]
+  },
+  {
+    "id": "f185",
+    "domain": "fastapi",
+    "content": "Аутентификация через OAuth2 с паролем реализуется с помощью `OAuth2PasswordBearer(tokenUrl='token')`; схема автоматически отображается в Swagger UI.",
+    "tags": [
+      "oauth2",
+      "authentication",
+      "security"
+    ]
+  },
+  {
+    "id": "f186",
+    "domain": "fastapi",
+    "content": "JWT-токены верифицируются вручную; FastAPI не включает встроенной поддержки JWT — рекомендуется библиотека `python-jose` с вызовом `jwt.decode(token, SECRET_KEY, algorithms=['HS256'])`.",
+    "tags": [
+      "jwt",
+      "authentication",
+      "python-jose"
+    ]
+  },
+  {
+    "id": "f187",
+    "domain": "fastapi",
+    "content": "Тестирование FastAPI-приложений выполняется через `TestClient` из `starlette.testclient`: `client = TestClient(app)`, после чего доступны методы `client.get()`, `client.post()` и др.",
+    "tags": [
+      "testing",
+      "testclient",
+      "starlette"
+    ]
+  },
+  {
+    "id": "f188",
+    "domain": "fastapi",
+    "content": "Для тестирования async-endpoint используется `httpx.AsyncClient` с `transport=ASGITransport(app=app)` и `async with AsyncClient(...) as client:` в pytest-asyncio.",
+    "tags": [
+      "testing",
+      "httpx",
+      "async"
+    ]
+  },
+  {
+    "id": "f189",
+    "domain": "fastapi",
+    "content": "Ошибка `422 Unprocessable Entity` возникает при несоответствии типов входных данных объявленной Pydantic-схеме; тело ответа содержит массив `errors` с описанием каждого нарушения.",
+    "tags": [
+      "validation",
+      "422",
+      "pydantic"
+    ]
+  },
+  {
+    "id": "f190",
+    "domain": "fastapi",
+    "content": "Параметр `openapi_extra` в декораторе endpoint позволяет добавлять произвольные поля в OpenAPI-схему: `@app.get('/items/', openapi_extra={'x-internal': True})`.",
+    "tags": [
+      "openapi",
+      "customization",
+      "schema"
+    ]
+  },
+  {
+    "id": "f191",
+    "domain": "fastapi",
+    "content": "Версионирование API реализуется через несколько `APIRouter` с разными префиксами (`/v1`, `/v2`) или через отдельные экземпляры `FastAPI`, смонтированные через `app.mount()`.",
+    "tags": [
+      "versioning",
+      "router",
+      "architecture"
+    ]
+  },
+  {
+    "id": "f192",
+    "domain": "fastapi",
+    "content": "Объект `Request` из `starlette.requests` предоставляет прямой доступ к сырым данным запроса: `await request.body()` возвращает тело как `bytes`.",
+    "tags": [
+      "request",
+      "starlette",
+      "raw-body"
+    ]
+  },
+  {
+    "id": "f193",
+    "domain": "fastapi",
+    "content": "Кастомный `JSONResponse` с нестандартными заголовками создаётся как `JSONResponse(content={'key': 'val'}, headers={'X-Custom': 'value'}, status_code=200)`.",
+    "tags": [
+      "response",
+      "jsonresponse",
+      "headers"
+    ]
+  },
+  {
+    "id": "f194",
+    "domain": "fastapi",
+    "content": "Для возврата HTML-контента используется `HTMLResponse` из `fastapi.responses`; тип содержимого устанавливается автоматически как `text/html; charset=utf-8`.",
+    "tags": [
+      "response",
+      "htmlresponse",
+      "content-type"
+    ]
+  },
+  {
+    "id": "f195",
+    "domain": "fastapi",
+    "content": "Параметр `include_in_schema=False` в декораторе endpoint исключает маршрут из генерируемой OpenAPI-документации, не влияя на его функциональность.",
+    "tags": [
+      "openapi",
+      "schema",
+      "routing"
+    ]
+  },
+  {
+    "id": "f196",
+    "domain": "fastapi",
+    "content": "Gunicorn с Uvicorn-воркерами запускается командой `gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000` для production-деплоя.",
+    "tags": [
+      "gunicorn",
+      "deployment",
+      "production"
+    ]
+  },
+  {
+    "id": "f197",
+    "domain": "fastapi",
+    "content": "Pydantic v2, используемый в FastAPI >= 0.100.0, требует замены `validator` на `field_validator` и `root_validator` на `model_validator` при миграции с Pydantic v1.",
+    "tags": [
+      "pydantic-v2",
+      "migration",
+      "validators"
+    ]
+  },
+  {
+    "id": "f198",
+    "domain": "fastapi",
+    "content": "Настройки приложения рекомендуется хранить в классе, наследующем `pydantic_settings.BaseSettings`; переменные окружения автоматически загружаются и валидируются при инициализации.",
+    "tags": [
+      "settings",
+      "pydantic-settings",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f199",
+    "domain": "fastapi",
+    "content": "WebSocket-соединение обрабатывается через `@app.websocket('/ws')` с параметром `websocket: WebSocket`; данные принимаются через `await websocket.receive_text()` и отправляются через `await websocket.send_text()`.",
+    "tags": [
+      "websocket",
+      "realtime",
+      "async"
+    ]
+  },
+  {
+    "id": "f200",
+    "domain": "fastapi",
+    "content": "Ограничение размера загружаемого файла не встроено в FastAPI; оно настраивается на уровне ASGI-сервера, например через параметр `--limit-max-requests` Uvicorn или конфигурацию reverse proxy (nginx: `client_max_body_size`).",
+    "tags": [
+      "file-upload",
+      "limits",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f201",
+    "domain": "react",
+    "content": "Компонент перерисовывается при каждом изменении состояния родителя, если не обёрнут в `React.memo`; мемоизация предотвращает повторный рендер при неизменных props.",
+    "tags": [
+      "memo",
+      "rendering",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f202",
+    "domain": "react",
+    "content": "Хук `useEffect` с пустым массивом зависимостей `[]` выполняется ровно один раз после монтирования компонента и не реагирует на последующие обновления.",
+    "tags": [
+      "useEffect",
+      "lifecycle",
+      "hooks"
+    ]
+  },
+  {
+    "id": "f203",
+    "domain": "react",
+    "content": "При использовании `useLayoutEffect` колбэк выполняется синхронно после всех DOM-мутаций, но до отрисовки браузером, что может блокировать визуальное обновление.",
+    "tags": [
+      "useLayoutEffect",
+      "DOM",
+      "hooks"
+    ]
+  },
+  {
+    "id": "f204",
+    "domain": "react",
+    "content": "Функция `ReactDOM.createRoot(container)` активирует Concurrent Mode; использование устаревшего `ReactDOM.render()` переводит приложение в Legacy Mode без поддержки concurrent-функций.",
+    "tags": [
+      "createRoot",
+      "concurrent",
+      "ReactDOM"
+    ]
+  },
+  {
+    "id": "f205",
+    "domain": "react",
+    "content": "Ошибка `Warning: Each child in a list should have a unique \"key\" prop` возникает при рендере массива элементов без атрибута `key` или при использовании индекса массива в качестве `key` при мутабельных списках.",
+    "tags": [
+      "key",
+      "list",
+      "warning"
+    ]
+  },
+  {
+    "id": "f206",
+    "domain": "react",
+    "content": "`useMemo` принимает функцию-фабрику и массив зависимостей; пересчёт мемоизированного значения происходит только при изменении хотя бы одного элемента массива зависимостей.",
+    "tags": [
+      "useMemo",
+      "memoization",
+      "hooks"
+    ]
+  },
+  {
+    "id": "f207",
+    "domain": "react",
+    "content": "Хук `useCallback` возвращает мемоизированную ссылку на функцию; без него передача inline-функции в дочерний компонент создаёт новую ссылку при каждом рендере, нарушая оптимизацию `React.memo`.",
+    "tags": [
+      "useCallback",
+      "reference",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f208",
+    "domain": "react",
+    "content": "`React.StrictMode` в режиме разработки намеренно вызывает двойной вызов функций компонентов и хуков `useState`/`useReducer` для выявления побочных эффектов.",
+    "tags": [
+      "StrictMode",
+      "development",
+      "debugging"
+    ]
+  },
+  {
+    "id": "f209",
+    "domain": "react",
+    "content": "Контекст `React.createContext(defaultValue)` использует `defaultValue` только когда компонент не имеет соответствующего `Provider` выше в дереве; значение `undefined` не заменяется `defaultValue`.",
+    "tags": [
+      "createContext",
+      "Context",
+      "Provider"
+    ]
+  },
+  {
+    "id": "f210",
+    "domain": "react",
+    "content": "Обновление состояния через `setState` в классовых компонентах является асинхронным; для получения актуального состояния после обновления необходимо использовать колбэк `setState(updater, callback)`.",
+    "tags": [
+      "setState",
+      "class-component",
+      "async"
+    ]
+  },
+  {
+    "id": "f211",
+    "domain": "react",
+    "content": "Хук `useReducer(reducer, initialState)` предпочтителен перед `useState` при наличии сложной логики состояния с несколькими подзначениями или когда следующее состояние зависит от предыдущего.",
+    "tags": [
+      "useReducer",
+      "state",
+      "hooks"
+    ]
+  },
+  {
+    "id": "f212",
+    "domain": "react",
+    "content": "Функция `React.lazy(() => import('./Component'))` реализует динамический импорт компонента; компонент обязательно должен быть обёрнут в `<Suspense fallback={...}>`, иначе выбрасывается ошибка.",
+    "tags": [
+      "lazy",
+      "Suspense",
+      "code-splitting"
+    ]
+  },
+  {
+    "id": "f213",
+    "domain": "react",
+    "content": "Метод жизненного цикла `componentDidCatch(error, info)` перехватывает ошибки в дочерних компонентах; `info.componentStack` содержит трассировку стека компонентов.",
+    "tags": [
+      "componentDidCatch",
+      "error-boundary",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "f214",
+    "domain": "react",
+    "content": "`ReactDOM.createPortal(child, container)` рендерит дочерний элемент в DOM-узел вне иерархии родительского компонента, при этом события всплывают по дереву React, а не по дереву DOM.",
+    "tags": [
+      "createPortal",
+      "portal",
+      "events"
+    ]
+  },
+  {
+    "id": "f215",
+    "domain": "react",
+    "content": "Атрибут `ref` не передаётся как prop по умолчанию; для передачи `ref` в функциональный компонент необходимо использовать `React.forwardRef((props, ref) => ...)`.",
+    "tags": [
+      "forwardRef",
+      "ref",
+      "props"
+    ]
+  },
+  {
+    "id": "f216",
+    "domain": "react",
+    "content": "Хук `useImperativeHandle(ref, createHandle, deps)` позволяет кастомизировать значение экземпляра, доступное родительскому компоненту через `ref`, и должен использоваться совместно с `forwardRef`.",
+    "tags": [
+      "useImperativeHandle",
+      "ref",
+      "hooks"
+    ]
+  },
+  {
+    "id": "f217",
+    "domain": "react",
+    "content": "Синтетические события React (`SyntheticEvent`) объединяются в пул и обнуляются после вызова обработчика; обращение к свойствам события в асинхронном коде требует вызова `event.persist()`.",
+    "tags": [
+      "SyntheticEvent",
+      "event-pooling",
+      "async"
+    ]
+  },
+  {
+    "id": "f218",
+    "domain": "react",
+    "content": "Свойство `dangerouslySetInnerHTML={{ __html: markup }}` устанавливает HTML-содержимое напрямую, минуя виртуальный DOM; использование без санитизации создаёт уязвимость XSS.",
+    "tags": [
+      "dangerouslySetInnerHTML",
+      "XSS",
+      "security"
+    ]
+  },
+  {
+    "id": "f219",
+    "domain": "react",
+    "content": "Хук `useRef` возвращает мутабельный объект `{ current: initialValue }`, изменение `.current` не вызывает повторного рендера компонента.",
+    "tags": [
+      "useRef",
+      "mutable",
+      "rendering"
+    ]
+  },
+  {
+    "id": "f220",
+    "domain": "react",
+    "content": "Алгоритм согласования (reconciliation) React использует эвристику O(n): при изменении типа элемента старое поддерево полностью уничтожается и создаётся новое.",
+    "tags": [
+      "reconciliation",
+      "diffing",
+      "algorithm"
+    ]
+  },
+  {
+    "id": "f221",
+    "domain": "react",
+    "content": "Метод `shouldComponentUpdate(nextProps, nextState)` должен возвращать `false` для предотвращения рендера; `PureComponent` реализует поверхностное сравнение props и state автоматически.",
+    "tags": [
+      "shouldComponentUpdate",
+      "PureComponent",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f222",
+    "domain": "react",
+    "content": "Функция `flushSync(callback)` из `react-dom` принудительно выполняет все обновления состояния внутри колбэка синхронно, отключая автоматическую батчинг-оптимизацию React 18.",
+    "tags": [
+      "flushSync",
+      "batching",
+      "react-dom"
+    ]
+  },
+  {
+    "id": "f223",
+    "domain": "react",
+    "content": "Начиная с React 18, все обновления состояния автоматически батчируются (Automatic Batching), включая обновления внутри `setTimeout`, `Promise` и нативных обработчиков событий.",
+    "tags": [
+      "batching",
+      "react18",
+      "state"
+    ]
+  },
+  {
+    "id": "f224",
+    "domain": "react",
+    "content": "Хук `useTransition` возвращает `[isPending, startTransition]`; обновления, обёрнутые в `startTransition`, помечаются как некритичные и могут прерываться более приоритетными обновлениями.",
+    "tags": [
+      "useTransition",
+      "concurrent",
+      "priority"
+    ]
+  },
+  {
+    "id": "f225",
+    "domain": "react",
+    "content": "Хук `useDeferredValue(value)` возвращает отложенную версию значения; React откладывает обновление отложенного значения, позволяя UI оставаться отзывчивым при тяжёлых вычислениях.",
+    "tags": [
+      "useDeferredValue",
+      "concurrent",
+      "performance"
+    ]
+  },
+  {
+    "id": "f226",
+    "domain": "react",
+    "content": "Ошибка `Too many re-renders. React limits the number of renders to prevent an infinite loop` возникает при безусловном вызове `setState` внутри тела функционального компонента.",
+    "tags": [
+      "infinite-loop",
+      "setState",
+      "error"
+    ]
+  },
+  {
+    "id": "f227",
+    "domain": "react",
+    "content": "Атрибут `key` при изменении значения заставляет React полностью размонтировать и заново монтировать компонент; это используется как паттерн принудительного сброса состояния.",
+    "tags": [
+      "key",
+      "remount",
+      "state-reset"
+    ]
+  },
+  {
+    "id": "f228",
+    "domain": "react",
+    "content": "Функция `React.Children.map(children, fn)` корректно обрабатывает `null`, `undefined` и вложенные массивы; прямое использование `Array.prototype.map` на `children` может вызвать ошибки.",
+    "tags": [
+      "React.Children",
+      "children",
+      "API"
+    ]
+  },
+  {
+    "id": "f229",
+    "domain": "react",
+    "content": "Хук `useId()`, добавленный в React 18, генерирует стабильный уникальный идентификатор, согласованный между сервером и клиентом; не предназначен для использования в качестве `key` в списках.",
+    "tags": [
+      "useId",
+      "SSR",
+      "react18"
+    ]
+  },
+  {
+    "id": "f230",
+    "domain": "react",
+    "content": "Метод `getSnapshotBeforeUpdate(prevProps, prevState)` вызывается непосредственно перед фиксацией изменений в DOM; возвращаемое значение передаётся третьим аргументом в `componentDidUpdate`.",
+    "tags": [
+      "getSnapshotBeforeUpdate",
+      "lifecycle",
+      "DOM"
+    ]
+  },
+  {
+    "id": "f231",
+    "domain": "react",
+    "content": "Серверный рендеринг выполняется через `ReactDOMServer.renderToString(element)`, возвращающий HTML-строку; гидратация на клиенте производится методом `ReactDOM.hydrateRoot(container, element)`.",
+    "tags": [
+      "SSR",
+      "renderToString",
+      "hydration"
+    ]
+  },
+  {
+    "id": "f232",
+    "domain": "react",
+    "content": "Предупреждение `Warning: Can't perform a React state update on an unmounted component` возникает при вызове `setState` после размонтирования; устраняется отменой асинхронных операций в cleanup-функции `useEffect`.",
+    "tags": [
+      "unmounted",
+      "memory-leak",
+      "useEffect"
+    ]
+  },
+  {
+    "id": "f233",
+    "domain": "react",
+    "content": "`React.Fragment` (`<>...</>`) позволяет возвращать несколько элементов без добавления лишнего DOM-узла; сокращённый синтаксис `<>` не поддерживает атрибут `key`.",
+    "tags": [
+      "Fragment",
+      "JSX",
+      "DOM"
+    ]
+  },
+  {
+    "id": "f234",
+    "domain": "react",
+    "content": "Свойство `defaultProps` в функциональных компонентах объявляется как `ComponentName.defaultProps = {...}`; в React 18.3+ использование `defaultProps` для функциональных компонентов помечено как устаревшее.",
+    "tags": [
+      "defaultProps",
+      "deprecated",
+      "props"
+    ]
+  },
+  {
+    "id": "f235",
+    "domain": "react",
+    "content": "Хук `useContext(MyContext)` вызывает повторный рендер компонента при каждом изменении значения контекста, даже если компонент использует только часть этого значения.",
+    "tags": [
+      "useContext",
+      "re-render",
+      "performance"
+    ]
+  },
+  {
+    "id": "f236",
+    "domain": "react",
+    "content": "Функция `React.cloneElement(element, props, ...children)` создаёт копию React-элемента с объединёнными props; новые props имеют приоритет над оригинальными, за исключением `children`.",
+    "tags": [
+      "cloneElement",
+      "props",
+      "API"
+    ]
+  },
+  {
+    "id": "f237",
+    "domain": "react",
+    "content": "Паттерн Render Props реализуется передачей функции как значения prop; компонент вызывает эту функцию с внутренними данными, что обеспечивает повторное использование логики без HOC.",
+    "tags": [
+      "render-props",
+      "pattern",
+      "composition"
+    ]
+  },
+  {
+    "id": "f238",
+    "domain": "react",
+    "content": "Хук `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` предназначен для подписки на внешние хранилища данных с гарантией согласованности в Concurrent Mode.",
+    "tags": [
+      "useSyncExternalStore",
+      "concurrent",
+      "external-store"
+    ]
+  },
+  {
+    "id": "f239",
+    "domain": "react",
+    "content": "Компилятор React Compiler (React Forget), стабилизированный в 2024 году, автоматически применяет мемоизацию на уровне компилятора, устраняя необходимость ручного использования `useMemo` и `useCallback`.",
+    "tags": [
+      "React-Compiler",
+      "memoization",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f240",
+    "domain": "react",
+    "content": "Метод `ReactDOM.unmountComponentAtNode(container)` синхронно размонтирует React-дерево из DOM-узла и возвращает `true` при успехе; в React 18 заменён методом `root.unmount()`.",
+    "tags": [
+      "unmountComponentAtNode",
+      "unmount",
+      "ReactDOM"
+    ]
+  },
+  {
+    "id": "f241",
+    "domain": "docker",
+    "content": "Демон Docker по умолчанию слушает Unix-сокет `/var/run/docker.sock`; для удалённого доступа необходимо явно указать `-H tcp://0.0.0.0:2376` в конфигурации `/etc/docker/daemon.json`.",
+    "tags": [
+      "daemon",
+      "socket",
+      "networking"
+    ]
+  },
+  {
+    "id": "f242",
+    "domain": "docker",
+    "content": "Параметр `--memory` ограничивает потребление RAM контейнером; при превышении лимита ядро генерирует OOM-kill, что фиксируется в `docker inspect` как `OOMKilled: true`.",
+    "tags": [
+      "resources",
+      "memory",
+      "oom"
+    ]
+  },
+  {
+    "id": "f243",
+    "domain": "docker",
+    "content": "Флаг `--memory-swap` задаёт суммарный лимит RAM + swap; значение `-1` отключает ограничение swap, а значение, равное `--memory`, полностью запрещает использование swap.",
+    "tags": [
+      "resources",
+      "memory",
+      "swap"
+    ]
+  },
+  {
+    "id": "f244",
+    "domain": "docker",
+    "content": "Инструкция `COPY --chown=user:group` в `Dockerfile` устанавливает владельца файлов на этапе сборки без дополнительного слоя `RUN chown`, что уменьшает итоговый размер образа.",
+    "tags": [
+      "dockerfile",
+      "build",
+      "permissions"
+    ]
+  },
+  {
+    "id": "f245",
+    "domain": "docker",
+    "content": "Команда `docker build --no-cache` принудительно отключает кэш слоёв; каждый шаг `RUN`, `COPY` и `ADD` выполняется заново независимо от наличия кэшированных слоёв.",
+    "tags": [
+      "build",
+      "cache",
+      "layers"
+    ]
+  },
+  {
+    "id": "f246",
+    "domain": "docker",
+    "content": "Сеть типа `overlay` требует активного Swarm-кластера или внешнего key-value хранилища (etcd/Consul); без инициализации Swarm команда `docker network create --driver overlay` завершается ошибкой.",
+    "tags": [
+      "networking",
+      "overlay",
+      "swarm"
+    ]
+  },
+  {
+    "id": "f247",
+    "domain": "docker",
+    "content": "Параметр `--cpus` ограничивает долю процессорного времени контейнера; значение `--cpus=1.5` разрешает использование не более 1.5 логических ядер через механизм CFS-квот ядра Linux.",
+    "tags": [
+      "resources",
+      "cpu",
+      "cgroups"
+    ]
+  },
+  {
+    "id": "f248",
+    "domain": "docker",
+    "content": "Директива `HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost/` определяет проверку работоспособности; статус контейнера переходит в `unhealthy` после трёх последовательных неудач.",
+    "tags": [
+      "dockerfile",
+      "healthcheck",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f249",
+    "domain": "docker",
+    "content": "Драйвер хранилища `overlay2` является рекомендуемым для Linux-ядер версии 4.0 и выше; драйвер `devicemapper` в режиме `loop-lvm` официально не рекомендуется для production-окружений.",
+    "tags": [
+      "storage",
+      "overlay2",
+      "drivers"
+    ]
+  },
+  {
+    "id": "f250",
+    "domain": "docker",
+    "content": "Команда `docker system prune -a --volumes` удаляет все остановленные контейнеры, неиспользуемые образы, сети и тома; операция необратима и не запрашивает подтверждения при флаге `--force`.",
+    "tags": [
+      "maintenance",
+      "cleanup",
+      "volumes"
+    ]
+  },
+  {
+    "id": "f251",
+    "domain": "docker",
+    "content": "Переменная окружения `DOCKER_BUILDKIT=1` активирует BuildKit-бэкенд, обеспечивающий параллельное выполнение независимых шагов сборки и монтирование секретов через `RUN --mount=type=secret`.",
+    "tags": [
+      "buildkit",
+      "build",
+      "secrets"
+    ]
+  },
+  {
+    "id": "f252",
+    "domain": "docker",
+    "content": "Флаг `--pid=host` передаёт контейнеру пространство имён PID хост-системы; контейнер получает доступ к процессам хоста через `/proc`, что создаёт существенный риск безопасности.",
+    "tags": [
+      "security",
+      "namespaces",
+      "pid"
+    ]
+  },
+  {
+    "id": "f253",
+    "domain": "docker",
+    "content": "Инструкция `ARG` в `Dockerfile` объявляет переменную, доступную только во время сборки; в отличие от `ENV`, значения `ARG` не сохраняются в итоговом образе и недоступны в запущенном контейнере.",
+    "tags": [
+      "dockerfile",
+      "build",
+      "variables"
+    ]
+  },
+  {
+    "id": "f254",
+    "domain": "docker",
+    "content": "Команда `docker exec -it <container> nsenter -t 1 -m -u -i -n -p` позволяет войти в пространства имён PID 1 контейнера; требует привилегий `CAP_SYS_PTRACE` или запуска от root.",
+    "tags": [
+      "debugging",
+      "namespaces",
+      "exec"
+    ]
+  },
+  {
+    "id": "f255",
+    "domain": "docker",
+    "content": "Параметр `--log-driver=json-file` является драйвером логирования по умолчанию; без указания `--log-opt max-size` и `--log-opt max-file` лог-файлы растут неограниченно, что может исчерпать дисковое пространство.",
+    "tags": [
+      "logging",
+      "json-file",
+      "storage"
+    ]
+  },
+  {
+    "id": "f256",
+    "domain": "docker",
+    "content": "Сеть `bridge` по умолчанию не обеспечивает DNS-разрешение по имени контейнера; для межконтейнерного DNS необходимо создать пользовательскую bridge-сеть командой `docker network create`.",
+    "tags": [
+      "networking",
+      "bridge",
+      "dns"
+    ]
+  },
+  {
+    "id": "f257",
+    "domain": "docker",
+    "content": "Инструкция `ENTRYPOINT [\"executable\"]` в exec-форме не запускает shell-оболочку; переменные окружения типа `$HOME` не раскрываются, если не использовать форму `ENTRYPOINT [\"sh\", \"-c\", \"...\"]`.",
+    "tags": [
+      "dockerfile",
+      "entrypoint",
+      "shell"
+    ]
+  },
+  {
+    "id": "f258",
+    "domain": "docker",
+    "content": "Команда `docker save -o image.tar <image>` экспортирует образ со всеми слоями и метаданными; `docker export -o container.tar <container>` экспортирует только файловую систему без истории слоёв.",
+    "tags": [
+      "images",
+      "export",
+      "layers"
+    ]
+  },
+  {
+    "id": "f259",
+    "domain": "docker",
+    "content": "Параметр `--restart=on-failure:5` перезапускает контейнер при ненулевом коде завершения не более 5 раз; политика `unless-stopped` игнорирует ручную остановку через `docker stop`.",
+    "tags": [
+      "restart",
+      "policy",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "f260",
+    "domain": "docker",
+    "content": "Флаг `--security-opt no-new-privileges` запрещает процессам контейнера повышать привилегии через `setuid`-бинарники или `execve`; реализуется через `PR_SET_NO_NEW_PRIVS` системного вызова `prctl`.",
+    "tags": [
+      "security",
+      "privileges",
+      "capabilities"
+    ]
+  },
+  {
+    "id": "f261",
+    "domain": "docker",
+    "content": "Команда `docker manifest inspect <image>` возвращает multi-platform манифест образа; поле `manifests[].platform.architecture` содержит целевую архитектуру (`amd64`, `arm64`, `arm/v7`).",
+    "tags": [
+      "manifest",
+      "multiplatform",
+      "registry"
+    ]
+  },
+  {
+    "id": "f262",
+    "domain": "docker",
+    "content": "Параметр `--device-write-bps /dev/sda:10mb` ограничивает скорость записи контейнера на блочное устройство через cgroup blkio; аналогичный параметр `--device-read-bps` ограничивает чтение.",
+    "tags": [
+      "resources",
+      "io",
+      "cgroups"
+    ]
+  },
+  {
+    "id": "f263",
+    "domain": "docker",
+    "content": "Инструкция `ONBUILD` в `Dockerfile` регистрирует триггер, выполняемый при использовании данного образа как базового в другом `Dockerfile`; триггеры не наследуются на второй уровень вложенности.",
+    "tags": [
+      "dockerfile",
+      "onbuild",
+      "build"
+    ]
+  },
+  {
+    "id": "f264",
+    "domain": "docker",
+    "content": "Команда `docker stats --no-stream --format \"{{.MemUsage}}\"` выводит текущее потребление памяти контейнером в формате `used / limit`; данные берутся из `/sys/fs/cgroup/memory/memory.usage_in_bytes`.",
+    "tags": [
+      "monitoring",
+      "stats",
+      "memory"
+    ]
+  },
+  {
+    "id": "f265",
+    "domain": "docker",
+    "content": "Флаг `--ipc=host` разделяет пространство имён IPC между контейнером и хостом; это позволяет использовать разделяемую память (`/dev/shm`) хоста, но нарушает изоляцию контейнера.",
+    "tags": [
+      "security",
+      "ipc",
+      "namespaces"
+    ]
+  },
+  {
+    "id": "f266",
+    "domain": "docker",
+    "content": "Параметр `--ulimit nofile=1024:1024` устанавливает лимит открытых файловых дескрипторов; значение по умолчанию наследуется от демона Docker, которое задаётся в `/etc/docker/daemon.json` ключом `default-ulimits`.",
+    "tags": [
+      "resources",
+      "ulimits",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f267",
+    "domain": "docker",
+    "content": "Команда `docker buildx build --platform linux/amd64,linux/arm64 --push -t registry/image:tag .` собирает и публикует multi-arch образ; требует наличия QEMU-эмуляторов и активного buildx-билдера.",
+    "tags": [
+      "buildx",
+      "multiplatform",
+      "build"
+    ]
+  },
+  {
+    "id": "f268",
+    "domain": "docker",
+    "content": "Файл `.dockerignore` поддерживает синтаксис glob-паттернов; строка `**/*.log` исключает все `.log`-файлы из build-контекста рекурсивно, что снижает размер контекста, передаваемого демону.",
+    "tags": [
+      "build",
+      "dockerignore",
+      "context"
+    ]
+  },
+  {
+    "id": "f269",
+    "domain": "docker",
+    "content": "Параметр `--network=none` изолирует контейнер от всех сетей; контейнер имеет только loopback-интерфейс `lo` и не может устанавливать сетевые соединения.",
+    "tags": [
+      "networking",
+      "isolation",
+      "security"
+    ]
+  },
+  {
+    "id": "f270",
+    "domain": "docker",
+    "content": "Команда `docker volume inspect <volume>` возвращает поле `Mountpoint`, указывающее физический путь тома на хосте; для драйвера `local` путь имеет вид `/var/lib/docker/volumes/<name>/_data`.",
+    "tags": [
+      "volumes",
+      "storage",
+      "inspect"
+    ]
+  },
+  {
+    "id": "f271",
+    "domain": "docker",
+    "content": "Инструкция `RUN --mount=type=cache,target=/root/.cache/pip` в BuildKit кэширует директорию между сборками; кэш не включается в финальный образ и хранится в отдельном слое BuildKit.",
+    "tags": [
+      "buildkit",
+      "cache",
+      "build"
+    ]
+  },
+  {
+    "id": "f272",
+    "domain": "docker",
+    "content": "Параметр `--cap-drop=ALL --cap-add=NET_BIND_SERVICE` реализует принцип минимальных привилегий; без явного добавления `NET_BIND_SERVICE` контейнер не может биндить порты ниже 1024.",
+    "tags": [
+      "security",
+      "capabilities",
+      "networking"
+    ]
+  },
+  {
+    "id": "f273",
+    "domain": "docker",
+    "content": "Команда `docker inspect --format='{{.State.ExitCode}}' <container>` возвращает код завершения контейнера; код `137` соответствует завершению сигналом `SIGKILL` (128 + 9), типичному для OOM-kill.",
+    "tags": [
+      "inspect",
+      "exitcode",
+      "debugging"
+    ]
+  },
+  {
+    "id": "f274",
+    "domain": "docker",
+    "content": "Параметр `--tmpfs /tmp:rw,noexec,nosuid,size=100m` монтирует tmpfs в контейнер с ограничением размера 100 МБ и флагами безопасности; данные не сохраняются после остановки контейнера.",
+    "tags": [
+      "storage",
+      "tmpfs",
+      "security"
+    ]
+  },
+  {
+    "id": "f275",
+    "domain": "docker",
+    "content": "Команда `docker network connect --ip 172.20.0.5 <network> <container>` подключает работающий контейнер к сети с указанным статическим IP; статические IP поддерживаются только в пользовательских сетях.",
+    "tags": [
+      "networking",
+      "ip",
+      "connect"
+    ]
+  },
+  {
+    "id": "f276",
+    "domain": "docker",
+    "content": "Параметр `--read-only` монтирует корневую файловую систему контейнера в режиме только для чтения; приложения, требующие записи, должны использовать явно объявленные тома или `--tmpfs`.",
+    "tags": [
+      "security",
+      "filesystem",
+      "readonly"
+    ]
+  },
+  {
+    "id": "f277",
+    "domain": "docker",
+    "content": "Команда `docker image prune --filter \"until=24h\"` удаляет dangling-образы старше 24 часов; фильтр `label=<key>=<value>` позволяет удалять образы по метке, заданной инструкцией `LABEL` в `Dockerfile`.",
+    "tags": [
+      "images",
+      "cleanup",
+      "filter"
+    ]
+  },
+  {
+    "id": "f278",
+    "domain": "docker",
+    "content": "Параметр `--dns 8.8.8.8 --dns-search example.com` переопределяет DNS-настройки контейнера; без явного указания контейнер наследует настройки из `resolv.conf` хоста или конфигурации демона.",
+    "tags": [
+      "networking",
+      "dns",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f279",
+    "domain": "docker",
+    "content": "Инструкция `STOPSIGNAL SIGTERM` задаёт сигнал, отправляемый PID 1 контейнера при `docker stop`; если процесс не завершается в течение `--time` секунд (по умолчанию 10), отправляется `SIGKILL`.",
+    "tags": [
+      "dockerfile",
+      "signals",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "f280",
+    "domain": "docker",
+    "content": "Команда `docker trust sign <image>:<tag>` подписывает образ с использованием Docker Content Trust (Notary); переменная `DOCKER_CONTENT_TRUST=1` принудительно требует верификацию подписи при `docker pull`.",
+    "tags": [
+      "security",
+      "trust",
+      "registry"
+    ]
+  },
+  {
+    "id": "f281",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.memory.index_buffer_size` по умолчанию равен `10%` от heap и определяет объём памяти, выделяемой для буферизации операций индексирования перед flush.",
+    "tags": [
+      "memory",
+      "indexing",
+      "heap"
+    ]
+  },
+  {
+    "id": "f282",
+    "domain": "elasticsearch",
+    "content": "При превышении лимита `indices.breaker.total.limit` (по умолчанию `95%` heap) Elasticsearch выбрасывает исключение `CircuitBreakingException` и отклоняет запрос.",
+    "tags": [
+      "circuit-breaker",
+      "memory",
+      "exception"
+    ]
+  },
+  {
+    "id": "f283",
+    "domain": "elasticsearch",
+    "content": "Параметр `bootstrap.memory_lock: true` в `elasticsearch.yml` предотвращает выгрузку JVM heap в swap, что критично для стабильной производительности поиска.",
+    "tags": [
+      "memory-lock",
+      "jvm",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f284",
+    "domain": "elasticsearch",
+    "content": "Fielddata circuit breaker управляется параметром `indices.breaker.fielddata.limit`, значение по умолчанию — `40%` heap; превышение вызывает `CircuitBreakingException: [fielddata]`.",
+    "tags": [
+      "fielddata",
+      "circuit-breaker",
+      "memory"
+    ]
+  },
+  {
+    "id": "f285",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_nodes/stats/jvm` возвращает метрики `jvm.mem.heap_used_percent` и `jvm.mem.heap_max_in_bytes` для мониторинга потребления heap на каждом узле.",
+    "tags": [
+      "monitoring",
+      "jvm",
+      "api"
+    ]
+  },
+  {
+    "id": "f286",
+    "domain": "elasticsearch",
+    "content": "Размер heap JVM задаётся переменными окружения `ES_JAVA_OPTS=\"-Xms4g -Xmx4g\"`; рекомендуется устанавливать `-Xms` и `-Xmx` равными для исключения динамического перераспределения памяти.",
+    "tags": [
+      "jvm",
+      "heap",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f287",
+    "domain": "elasticsearch",
+    "content": "Максимальный рекомендуемый размер heap составляет `31 GB` из-за ограничений Compressed Ordinary Object Pointers (CompressedOops) в JVM; превышение этого значения увеличивает размер указателей с 32 до 64 бит.",
+    "tags": [
+      "heap",
+      "jvm",
+      "compressed-oops"
+    ]
+  },
+  {
+    "id": "f288",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.queries.cache.size` (по умолчанию `10%` heap) контролирует размер query cache, хранящего результаты часто выполняемых фильтров на уровне сегмента.",
+    "tags": [
+      "query-cache",
+      "memory",
+      "performance"
+    ]
+  },
+  {
+    "id": "f289",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_cat/nodes?v&h=name,heap.percent,heap.current,heap.max` выводит текущее использование heap в удобочитаемом формате для всех узлов кластера.",
+    "tags": [
+      "monitoring",
+      "heap",
+      "cat-api"
+    ]
+  },
+  {
+    "id": "f290",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.requests.cache.size` (по умолчанию `1%` heap) определяет размер request cache, кэширующего результаты поисковых запросов с `size=0` на уровне шарда.",
+    "tags": [
+      "request-cache",
+      "memory",
+      "caching"
+    ]
+  },
+  {
+    "id": "f291",
+    "domain": "elasticsearch",
+    "content": "Сегменты Lucene хранятся в файловой системе и отображаются в память через `mmap` (тип `mmapfs`); параметр `index.store.type: mmapfs` используется по умолчанию на 64-битных системах.",
+    "tags": [
+      "lucene",
+      "mmap",
+      "storage"
+    ]
+  },
+  {
+    "id": "f292",
+    "domain": "elasticsearch",
+    "content": "Ошибка `OutOfMemoryError: Java heap space` в логах Elasticsearch свидетельствует об исчерпании heap и требует увеличения `-Xmx` или оптимизации запросов.",
+    "tags": [
+      "oom",
+      "jvm",
+      "error"
+    ]
+  },
+  {
+    "id": "f293",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.breaker.request.limit` (по умолчанию `60%` heap) ограничивает память, используемую для обработки одного запроса, включая агрегации и сортировки.",
+    "tags": [
+      "circuit-breaker",
+      "request",
+      "memory"
+    ]
+  },
+  {
+    "id": "f294",
+    "domain": "elasticsearch",
+    "content": "Команда `PUT /_cluster/settings` с телом `{\"transient\": {\"indices.breaker.total.limit\": \"85%\"}}` динамически изменяет лимит total circuit breaker без перезапуска кластера.",
+    "tags": [
+      "circuit-breaker",
+      "cluster-settings",
+      "api"
+    ]
+  },
+  {
+    "id": "f295",
+    "domain": "elasticsearch",
+    "content": "Параметр `index.codec: best_compression` использует алгоритм DEFLATE вместо LZ4 по умолчанию, снижая размер индекса на диске за счёт увеличения нагрузки на CPU при индексировании.",
+    "tags": [
+      "compression",
+      "codec",
+      "storage"
+    ]
+  },
+  {
+    "id": "f296",
+    "domain": "elasticsearch",
+    "content": "Fielddata загружается в heap при первом обращении к полю типа `text` для сортировки или агрегации; для снижения потребления памяти рекомендуется использовать поля типа `keyword`.",
+    "tags": [
+      "fielddata",
+      "memory",
+      "mapping"
+    ]
+  },
+  {
+    "id": "f297",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_nodes/stats/indices/segments` возвращает метрику `segments.memory_in_bytes`, отражающую объём памяти, занятой метаданными сегментов Lucene.",
+    "tags": [
+      "segments",
+      "memory",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f298",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.fielddata.cache.size` ограничивает размер fielddata cache; при достижении лимита наименее используемые данные вытесняются по алгоритму LRU.",
+    "tags": [
+      "fielddata",
+      "cache",
+      "memory"
+    ]
+  },
+  {
+    "id": "f299",
+    "domain": "elasticsearch",
+    "content": "Операция force merge (`POST /<index>/_forcemerge?max_num_segments=1`) уменьшает количество сегментов Lucene, снижая потребление памяти на метаданные сегментов.",
+    "tags": [
+      "forcemerge",
+      "segments",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f300",
+    "domain": "elasticsearch",
+    "content": "Параметр `node.roles: [data_hot]` в конфигурации узла ILM-архитектуры позволяет выделить узлы с большим объёмом RAM для хранения горячих индексов с высокой частотой запросов.",
+    "tags": [
+      "ilm",
+      "node-roles",
+      "architecture"
+    ]
+  },
+  {
+    "id": "f301",
+    "domain": "elasticsearch",
+    "content": "Метрика `jvm.gc.collectors.old.collection_time_in_millis` из API `GET /_nodes/stats/jvm` отражает суммарное время GC для old generation; значения выше `30 секунд` в минуту указывают на memory pressure.",
+    "tags": [
+      "gc",
+      "jvm",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f302",
+    "domain": "elasticsearch",
+    "content": "Параметр `search.max_buckets` (по умолчанию `65536` начиная с версии 7.x) ограничивает максимальное количество бакетов агрегации для предотвращения OOM при глубоких вложенных агрегациях.",
+    "tags": [
+      "aggregations",
+      "memory",
+      "limits"
+    ]
+  },
+  {
+    "id": "f303",
+    "domain": "elasticsearch",
+    "content": "Тип хранилища `hybridfs` (по умолчанию с версии 7.x) комбинирует `mmapfs` для файлов с произвольным доступом и `niofs` для остальных файлов, оптимизируя использование page cache ОС.",
+    "tags": [
+      "storage",
+      "hybridfs",
+      "mmap"
+    ]
+  },
+  {
+    "id": "f304",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_cat/fielddata?v&fields=*` отображает объём памяти heap, занятый fielddata для каждого поля на каждом узле, в байтах.",
+    "tags": [
+      "fielddata",
+      "monitoring",
+      "cat-api"
+    ]
+  },
+  {
+    "id": "f305",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.memory.min_shard_index_buffer_size` (по умолчанию `4mb`) задаёт минимальный размер буфера индексирования на шард, гарантируя базовую производительность при большом числе шардов.",
+    "tags": [
+      "indexing",
+      "memory",
+      "shards"
+    ]
+  },
+  {
+    "id": "f306",
+    "domain": "elasticsearch",
+    "content": "Ошибка `[parent] Data too large, data for [<http_request>] would be larger than limit of [X/Y]` возникает при срабатывании parent circuit breaker и означает превышение общего лимита памяти запроса.",
+    "tags": [
+      "circuit-breaker",
+      "error",
+      "memory"
+    ]
+  },
+  {
+    "id": "f307",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.breaker.accounting.limit` (по умолчанию `100%` heap) контролирует память, учитываемую для хранящихся в памяти объектов, включая сегменты и их метаданные.",
+    "tags": [
+      "circuit-breaker",
+      "accounting",
+      "memory"
+    ]
+  },
+  {
+    "id": "f308",
+    "domain": "elasticsearch",
+    "content": "Настройка `vm.max_map_count` на уровне ОС Linux должна быть не менее `262144`; проверяется командой `sysctl vm.max_map_count` и устанавливается через `sysctl -w vm.max_map_count=262144`.",
+    "tags": [
+      "os-configuration",
+      "mmap",
+      "linux"
+    ]
+  },
+  {
+    "id": "f309",
+    "domain": "elasticsearch",
+    "content": "Команда `POST /<index>/_cache/clear?fielddata=true` принудительно очищает fielddata cache для указанного индекса, немедленно освобождая соответствующую память heap.",
+    "tags": [
+      "fielddata",
+      "cache",
+      "api"
+    ]
+  },
+  {
+    "id": "f310",
+    "domain": "elasticsearch",
+    "content": "Параметр `index.queries.cache.enabled: false` отключает query cache на уровне индекса, что может быть необходимо для индексов с высокой кардинальностью фильтров, где кэш неэффективен.",
+    "tags": [
+      "query-cache",
+      "index-settings",
+      "performance"
+    ]
+  },
+  {
+    "id": "f311",
+    "domain": "elasticsearch",
+    "content": "Метрика `indices.segments.index_writer_memory_in_bytes` из `GET /_nodes/stats/indices` отражает текущий объём памяти, используемый IndexWriter Lucene для буферизации несброшенных данных.",
+    "tags": [
+      "lucene",
+      "indexing",
+      "memory"
+    ]
+  },
+  {
+    "id": "f312",
+    "domain": "elasticsearch",
+    "content": "Параметр `thread_pool.search.queue_size` (по умолчанию `1000`) ограничивает очередь поисковых запросов; при переполнении возвращается ошибка `EsRejectedExecutionException`.",
+    "tags": [
+      "thread-pool",
+      "search",
+      "queue"
+    ]
+  },
+  {
+    "id": "f313",
+    "domain": "elasticsearch",
+    "content": "Использование `doc_values: false` в маппинге поля отключает хранение column-store данных на диске, экономя место, но делая невозможными сортировку и агрегации без загрузки fielddata в heap.",
+    "tags": [
+      "doc-values",
+      "mapping",
+      "memory"
+    ]
+  },
+  {
+    "id": "f314",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_nodes/stats/breaker` возвращает статистику по всем circuit breakers, включая `tripped` (количество срабатываний) и `estimated_size_in_bytes` для каждого breaker.",
+    "tags": [
+      "circuit-breaker",
+      "monitoring",
+      "api"
+    ]
+  },
+  {
+    "id": "f315",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.breaker.total.use_real_memory: true` (по умолчанию) заставляет parent circuit breaker учитывать реальное потребление памяти JVM, а не только суммарные оценки дочерних breakers.",
+    "tags": [
+      "circuit-breaker",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f316",
+    "domain": "elasticsearch",
+    "content": "Сборщик мусора G1GC рекомендуется для heap размером более `6 GB`; активируется через `ES_JAVA_OPTS=\"-XX:+UseG1GC\"` и является сборщиком по умолчанию начиная с Elasticsearch 7.x.",
+    "tags": [
+      "gc",
+      "g1gc",
+      "jvm"
+    ]
+  },
+  {
+    "id": "f317",
+    "domain": "elasticsearch",
+    "content": "Параметр `index.number_of_shards` напрямую влияет на потребление памяти: каждый шард требует минимум `~1.5 KB` heap для метаданных Lucene-сегментов плюс overhead на уровне кластера.",
+    "tags": [
+      "shards",
+      "memory",
+      "capacity-planning"
+    ]
+  },
+  {
+    "id": "f318",
+    "domain": "elasticsearch",
+    "content": "Команда `GET /_cluster/stats?filter_path=nodes.jvm` возвращает агрегированную статистику JVM по всему кластеру, включая `max_uptime_in_millis` и суммарный `heap_max_in_bytes`.",
+    "tags": [
+      "cluster",
+      "jvm",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "f319",
+    "domain": "elasticsearch",
+    "content": "Параметр `indices.memory.index_buffer_size` можно задать в абсолютных значениях (например, `512mb`) вместо процентного значения для детерминированного ограничения буфера индексирования.",
+    "tags": [
+      "indexing",
+      "memory",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f320",
+    "domain": "elasticsearch",
+    "content": "Механизм `_source` хранит оригинальный JSON-документ в индексе; отключение через `\"_source\": {\"enabled\": false}` в маппинге снижает размер индекса, но делает невозможным reindex и update операции.",
+    "tags": [
+      "source",
+      "storage",
+      "mapping"
+    ]
+  },
+  {
+    "id": "f321",
+    "domain": "nginx",
+    "content": "Директива `worker_processes` определяет количество рабочих процессов; рекомендуемое значение — `auto`, что соответствует числу доступных CPU-ядер.",
+    "tags": [
+      "worker_processes",
+      "performance",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f322",
+    "domain": "nginx",
+    "content": "Параметр `worker_connections` задаёт максимальное число одновременных соединений на один рабочий процесс; значение по умолчанию — 512, рекомендуется устанавливать 1024 или выше при высокой нагрузке.",
+    "tags": [
+      "worker_connections",
+      "performance",
+      "events"
+    ]
+  },
+  {
+    "id": "f323",
+    "domain": "nginx",
+    "content": "Директива `keepalive_timeout` устанавливает таймаут keep-alive соединений; значение 0 отключает keep-alive полностью, что увеличивает накладные расходы на установку TCP-соединений.",
+    "tags": [
+      "keepalive_timeout",
+      "http",
+      "tcp"
+    ]
+  },
+  {
+    "id": "f324",
+    "domain": "nginx",
+    "content": "Ошибка `[emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)` возникает при попытке запуска nginx на порту, уже занятом другим процессом.",
+    "tags": [
+      "error",
+      "bind",
+      "port-conflict"
+    ]
+  },
+  {
+    "id": "f325",
+    "domain": "nginx",
+    "content": "Команда `nginx -t` выполняет синтаксическую проверку конфигурационных файлов без перезапуска сервера.",
+    "tags": [
+      "nginx -t",
+      "configuration",
+      "testing"
+    ]
+  },
+  {
+    "id": "f326",
+    "domain": "nginx",
+    "content": "Директива `sendfile on` активирует системный вызов `sendfile()`, позволяющий передавать файлы напрямую из файлового дескриптора в сокет без копирования данных в пространство пользователя.",
+    "tags": [
+      "sendfile",
+      "performance",
+      "syscall"
+    ]
+  },
+  {
+    "id": "f327",
+    "domain": "nginx",
+    "content": "Параметр `client_max_body_size` ограничивает максимальный размер тела HTTP-запроса; при превышении лимита сервер возвращает ответ `413 Request Entity Too Large`.",
+    "tags": [
+      "client_max_body_size",
+      "http",
+      "413"
+    ]
+  },
+  {
+    "id": "f328",
+    "domain": "nginx",
+    "content": "Директива `proxy_pass` в блоке `location` перенаправляет запросы на upstream-сервер; при указании URI с завершающим слешем (`proxy_pass http://backend/`) nginx обрезает prefix из `location`.",
+    "tags": [
+      "proxy_pass",
+      "upstream",
+      "location"
+    ]
+  },
+  {
+    "id": "f329",
+    "domain": "nginx",
+    "content": "Модуль `ngx_http_stub_status_module` предоставляет базовую статистику через endpoint, настраиваемый директивой `stub_status`; включается при сборке флагом `--with-http_stub_status_module`.",
+    "tags": [
+      "stub_status",
+      "monitoring",
+      "module"
+    ]
+  },
+  {
+    "id": "f330",
+    "domain": "nginx",
+    "content": "Директива `gzip_comp_level` задаёт уровень сжатия gzip в диапазоне от 1 до 9; значение 6 является компромиссом между степенью сжатия и потреблением CPU.",
+    "tags": [
+      "gzip",
+      "compression",
+      "performance"
+    ]
+  },
+  {
+    "id": "f331",
+    "domain": "nginx",
+    "content": "Переменная `$upstream_response_time` содержит время ответа upstream-сервера в секундах с миллисекундной точностью и используется в директиве `log_format` для диагностики задержек.",
+    "tags": [
+      "upstream_response_time",
+      "logging",
+      "variables"
+    ]
+  },
+  {
+    "id": "f332",
+    "domain": "nginx",
+    "content": "Директива `limit_req_zone` определяет зону разделяемой памяти для ограничения частоты запросов; синтаксис: `limit_req_zone $binary_remote_addr zone=name:10m rate=10r/s`.",
+    "tags": [
+      "limit_req_zone",
+      "rate-limiting",
+      "shared-memory"
+    ]
+  },
+  {
+    "id": "f333",
+    "domain": "nginx",
+    "content": "Параметр `proxy_buffer_size` задаёт размер буфера для чтения первой части ответа от upstream; значение по умолчанию равно одной странице памяти (обычно 4 КБ или 8 КБ).",
+    "tags": [
+      "proxy_buffer_size",
+      "buffering",
+      "upstream"
+    ]
+  },
+  {
+    "id": "f334",
+    "domain": "nginx",
+    "content": "Директива `ssl_protocols` задаёт список допустимых протоколов TLS; начиная с nginx 1.23.4 значение по умолчанию — `TLSv1.2 TLSv1.3`, протоколы SSLv3 и TLSv1.0 исключены.",
+    "tags": [
+      "ssl_protocols",
+      "tls",
+      "security"
+    ]
+  },
+  {
+    "id": "f335",
+    "domain": "nginx",
+    "content": "Ошибка `[crit] 14#14: *1 SSL_do_handshake() failed (SSL: error:1408F10B)` указывает на несовместимость cipher suite между клиентом и сервером при TLS-рукопожатии.",
+    "tags": [
+      "ssl",
+      "error",
+      "handshake"
+    ]
+  },
+  {
+    "id": "f336",
+    "domain": "nginx",
+    "content": "Директива `try_files` проверяет существование файлов и директорий в указанном порядке; при отсутствии всех вариантов выполняется fallback на последний аргумент, который может быть именованным location или URI.",
+    "tags": [
+      "try_files",
+      "location",
+      "static"
+    ]
+  },
+  {
+    "id": "f337",
+    "domain": "nginx",
+    "content": "Параметр `open_file_cache max=N inactive=T` кэширует файловые дескрипторы, метаданные файлов и результаты поиска директорий; `max` ограничивает число элементов кэша.",
+    "tags": [
+      "open_file_cache",
+      "caching",
+      "performance"
+    ]
+  },
+  {
+    "id": "f338",
+    "domain": "nginx",
+    "content": "Сигнал `SIGHUP` инициирует перезагрузку конфигурации nginx без остановки сервера; эквивалентная команда — `nginx -s reload`.",
+    "tags": [
+      "SIGHUP",
+      "reload",
+      "signals"
+    ]
+  },
+  {
+    "id": "f339",
+    "domain": "nginx",
+    "content": "Директива `upstream` поддерживает метод балансировки `least_conn`, при котором новый запрос направляется на сервер с наименьшим числом активных соединений.",
+    "tags": [
+      "upstream",
+      "least_conn",
+      "load-balancing"
+    ]
+  },
+  {
+    "id": "f340",
+    "domain": "nginx",
+    "content": "Переменная `$request_time` содержит полное время обработки запроса в секундах, включая время передачи тела ответа клиенту, и отличается от `$upstream_response_time`.",
+    "tags": [
+      "request_time",
+      "logging",
+      "variables"
+    ]
+  },
+  {
+    "id": "f341",
+    "domain": "nginx",
+    "content": "Директива `access_log off` полностью отключает запись access-логов для данного контекста, что снижает дисковый I/O при высокой частоте запросов.",
+    "tags": [
+      "access_log",
+      "logging",
+      "performance"
+    ]
+  },
+  {
+    "id": "f342",
+    "domain": "nginx",
+    "content": "Параметр `proxy_read_timeout` задаёт таймаут ожидания данных от upstream между двумя последовательными операциями чтения; значение по умолчанию — 60 секунд.",
+    "tags": [
+      "proxy_read_timeout",
+      "upstream",
+      "timeout"
+    ]
+  },
+  {
+    "id": "f343",
+    "domain": "nginx",
+    "content": "Директива `map` создаёт переменную, значение которой определяется на основе другой переменной по таблице соответствий; вычисление выполняется лениво (lazy evaluation).",
+    "tags": [
+      "map",
+      "variables",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f344",
+    "domain": "nginx",
+    "content": "Модуль `ngx_http_realip_module` позволяет заменять IP-адрес клиента значением из заголовка `X-Forwarded-For` или `X-Real-IP`; активируется директивой `real_ip_header`.",
+    "tags": [
+      "realip",
+      "module",
+      "headers"
+    ]
+  },
+  {
+    "id": "f345",
+    "domain": "nginx",
+    "content": "Ошибка `[warn] 1024 worker_connections exceed open file resource limit: 512` возникает, когда значение `worker_connections` превышает системный лимит `nofile` для процесса.",
+    "tags": [
+      "worker_connections",
+      "ulimit",
+      "error"
+    ]
+  },
+  {
+    "id": "f346",
+    "domain": "nginx",
+    "content": "Директива `ssl_session_cache shared:SSL:10m` создаёт разделяемый кэш SSL-сессий объёмом 10 МБ, доступный всем рабочим процессам, что снижает накладные расходы на повторные TLS-рукопожатия.",
+    "tags": [
+      "ssl_session_cache",
+      "tls",
+      "performance"
+    ]
+  },
+  {
+    "id": "f347",
+    "domain": "nginx",
+    "content": "Параметр `multi_accept on` позволяет рабочему процессу принимать все ожидающие соединения одновременно; по умолчанию отключён, и процесс принимает по одному соединению за раз.",
+    "tags": [
+      "multi_accept",
+      "events",
+      "performance"
+    ]
+  },
+  {
+    "id": "f348",
+    "domain": "nginx",
+    "content": "Директива `return` в блоке `server` или `location` немедленно завершает обработку запроса и возвращает указанный HTTP-код; например, `return 301 https://$host$request_uri` выполняет постоянный редирект.",
+    "tags": [
+      "return",
+      "redirect",
+      "http"
+    ]
+  },
+  {
+    "id": "f349",
+    "domain": "nginx",
+    "content": "Параметр `worker_rlimit_nofile` устанавливает лимит открытых файловых дескрипторов для рабочих процессов nginx; должен быть не менее `worker_connections * 2`.",
+    "tags": [
+      "worker_rlimit_nofile",
+      "ulimit",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f350",
+    "domain": "nginx",
+    "content": "Директива `proxy_cache_path` определяет путь и параметры кэша для проксируемых ответов; параметр `levels=1:2` задаёт двухуровневую иерархию директорий для хранения файлов кэша.",
+    "tags": [
+      "proxy_cache_path",
+      "caching",
+      "proxy"
+    ]
+  },
+  {
+    "id": "f351",
+    "domain": "nginx",
+    "content": "Переменная `$binary_remote_addr` содержит IP-адрес клиента в бинарном формате (4 байта для IPv4, 16 байт для IPv6) и используется в директивах `limit_req_zone` и `limit_conn_zone` для экономии памяти.",
+    "tags": [
+      "binary_remote_addr",
+      "variables",
+      "rate-limiting"
+    ]
+  },
+  {
+    "id": "f352",
+    "domain": "nginx",
+    "content": "Директива `error_page 502 503 504 /custom_error.html` задаёт пользовательскую страницу ошибки для указанных HTTP-кодов; файл должен быть доступен через отдельный `location`.",
+    "tags": [
+      "error_page",
+      "http",
+      "configuration"
+    ]
+  },
+  {
+    "id": "f353",
+    "domain": "nginx",
+    "content": "Параметр `use epoll` в блоке `events` явно задаёт использование механизма `epoll` для мультиплексирования I/O на Linux; nginx выбирает его автоматически, если не указано иное.",
+    "tags": [
+      "epoll",
+      "events",
+      "linux"
+    ]
+  },
+  {
+    "id": "f354",
+    "domain": "nginx",
+    "content": "Директива `sub_filter` из модуля `ngx_http_sub_module` выполняет замену строк в теле ответа; для обработки ответов с произвольным регистром используется `sub_filter_once off`.",
+    "tags": [
+      "sub_filter",
+      "module",
+      "response"
+    ]
+  },
+  {
+    "id": "f355",
+    "domain": "nginx",
+    "content": "Команда `nginx -s quit` инициирует graceful shutdown: nginx перестаёт принимать новые соединения и завершает работу после обслуживания всех текущих запросов.",
+    "tags": [
+      "nginx -s quit",
+      "shutdown",
+      "signals"
+    ]
+  },
+  {
+    "id": "f356",
+    "domain": "nginx",
+    "content": "Директива `resolver` задаёт DNS-серверы для разрешения имён upstream-хостов в runtime; без неё nginx разрешает имена только при старте, что не позволяет обновлять IP-адреса динамически.",
+    "tags": [
+      "resolver",
+      "dns",
+      "upstream"
+    ]
+  },
+  {
+    "id": "f357",
+    "domain": "nginx",
+    "content": "Параметр `proxy_set_header Host $host` передаёт оригинальный заголовок `Host` на upstream-сервер; без этой директивы заголовок принимает значение из директивы `proxy_pass`.",
+    "tags": [
+      "proxy_set_header",
+      "headers",
+      "proxy"
+    ]
+  },
+  {
+    "id": "f358",
+    "domain": "nginx",
+    "content": "Директива `geo` создаёт переменную на основе IP-адреса клиента с использованием таблицы диапазонов; поддерживает директиву `ranges` для задания числовых диапазонов вместо CIDR.",
+    "tags": [
+      "geo",
+      "module",
+      "variables"
+    ]
+  },
+  {
+    "id": "f359",
+    "domain": "nginx",
+    "content": "Ошибка `upstream timed out (110: Connection timed out) while reading response header from upstream` фиксируется в error.log при превышении `proxy_read_timeout` во время ожидания заголовков ответа от backend.",
+    "tags": [
+      "upstream",
+      "timeout",
+      "error"
+    ]
+  },
+  {
+    "id": "f360",
+    "domain": "nginx",
+    "content": "Директива `add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\"` добавляет заголовок HSTS в ответ; параметр `always` включает заголовок также в ответы с кодами ошибок.",
+    "tags": [
+      "add_header",
+      "hsts",
+      "security"
+    ]
+  },
+  {
+    "id": "f361",
+    "domain": "pytorch",
+    "content": "Функция `torch.cuda.empty_cache()` освобождает кэшированную память CUDA, однако не уменьшает фактическое потребление памяти активными тензорами — она лишь возвращает неиспользуемые блоки в пул аллокатора.",
+    "tags": [
+      "cuda",
+      "memory",
+      "cache"
+    ]
+  },
+  {
+    "id": "f362",
+    "domain": "pytorch",
+    "content": "При использовании `torch.nn.DataParallel` каждый GPU-реплика получает полную копию модели, что приводит к умножению потребления VRAM на количество устройств.",
+    "tags": [
+      "DataParallel",
+      "memory",
+      "multi-gpu"
+    ]
+  },
+  {
+    "id": "f363",
+    "domain": "pytorch",
+    "content": "Параметр `pin_memory=True` в `DataLoader` выделяет память хоста как page-locked, ускоряя передачу данных на GPU через DMA, но увеличивает потребление RAM.",
+    "tags": [
+      "DataLoader",
+      "pin_memory",
+      "performance"
+    ]
+  },
+  {
+    "id": "f364",
+    "domain": "pytorch",
+    "content": "Ошибка `RuntimeError: CUDA out of memory` возникает, когда запрошенный блок памяти превышает доступный объём VRAM; диагностику выполняют через `torch.cuda.memory_summary(device)`.",
+    "tags": [
+      "cuda",
+      "OOM",
+      "error"
+    ]
+  },
+  {
+    "id": "f365",
+    "domain": "pytorch",
+    "content": "Метод `torch.backends.cudnn.benchmark = True` активирует автоматический подбор оптимального алгоритма свёртки cuDNN, что снижает время выполнения при фиксированных размерах входных данных.",
+    "tags": [
+      "cudnn",
+      "benchmark",
+      "convolution"
+    ]
+  },
+  {
+    "id": "f366",
+    "domain": "pytorch",
+    "content": "Использование `torch.no_grad()` контекстного менеджера отключает построение графа вычислений и хранение промежуточных активаций, сокращая потребление памяти при инференсе.",
+    "tags": [
+      "autograd",
+      "memory",
+      "inference"
+    ]
+  },
+  {
+    "id": "f367",
+    "domain": "pytorch",
+    "content": "Функция `torch.cuda.memory_allocated(device)` возвращает количество байт, занятых активными тензорами на указанном устройстве, без учёта кэшированных блоков аллокатора.",
+    "tags": [
+      "cuda",
+      "memory",
+      "profiling"
+    ]
+  },
+  {
+    "id": "f368",
+    "domain": "pytorch",
+    "content": "Параметр `gradient_checkpointing` в трансформерных моделях HuggingFace активируется методом `model.gradient_checkpointing_enable()` и снижает потребление памяти за счёт повторного вычисления активаций при обратном проходе.",
+    "tags": [
+      "gradient_checkpointing",
+      "memory",
+      "transformers"
+    ]
+  },
+  {
+    "id": "f369",
+    "domain": "pytorch",
+    "content": "`torch.nn.utils.clip_grad_norm_(parameters, max_norm)` обрезает норму градиентов до значения `max_norm`, предотвращая взрывной рост градиентов при обучении рекуррентных сетей.",
+    "tags": [
+      "gradient",
+      "clipping",
+      "training"
+    ]
+  },
+  {
+    "id": "f370",
+    "domain": "pytorch",
+    "content": "Формат `torch.float16` (FP16) вдвое сокращает объём памяти по сравнению с `torch.float32`, однако требует применения `torch.cuda.amp.GradScaler` для предотвращения потери точности при вычислении градиентов.",
+    "tags": [
+      "fp16",
+      "amp",
+      "memory"
+    ]
+  },
+  {
+    "id": "f371",
+    "domain": "pytorch",
+    "content": "`torch.distributed.init_process_group(backend='nccl')` инициализирует распределённую группу процессов с backend NCCL, оптимизированным для GPU-коммуникаций через NVLink и InfiniBand.",
+    "tags": [
+      "distributed",
+      "nccl",
+      "multi-gpu"
+    ]
+  },
+  {
+    "id": "f372",
+    "domain": "pytorch",
+    "content": "Метод `model.half()` конвертирует все параметры модели в `torch.float16`; при этом BatchNorm-слои могут терять стабильность и требуют явного перевода обратно в `torch.float32`.",
+    "tags": [
+      "fp16",
+      "batchnorm",
+      "precision"
+    ]
+  },
+  {
+    "id": "f373",
+    "domain": "pytorch",
+    "content": "`torch.jit.script(module)` компилирует модуль в TorchScript IR, устраняя накладные расходы Python-интерпретатора и обеспечивая сериализацию без зависимости от исходного кода.",
+    "tags": [
+      "torchscript",
+      "jit",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f374",
+    "domain": "pytorch",
+    "content": "Параметр `num_workers` в `DataLoader` определяет количество дочерних процессов для параллельной загрузки данных; значение `0` означает загрузку в основном процессе без параллелизма.",
+    "tags": [
+      "DataLoader",
+      "num_workers",
+      "performance"
+    ]
+  },
+  {
+    "id": "f375",
+    "domain": "pytorch",
+    "content": "`torch.cuda.max_memory_reserved(device)` возвращает пиковый объём памяти, зарезервированной аллокатором PyTorch с момента последнего вызова `torch.cuda.reset_peak_memory_stats()`.",
+    "tags": [
+      "cuda",
+      "memory",
+      "profiling"
+    ]
+  },
+  {
+    "id": "f376",
+    "domain": "pytorch",
+    "content": "Использование `torch.utils.checkpoint.checkpoint(function, *args)` реализует gradient checkpointing для произвольной функции, сохраняя только входные тензоры вместо всех промежуточных активаций.",
+    "tags": [
+      "checkpoint",
+      "memory",
+      "autograd"
+    ]
+  },
+  {
+    "id": "f377",
+    "domain": "pytorch",
+    "content": "`torch.nn.parallel.DistributedDataParallel` (DDP) синхронизирует градиенты через `AllReduce` после каждого backward-прохода, обеспечивая консистентность параметров без репликации оптимизатора.",
+    "tags": [
+      "DDP",
+      "distributed",
+      "gradients"
+    ]
+  },
+  {
+    "id": "f378",
+    "domain": "pytorch",
+    "content": "Ошибка `RuntimeError: Expected all tensors to be on the same device` возникает при попытке выполнить операцию над тензорами, расположенными на разных устройствах (например, CPU и CUDA:0).",
+    "tags": [
+      "device",
+      "error",
+      "tensor"
+    ]
+  },
+  {
+    "id": "f379",
+    "domain": "pytorch",
+    "content": "`torch.compile(model, mode='reduce-overhead')` (PyTorch 2.0+) использует TorchDynamo и Triton для компиляции модели, снижая накладные расходы Python-диспетчеризации при повторяющихся вызовах.",
+    "tags": [
+      "torch.compile",
+      "dynamo",
+      "optimization"
+    ]
+  },
+  {
+    "id": "f380",
+    "domain": "pytorch",
+    "content": "Параметр `PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128` управляет максимальным размером блока, который аллокатор CUDA разбивает при нехватке памяти, снижая фрагментацию VRAM.",
+    "tags": [
+      "cuda",
+      "allocator",
+      "fragmentation"
+    ]
+  },
+  {
+    "id": "f381",
+    "domain": "pytorch",
+    "content": "`torch.profiler.profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA])` собирает трассировку операций CPU и CUDA с временны́ми метками, экспортируемую в формат Chrome Trace через `export_chrome_trace()`.",
+    "tags": [
+      "profiler",
+      "tracing",
+      "performance"
+    ]
+  },
+  {
+    "id": "f382",
+    "domain": "pytorch",
+    "content": "Метод `optimizer.zero_grad(set_to_none=True)` устанавливает градиенты в `None` вместо заполнения нулями, экономя память и ускоряя последующий backward-проход.",
+    "tags": [
+      "optimizer",
+      "gradients",
+      "memory"
+    ]
+  },
+  {
+    "id": "f383",
+    "domain": "pytorch",
+    "content": "`torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)` заменяет все слои `BatchNorm` на `SyncBatchNorm`, синхронизирующий статистику между процессами в распределённом обучении.",
+    "tags": [
+      "batchnorm",
+      "distributed",
+      "synchronization"
+    ]
+  },
+  {
+    "id": "f384",
+    "domain": "pytorch",
+    "content": "Тензоры, созданные с `requires_grad=False`, не участвуют в построении графа вычислений и не хранят ссылки на функции градиента, что снижает накладные расходы autograd.",
+    "tags": [
+      "autograd",
+      "requires_grad",
+      "memory"
+    ]
+  },
+  {
+    "id": "f385",
+    "domain": "pytorch",
+    "content": "`torch.cuda.synchronize(device)` блокирует выполнение CPU-потока до завершения всех CUDA-операций на указанном устройстве; необходима для корректного замера времени GPU-операций.",
+    "tags": [
+      "cuda",
+      "synchronize",
+      "benchmarking"
+    ]
+  },
+  {
+    "id": "f386",
+    "domain": "pytorch",
+    "content": "Формат `torch.bfloat16` обеспечивает тот же диапазон значений, что и `float32` (8 бит экспоненты), при вдвое меньшем объёме памяти, и нативно поддерживается на архитектурах NVIDIA Ampere и выше.",
+    "tags": [
+      "bfloat16",
+      "precision",
+      "ampere"
+    ]
+  },
+  {
+    "id": "f387",
+    "domain": "pytorch",
+    "content": "`torch.save(model.state_dict(), path)` сохраняет только параметры и буферы модели без архитектуры; `torch.load(path, map_location='cpu')` загружает их с явным указанием целевого устройства.",
+    "tags": [
+      "serialization",
+      "state_dict",
+      "checkpoint"
+    ]
+  },
+  {
+    "id": "f388",
+    "domain": "pytorch",
+    "content": "Функция `torch.nn.functional.scaled_dot_product_attention` (PyTorch 2.0+) использует FlashAttention-алгоритм при наличии поддержки оборудования, снижая потребление памяти с O(N²) до O(N).",
+    "tags": [
+      "attention",
+      "flash_attention",
+      "memory"
+    ]
+  },
+  {
+    "id": "f389",
+    "domain": "pytorch",
+    "content": "`torch.backends.cuda.matmul.allow_tf32 = True` разрешает использование формата TF32 для матричных умножений на GPU архитектуры Ampere, увеличивая пропускную способность при незначительной потере точности.",
+    "tags": [
+      "tf32",
+      "matmul",
+      "ampere"
+    ]
+  },
+  {
+    "id": "f390",
+    "domain": "pytorch",
+    "content": "Переменная окружения `CUDA_VISIBLE_DEVICES=0,2` ограничивает видимость GPU для процесса PyTorch только устройствами с индексами 0 и 2, переиндексируя их как `cuda:0` и `cuda:1`.",
+    "tags": [
+      "cuda",
+      "device",
+      "environment"
+    ]
+  },
+  {
+    "id": "f391",
+    "domain": "pytorch",
+    "content": "`torch.utils.data.DistributedSampler(dataset, num_replicas=world_size, rank=rank)` распределяет индексы датасета между процессами без пересечений, обеспечивая корректное разбиение данных при DDP-обучении.",
+    "tags": [
+      "distributed",
+      "sampler",
+      "DataLoader"
+    ]
+  },
+  {
+    "id": "f392",
+    "domain": "pytorch",
+    "content": "Метод `torch.Tensor.contiguous()` возвращает тензор с непрерывным расположением данных в памяти; операции, требующие contiguous-тензора (например, `view()`), вызывают ошибку при несоблюдении этого условия.",
+    "tags": [
+      "memory_layout",
+      "contiguous",
+      "tensor"
+    ]
+  },
+  {
+    "id": "f393",
+    "domain": "pytorch",
+    "content": "`torch.cuda.amp.autocast(dtype=torch.float16)` автоматически приводит операции к FP16 там, где это безопасно, сохраняя FP32 для численно нестабильных операций, таких как `softmax` и `log`.",
+    "tags": [
+      "amp",
+      "autocast",
+      "fp16"
+    ]
+  },
+  {
+    "id": "f394",
+    "domain": "pytorch",
+    "content": "Параметр `persistent_workers=True` в `DataLoader` сохраняет рабочие процессы между эпохами, устраняя накладные расходы на их пересоздание, но увеличивая потребление RAM.",
+    "tags": [
+      "DataLoader",
+      "workers",
+      "performance"
+    ]
+  },
+  {
+    "id": "f395",
+    "domain": "pytorch",
+    "content": "`torch.nn.utils.prune.l1_unstructured(module, name='weight', amount=0.3)` применяет неструктурированное L1-прунинг к весам модуля, обнуляя 30% наименьших по абсолютному значению параметров.",
+    "tags": [
+      "pruning",
+      "compression",
+      "weights"
+    ]
+  },
+  {
+    "id": "f396",
+    "domain": "pytorch",
+    "content": "Функция `torch.cuda.nvtx.range_push(msg)` / `range_pop()` вставляет именованные маркеры в CUDA-поток для профилирования через NVIDIA Nsight Systems и nvprof.",
+    "tags": [
+      "nvtx",
+      "profiling",
+      "cuda"
+    ]
+  },
+  {
+    "id": "f397",
+    "domain": "pytorch",
+    "content": "`torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)` применяет динамическое квантование к линейным слоям, снижая размер модели и ускоряя инференс на CPU.",
+    "tags": [
+      "quantization",
+      "qint8",
+      "inference"
+    ]
+  },
+  {
+    "id": "f398",
+    "domain": "pytorch",
+    "content": "Метод `torch.Tensor.share_memory_()` перемещает данные тензора в разделяемую память OS, позволяя нескольким процессам обращаться к одним данным без копирования через `multiprocessing`.",
+    "tags": [
+      "shared_memory",
+      "multiprocessing",
+      "tensor"
+    ]
+  },
+  {
+    "id": "f399",
+    "domain": "pytorch",
+    "content": "`torch.onnx.export(model, dummy_input, 'model.onnx', opset_version=17)` экспортирует модель в формат ONNX с указанным набором операторов; `opset_version` определяет совместимость с целевыми runtime-средами.",
+    "tags": [
+      "onnx",
+      "export",
+      "deployment"
+    ]
+  },
+  {
+    "id": "f400",
+    "domain": "pytorch",
+    "content": "Параметр `torch.set_num_threads(n)` задаёт количество потоков OpenMP/MKL для параллельных CPU-операций; по умолчанию равно числу физических ядер, что может вызывать конкуренцию при запуске нескольких процессов.",
+    "tags": [
+      "cpu",
+      "threading",
+      "performance"
+    ]
+  }
+]

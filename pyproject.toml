@@ -27,6 +27,7 @@ dependencies = [
 dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
+    "rank-bm25>=0.2",
 ]
 
 [tool.pytest.ini_options]

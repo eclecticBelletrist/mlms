@@ -401,7 +401,7 @@ The script `scripts/measure_latency.py` (`asyncio`, n=100 iterations per operati
 
 p50/p95/p99 metrics via linear interpolation. Results are saved to `scripts/latency_results.json`.
 
-**Note on indexes:** The current implementation uses a sequential scan (`ORDER BY embedding <=> $vec LIMIT k`) without an ANN index — HNSW and IVFFlat are limited to 2000 dim in pgvector 0.8.2, dim=1536 theoretically fits within the HNSW limit, but the index has not yet been added in the production migrations (see key_decisions.md Decision 3). With n=10 seed facts in the latency benchmark this does not affect p99.
+**Note on indexes:** HNSW and IVFFlat are limited to 2000 dim in pgvector 0.8.2; dim=1536 fits within the HNSW limit, and an HNSW index was added on `facts.embedding`/`session_log.embedding` in migration 006 (see `KEY_DECISIONS.md` Decision 2). With n=10 seed facts in the latency benchmark the choice of index does not affect p99.
 
 ### 7.3 Cold path (for reference)
 
@@ -689,7 +689,7 @@ Additionally: a mandatory self-check (in the rationale field) was added to the g
 
 **Problem.** The original design assumed EMBEDDING_DIM = 4096 (full Qwen3-Embedding-8B) with an HNSW index. pgvector 0.8.2 limits HNSW and IVFFlat to a maximum of 2000 dim for the `vector` type. `halfvec` supports up to 4000 — also less than 4096.
 
-**Decision.** EMBEDDING_DIM = **1536** (Matryoshka truncation of Qwen3-Embedding-8B: 4096 → 1536). Recall loss < 1%. At 1536 dim HNSW is technically possible (2000 > 1536), but the current production migrations use a sequential scan (details in `key_decisions.md` Decision 3). The latency benchmark (n=10–100 facts) fits within the SLA with a sequential scan.
+**Decision.** EMBEDDING_DIM = **1536** (Matryoshka truncation of Qwen3-Embedding-8B: 4096 → 1536). Recall loss < 1%. At 1536 dim HNSW is technically possible (2000 > 1536) and is wired into the production migrations (details in `KEY_DECISIONS.md` Decision 2). The latency benchmark (n=10–100 facts) fits within the SLA.
 
 ---
 
@@ -707,4 +707,104 @@ Additionally: a mandatory self-check (in the rationale field) was added to the g
 | Temporal mixes architecture layers | temporal via get_timeline() | cross_session via get_facts() + pgvector | Wu et al., ICLR 2025 |
 | semantic_drift does not prove SAR | Naive search only | A/B: naive vs SAR, delta = contribution of the pattern | — |
 | synthetic_100 too easy | A single dataset | synthetic_hard: 400 facts, strict lexical gap | — |
-| HNSW limit of 2000 dim | EMBEDDING_DIM = 4096 | Matryoshka truncation → 1536 | key_decisions.md Decision 3 |
+| HNSW limit of 2000 dim | EMBEDDING_DIM = 4096 | Matryoshka truncation → 1536 | KEY_DECISIONS.md Decision 2 |
+
+---
+
+## 12. The synthetic_hard dataset
+
+### 12.1 Purpose
+
+`tests/fixtures/synthetic_hard.json` was created to prove the SAR effect under conditions where naive retrieval degrades. BM25 naive Recall@5 = 0.118 (the target range [0.20, 0.55] was not reached — the dataset is harder than expected).
+
+### 12.2 Structure
+
+| Parameter | Value |
+|---|---|
+| Corpus | 400 facts (10 domains × 40 facts) |
+| Scenarios | 93 |
+| Generator | `anthropic/claude-sonnet-4.6` (via OpenRouter) |
+| Verifier 1 | `openai/gpt-5.2` — checks "too_easy" (would naive find it without SAR?) |
+| Verifier 2 | `x-ai/grok-4.20` — checks "sar_solvable" (would SAR find it?) |
+
+### 12.3 Categories
+
+| Category | N | What is tested |
+|---|---|---|
+| `lexical_drift` | 30 | User language vs technical terms |
+| `semantic_drift` | 29 | Symptom/effect vs cause/mechanism |
+| `cross_domain` | 25 | The problem touches two domains; the relevant facts come from different domains |
+| `multi_hop` | 9 | The answer requires a chain of 2+ facts; lexical_gap ≤ 1 |
+
+### 12.4 Scenario schema
+
+```json
+{
+  "id": "sd_001",
+  "type": "semantic_drift",
+  "domain": "kafka/redis",
+  "setup": {
+    "session_log": [
+      {"role": "user", "content": "..."},
+      {"role": "assistant", "content": "..."}
+    ]
+  },
+  "query": "...",
+  "expected": {
+    "relevant_ids": ["f045", "f123"],
+    "irrelevant_ids": ["f046", "f047", ...]
+  },
+  "meta": {
+    "lexical_gap_score": 1,
+    "difficulty": "hard",
+    "drift_mechanism": "...",
+    "sar_bridge_terms": ["term1", "term2"],
+    "too_easy": false,
+    "sar_solvable": true,
+    "verifier_1_reasoning": "...",
+    "verifier_2_reasoning": "..."
+  }
+}
+```
+
+Key differences from synthetic_100: a shared corpus of 400 facts (not 5 per scenario), `session_log` contains `{role, content}` objects (not strings), `lexical_gap_score` is controlled explicitly (≤ 2 for most types, ≤ 1 for multi_hop).
+
+### 12.5 Retrieval in run_hard_ab.py
+
+In-memory retrieval without PostgreSQL. For each backend:
+
+```
+fact_vecs = [embed(f.content) for f in corpus]  # 400 embeddings, once
+for scenario in scenarios:
+    q_naive = embed(scenario.query)
+    q_sar   = embed(session_log_content + " " + scenario.query)
+    # SAR enrichment: " ".join(e["content"] for e in session_log)
+    naive_top = cosine_top5(fact_vecs, q_naive)
+    sar_top   = cosine_top5(fact_vecs, q_sar)
+```
+
+The session_log is passed directly from JSON (not through PostgreSQL) — a difference from the synthetic_100 benchmark.
+
+### 12.6 Backends
+
+| Backend | Source | Dimension |
+|---|---|---|
+| BM25 | `rank_bm25` | — |
+| nomic-embed-text | Ollama `http://localhost:11434` | native |
+| mxbai-embed-large | Ollama `http://localhost:11434` | native (input truncated to 800 characters) |
+| Qwen3-8B | OpenRouter API | 1536 (Matryoshka) |
+
+Ollama backends are checked at startup (`check_alive()`); unavailable ones are skipped.
+
+### 12.7 Results (hard_ab_results.json)
+
+| Model | N | Naive | SAR | Δ |
+|---|---|---|---|---|
+| BM25 | 93 | 0.040 | 0.312 | +0.272 |
+| nomic-embed-text | 93 | 0.011 | 0.215 | +0.204 |
+| mxbai-embed-large | 93 | 0.006 | 0.100 | +0.093 |
+| **Qwen3-8B** | **93** | **0.320** | **0.624** | **+0.303** |
+
+**Conclusion:** SAR gives a significant gain of Δ = +0.303 for Qwen3-8B on the hard dataset. The largest gain is in cross_domain (+0.320) and multi_hop (+0.370). BM25 shows Δ = +0.272 because the session_log content contains bridge terms that literally occur in the facts — lexical enrichment works even without vector search.
+
+Generating the dataset cost **$1.04** (3 models, ~93 scenarios + 400 facts, logged in `tests/fixtures/cost_log.json`).
