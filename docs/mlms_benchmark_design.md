@@ -675,6 +675,16 @@ Additionally: a mandatory self-check (in the rationale field) was added to the g
 
 ---
 
+### 11.10 synthetic_100 is too easy for multi-model comparison
+
+**Problem.** A measured Recall@5 = 0.990 against a target of 0.80 means the dataset does not allow models to be told apart: Qwen3-8B and any sufficiently strong model will give the same result. For proving the superiority of SAR over naive on synthetic_100, delta = 0 — Qwen3-8B copes without enrichment.
+
+**Cause.** synthetic_100 was generated with moderate requirements on the lexical gap (no explicit threshold); the generator models sometimes violated the lexical distance constraint despite the self-check. A corpus of 5 facts/scenario is trivial for pgvector.
+
+**Decision.** `synthetic_hard.json` was created — a higher-difficulty dataset with stricter requirements (see section 12). On it the delta of Qwen3-8B = +0.303, which is the needed empirical proof.
+
+---
+
 ### 11.11 EMBEDDING_DIM: the HNSW limit of pgvector 0.8.2
 
 **Problem.** The original design assumed EMBEDDING_DIM = 4096 (full Qwen3-Embedding-8B) with an HNSW index. pgvector 0.8.2 limits HNSW and IVFFlat to a maximum of 2000 dim for the `vector` type. `halfvec` supports up to 4000 — also less than 4096.
