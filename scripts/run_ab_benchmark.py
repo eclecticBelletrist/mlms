@@ -1,3 +1,7 @@
+# DEPRECATED: delta=0 на synthetic_100 (тривиальный результат, 5 фактов при k=5). Используй run_hard_ab.py.
+# DEPRECATED: delta=0 на synthetic_100 — Qwen3-8B устраняет semantic drift наивно, SAR не нужен
+# Используй: scripts/run_hard_ab.py (synthetic_hard.json, 400 фактов, delta=+0.303)
+
 #!/usr/bin/env python
 """A/B benchmark: naive Recall@5 vs SAR Recall@5 for semantic_drift category.
 
