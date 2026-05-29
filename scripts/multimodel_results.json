@@ -1,0 +1,404 @@
+[
+  {
+    "label": "Qwen3-8B",
+    "n": 25,
+    "naive_avg": 0.84,
+    "sar_avg": 0.84,
+    "delta": 0.0,
+    "scenarios": [
+      {
+        "id": "semantic_drift_001",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_002",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_003",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_004",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_005",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_006",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_007",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_008",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_009",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_010",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_011",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_012",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_013",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_014",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_015",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_016",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_017",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_018",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_019",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_020",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_021",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_022",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_023",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_024",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_025",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      }
+    ]
+  },
+  {
+    "label": "Qwen3-0.6B",
+    "n": 25,
+    "naive_avg": 0.0,
+    "sar_avg": 0.0,
+    "delta": 0.0,
+    "scenarios": [
+      {
+        "id": "semantic_drift_001",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_002",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_003",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_004",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_005",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_006",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_007",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_008",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_009",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_010",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_011",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_012",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_013",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_014",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_015",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_016",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_017",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_018",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_019",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_020",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_021",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_022",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_023",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_024",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      },
+      {
+        "id": "semantic_drift_025",
+        "naive_recall": 0.0,
+        "sar_recall": 0.0
+      }
+    ]
+  },
+  {
+    "label": "BM25",
+    "n": 25,
+    "naive_avg": 1.0,
+    "sar_avg": 1.0,
+    "delta": 0.0,
+    "scenarios": [
+      {
+        "id": "semantic_drift_001",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_002",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_003",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_004",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_005",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_006",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_007",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_008",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_009",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_010",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_011",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_012",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_013",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_014",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_015",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_016",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_017",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_018",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_019",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_020",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_021",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_022",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_023",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_024",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      },
+      {
+        "id": "semantic_drift_025",
+        "naive_recall": 1.0,
+        "sar_recall": 1.0
+      }
+    ]
+  }
+]
