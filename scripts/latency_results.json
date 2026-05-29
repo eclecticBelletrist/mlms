@@ -1,0 +1,20 @@
+{
+  "get_session_context": {
+    "p50": 1.59,
+    "p95": 3.07,
+    "p99": 9.88,
+    "target_ms": 5
+  },
+  "get_facts_cached": {
+    "p50": 4.68,
+    "p95": 7.7,
+    "p99": 15.98,
+    "target_ms": 200
+  },
+  "memorize_cold": {
+    "p50": 1158.03,
+    "p95": 4129.75,
+    "p99": 9236.57,
+    "target_ms": null
+  }
+}
