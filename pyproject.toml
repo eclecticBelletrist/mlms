@@ -35,6 +35,50 @@ dev = [
     "rank-bm25>=0.2",
 ]
 
+# ─── Ruff ────────────────────────────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "ASYNC", # flake8-async (catches sync calls in async functions)
+]
+ignore = [
+    "E501",  # line length — handled by formatter
+    "B008",  # FastAPI Depends() in function defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mlms"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ─── Mypy ────────────────────────────────────────────────────────────────────
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*", "pgvector.*"]
+ignore_errors = true
+
+# ─── Pytest ──────────────────────────────────────────────────────────────────
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -56,6 +100,8 @@ omit = ["tests/*", "alembic/*", "scripts/*"]
 fail_under = 80
 show_missing = true
 skip_empty = true
+
+# ─── Hatch ───────────────────────────────────────────────────────────────────
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlms"]
