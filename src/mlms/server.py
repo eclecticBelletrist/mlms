@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from collections.abc import AsyncIterator
 
@@ -13,6 +14,7 @@ from typing import Any, Literal, cast
 import psycopg
 import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
+from psycopg_pool import AsyncConnectionPool, PoolTimeout
 
 from mlms.config import settings
 from mlms.tools.export_project import export_project as _export_project
@@ -28,7 +30,7 @@ from mlms.tools.search_memory import search_memory as _search_memory
 
 @dataclass
 class _AppCtx:
-    conn: psycopg.AsyncConnection[Any]
+    pool: AsyncConnectionPool[Any]
     redis: Any
 
 
@@ -38,13 +40,40 @@ def _pg_dsn(url: str) -> str:
 
 @asynccontextmanager
 async def _lifespan(_server: FastMCP) -> AsyncIterator[_AppCtx]:
-    conn = await psycopg.AsyncConnection.connect(_pg_dsn(settings.database_url), autocommit=True)
+    pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
+        _pg_dsn(settings.database_url),
+        min_size=1,
+        max_size=5,
+        open=False,
+        timeout=10,
+        max_lifetime=3600,
+        max_idle=300,
+        kwargs={"autocommit": True},
+    )
+    await pool.open(wait=True, timeout=10)
     r = aioredis.from_url(settings.redis_url, decode_responses=True)
     try:
-        yield _AppCtx(conn=conn, redis=r)
+        yield _AppCtx(pool=pool, redis=r)
     finally:
-        await conn.close()
+        await pool.close()
         await r.aclose()
+
+
+_log = logging.getLogger(__name__)
+
+
+class PoolUnavailable(Exception):
+    """Raised at the tool boundary when a DB connection can't be checked out in time."""
+
+
+@asynccontextmanager
+async def _acquire(app: _AppCtx) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
+    try:
+        async with app.pool.connection() as conn:
+            yield conn
+    except (PoolTimeout, psycopg.OperationalError) as exc:
+        _log.warning("db pool unavailable: %s stats=%s", exc, app.pool.get_stats())
+        raise PoolUnavailable("database temporarily unavailable, try again shortly") from exc
 
 
 mcp: FastMCP = FastMCP("mlms", lifespan=_lifespan)
@@ -98,13 +127,14 @@ async def memorize(
     Returns: {"ok": true, "memory_id": "<server-generated-id>"}
     """
     app: _AppCtx = ctx.request_context.lifespan_context
-    return await _memorize(
-        content=content,
-        type=cast(_MemType, type),
-        metadata=metadata,
-        conn=app.conn,
-        redis=app.redis,
-    )
+    async with _acquire(app) as conn:
+        return await _memorize(
+            content=content,
+            type=cast(_MemType, type),
+            metadata=metadata,
+            conn=conn,
+            redis=app.redis,
+        )
 
 
 @mcp.tool()
@@ -126,14 +156,15 @@ async def get_facts(
     Only returns is_current=TRUE facts (outdated versions are excluded automatically).
     """
     app: _AppCtx = ctx.request_context.lifespan_context
-    rows = await _get_facts(
-        about=about,
-        project_id=project_id,
-        tags=tags,
-        limit=limit,
-        conn=app.conn,
-        redis=app.redis,
-    )
+    async with _acquire(app) as conn:
+        rows = await _get_facts(
+            about=about,
+            project_id=project_id,
+            tags=tags,
+            limit=limit,
+            conn=conn,
+            redis=app.redis,
+        )
     return [r.model_dump(mode="json") for r in rows]
 
 
@@ -153,13 +184,14 @@ async def get_timeline(
     limit: default 20
     """
     app: _AppCtx = ctx.request_context.lifespan_context
-    rows = await _get_timeline(
-        project_id=project_id,
-        time_range=time_range,
-        event_type=cast(_EventType, event_type),
-        limit=limit,
-        conn=app.conn,
-    )
+    async with _acquire(app) as conn:
+        rows = await _get_timeline(
+            project_id=project_id,
+            time_range=time_range,
+            event_type=cast(_EventType, event_type),
+            limit=limit,
+            conn=conn,
+        )
     return [r.model_dump(mode="json") for r in rows]
 
 
@@ -184,15 +216,16 @@ async def get_session_log(
       limit: default 50
     """
     app: _AppCtx = ctx.request_context.lifespan_context
-    rows = await _get_session_log(
-        chat_id=chat_id,
-        limit=limit,
-        entry_type=entry_type,
-        semantic_query=semantic_query,
-        project_id=project_id,
-        conn=app.conn,
-        redis=app.redis,
-    )
+    async with _acquire(app) as conn:
+        rows = await _get_session_log(
+            chat_id=chat_id,
+            limit=limit,
+            entry_type=entry_type,
+            semantic_query=semantic_query,
+            project_id=project_id,
+            conn=conn,
+            redis=app.redis,
+        )
     return [r.model_dump(mode="json") for r in rows]
 
 
@@ -215,7 +248,8 @@ async def get_skills(
 ) -> list[dict[str, Any]]:
     """Get procedural skills, optionally filtered by domain."""
     app: _AppCtx = ctx.request_context.lifespan_context
-    rows = await _get_skills(domain=domain, limit=limit, conn=app.conn)
+    async with _acquire(app) as conn:
+        rows = await _get_skills(domain=domain, limit=limit, conn=conn)
     return [r.model_dump(mode="json") for r in rows]
 
 
@@ -227,7 +261,8 @@ async def revert_fact(
     """Revert a fact to its previous version. fact_id must be the current version."""
     from uuid import UUID
     app: _AppCtx = ctx.request_context.lifespan_context
-    return await _revert_fact(fact_id=UUID(fact_id), conn=app.conn)
+    async with _acquire(app) as conn:
+        return await _revert_fact(fact_id=UUID(fact_id), conn=conn)
 
 
 @mcp.tool()
@@ -247,7 +282,8 @@ async def search_memory(
     Returns ranked results from all layers with a "layer" field indicating source.
     """
     app: _AppCtx = ctx.request_context.lifespan_context
-    rows = await _search_memory(query=query, filters=filters, conn=app.conn, redis=app.redis)
+    async with _acquire(app) as conn:
+        rows = await _search_memory(query=query, filters=filters, conn=conn, redis=app.redis)
     return [r.model_dump(mode="json") for r in rows]
 
 
@@ -258,7 +294,8 @@ async def export_project(
 ) -> str:
     """Export all current facts, timeline events, and skills for a project as JSON."""
     app: _AppCtx = ctx.request_context.lifespan_context
-    return await _export_project(project_id=project_id, conn=app.conn)
+    async with _acquire(app) as conn:
+        return await _export_project(project_id=project_id, conn=conn)
 
 
 if __name__ == "__main__":
