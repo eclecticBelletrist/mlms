@@ -33,9 +33,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Safe only on empty tables: vector(4096) data cannot be downcasted to vector(1536).
-    op.execute("DROP INDEX IF EXISTS facts_embedding_idx")
-    op.execute("ALTER TABLE facts ALTER COLUMN embedding TYPE vector(1536)")
-
-    op.execute("DROP INDEX IF EXISTS session_log_embedding_idx")
-    op.execute("ALTER TABLE session_log ALTER COLUMN embedding TYPE vector(1536)")
+    raise NotImplementedError(
+        "006 is irreversible: vector(4096) -> vector(1536) is a lossy Matryoshka "
+        "truncation, original dimensions cannot be reconstructed. Restore from a "
+        "pre-006 backup instead of downgrading."
+    )
