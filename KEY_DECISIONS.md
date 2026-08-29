@@ -51,7 +51,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-24
 
-**Last updated:** 2026-08-25
+**Last updated:** 2026-08-29
 
 **Decision:** the server uses a `psycopg_pool.AsyncConnectionPool` instead of one `AsyncConnection` held for the whole lifespan. Each tool call checks out a connection with `async with pool.connection()`.
 
@@ -68,5 +68,21 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. Within one session, the single connection used to serialize the database part of tool calls, which made this race unlikely. The pool removes that serialization, so two overlapping `memorize()` calls with the same `chat_id` in one session can now lose a session-context update. Calls from different sessions never shared a connection, so for devices on separate sessions the race existed before the pool.
 
 **Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py` (new).
+
+---
+
+## Decision 4: DNS rebinding protection enabled, allowlist limited to loopback
+
+**Decided:** 2026-08-29
+
+**Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0`.
+
+**Rationale:** CVE-2025-66416 ([GHSA-9h52-p55h-vw2f](https://github.com/advisories/GHSA-9h52-p55h-vw2f)): the MCP Python SDK did not enable DNS rebinding protection by default (fixed in 1.23.0). It affects only `sse` and `streamable-http`; the default `stdio` transport opens no network port. The SDK now enables the protection automatically, but only when the host is `127.0.0.1`, `localhost` or `::1` ([`fastmcp/server.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/fastmcp/server.py)). MLMS defaults `mcp_host` to `0.0.0.0`, so the setting has to be explicit. `allowed_origins` is required too, because the SDK validates `Origin` inside the same gate ([`transport_security.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/transport_security.py)). The floor guards against a re-resolve of `uv.lock` (currently `1.27.2`) going below the fixed version.
+
+**Consequence:** if `MCP_HOST` points outside loopback (LAN, VPS, domain), every request gets `421 Invalid Host Header` until that host is added to both lists in `server.py`. This is deliberate; the same confusion is reported in other MCP servers ([blockscout/mcp-server #333](https://github.com/blockscout/mcp-server/issues/333)). A regression test (`tests/unit/test_server_transport_security.py`) fails if the protection is turned off again.
+
+**Alternatives:** a wider allowlist for hypothetical proxy or domain deployments was rejected as speculative, since adding a host later is a one-line change.
+
+**Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
 ---

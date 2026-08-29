@@ -79,7 +79,19 @@ async def _acquire(app: _AppCtx) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
 mcp: FastMCP = FastMCP("mlms", lifespan=_lifespan)
 
 from mcp.server.fastmcp.server import TransportSecuritySettings
-mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+# CVE-2025-66416 (GHSA-9h52-p55h-vw2f): HTTP-based transports (sse/streamable-http) need
+# explicit DNS rebinding protection — mcp_host defaults to 0.0.0.0, so the SDK's automatic
+# localhost-only protection (added in 1.23.0) does not kick in here. Host/Origin allowlists
+# are scoped to loopback for this single-/few-user, local-by-default deployment. Exposing
+# MCP_HOST beyond loopback (LAN/VPS/domain) without adding that host to both lists below
+# will make every request fail with 421 Invalid Host Header.
+_LOOPBACK_HOSTS = ["localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"]
+mcp.settings.transport_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=_LOOPBACK_HOSTS,
+    allowed_origins=_LOOPBACK_HOSTS,
+)
 
 
 _MemType = Literal["fact", "event", "skill", "session_log"]

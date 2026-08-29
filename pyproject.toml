@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "mcp>=1.0",
+    "mcp>=1.23.0",  # DNS rebinding protection fix, CVE-2025-66416 / GHSA-9h52-p55h-vw2f
     "asyncpg>=0.29",
     "psycopg[async]>=3.1",
     "psycopg_pool>=3.2",
