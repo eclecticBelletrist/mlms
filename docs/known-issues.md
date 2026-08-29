@@ -59,6 +59,10 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 `SELECT id, name, content, domain, version, created_at FROM skills` — no `WHERE`. An export for a specific `project_id` returns all skills in the system, labelled with the same `project_id` in the top-level JSON — misleading. Root cause: in this version of the schema `skills` has no `project_id` column at all (see `alembic/versions/005_create_skills.py`) — scoping does not exist architecturally, not only in this query.
 
+### 13. `get_timeline` cannot return more than `limit` events — the cursor is not wired up
+
+`get_events()` in `storage/timeline.py` implements full keyset pagination `(time, id)`, covered by tests. But the MCP tool `tools/get_timeline.py` does not use it — it bypasses it with its own inline SQL (`ORDER BY time DESC LIMIT %s`), without a cursor and without `has_next`. In practice: if `timeline_events` has accumulated more events than `limit`, only the first `limit` by descending time are reachable through the MCP tool, and the rest cannot be reached by any call. Deliberately not wired up for now — it requires changing the tool's response model (`next_cursor` exposed), a risk under publication haste.
+
 ## TODO/FIXME in code
 
 There are no direct `TODO`/`FIXME` comments in the code — the project follows the "no over-commenting" principle. But:

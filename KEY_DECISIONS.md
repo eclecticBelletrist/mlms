@@ -85,4 +85,90 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
+**See also:** Decision 9.
+
+---
+
+## Decision 5: Single `timescaledb-ha` image for PostgreSQL
+
+**Decided:** 2026-05-08
+
+**Last updated:** 2026-08-29
+
+**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha:pg16`, instead of `postgres` plus separately installed extensions.
+
+**Consequence:** the data directory in this image is `/home/postgres/pgdata/data`, not the stock `/var/lib/postgresql/data`. Switching to another Postgres image means changing the volume mapping too.
+
+**Rationale:** the image already ships TimescaleDB and pgvector (the [Dockerfile](https://github.com/timescale/timescaledb-docker-ha/blob/master/Dockerfile#L186) installs `postgresql-${pg}-pgvector`), so there are no init scripts to mount and no extensions to compile.
+
+**Affected files:** `docker-compose.yml`
+
+---
+
+## Decision 6: Conflict detection by cosine distance, inside a transaction
+
+**Decided:** 2026-05-10
+
+**Last updated:** 2026-08-29
+
+**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction.
+
+**Known limitation:** the check and the insert are separate statements at the default `READ COMMITTED` isolation. Two concurrent `memorize()` calls with near-identical content can both see no conflict and both insert an `is_current=TRUE` row. The transaction does not close that window.
+
+**Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement.
+
+**Threshold:** `COSINE_CONFLICT_THRESHOLD = 0.96` is a starting point that has not been calibrated against real data.
+
+**Affected files:** `src/mlms/storage/facts.py` (`upsert_fact`), `src/mlms/config.py`
+
+**See also:** Decision 10.
+
+---
+
+## Decision 9: `MCP_TRANSPORT` switch between stdio and HTTP
+
+**Decided:** 2026-05-16
+
+**Last updated:** 2026-08-29
+
+**Decision:** `MCP_TRANSPORT` (default `stdio`) selects the transport in `server.py`. For `sse` and `streamable-http` the server also reads `MCP_HOST` / `MCP_PORT`.
+
+**Rationale:** `stdio` is enough when the MCP client launches the server as a child process, and it opens no network port. HTTP is needed when the client cannot start the server itself, for example a server on another machine.
+
+**Affected files:** `src/mlms/config.py`, `src/mlms/server.py`
+
+**See also:** Decision 4 (DNS rebinding applies only to the HTTP transports).
+
+---
+
+## Decision 10: `revert_fact` follows the `replaces_id` chain and blocks cross-project reverts
+
+**Decided:** 2026-05-20
+
+**Last updated:** 2026-08-29
+
+**Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column added in migration `007`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that both versions have the same `project_id` and refuses otherwise.
+
+**Rationale:** chains are built inside one project, so a mismatch can only come from inconsistent data (a manual edit or a bug). The check stops a revert from reactivating a fact in another project in that case. The tool takes only `fact_id`, so it does not check that the caller owns the fact.
+
+**Affected files:** `alembic/versions/007_add_project_id_session_log_replaces_id_facts.py`, `src/mlms/tools/revert_fact.py`
+
+**See also:** Decision 6.
+
+---
+
+## Decision 14: Keyset pagination on `(time, id)` in `get_events()`
+
+**Decided:** 2026-05-13
+
+**Last updated:** 2026-08-29
+
+**Decision:** the cursor is the pair `(time, id)` with `WHERE time > %s OR (time = %s AND id > %s)`, ordered by `time, id`, instead of `time` alone.
+
+**Rationale:** timestamps are not unique. With a `time`-only cursor, events sharing a timestamp across a page boundary are skipped or repeated. `id` gives a strict tie-break.
+
+**Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so the tool cannot return more than `limit` events. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#13).
+
+**Affected files:** `src/mlms/storage/timeline.py` (`get_events`)
+
 ---

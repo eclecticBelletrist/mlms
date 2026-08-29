@@ -117,6 +117,12 @@ All non-obvious architectural decisions (index type changes, schema trade-offs, 
 must be recorded in `KEY_DECISIONS.md` at the project root.
 Format: date, decision, reason, alternatives rejected, affected files, trade-offs.
 
+**The private working notes file is local-only — never committed, never public.** Any file that
+IS committed/public (`KEY_DECISIONS.md`, `docs/known-issues.md`, `README.md`, code comments, commit
+messages) must never reference it by name or point a reader at it. If a point from it
+needs to survive into a public doc, restate the substance inline instead of citing the file — a
+committed doc pointing at a file that doesn't exist in the clone is broken for anyone reading it.
+
 ---
 
 ## Directory Layout
