@@ -9,14 +9,15 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Annotated, Any, Literal, cast
 
 import psycopg
 import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
+from pydantic import BeforeValidator, Field
 
-from mlms.config import settings
+from mlms.config import MEMORY_CONTENT_MAX_LENGTH, settings
 from mlms.tools.export_project import export_project as _export_project
 from mlms.tools.get_facts import get_facts as _get_facts
 from mlms.tools.get_session_ctx import get_session_context as _get_session_ctx
@@ -36,6 +37,22 @@ class _AppCtx:
 
 def _pg_dsn(url: str) -> str:
     return url.replace("postgresql+psycopg://", "postgresql://", 1)
+
+
+def _check_content_length(v: str) -> str:
+    if len(v) > MEMORY_CONTENT_MAX_LENGTH:
+        raise ValueError(
+            f"content is {len(v)} characters, exceeds the {MEMORY_CONTENT_MAX_LENGTH}-character "
+            "limit — split it into multiple memorize() calls instead of one large one."
+        )
+    return v
+
+
+_MemoryContent = Annotated[
+    str,
+    BeforeValidator(_check_content_length),
+    Field(max_length=MEMORY_CONTENT_MAX_LENGTH),
+]
 
 
 @asynccontextmanager
@@ -100,12 +117,18 @@ _EventType = Literal["phase", "action", "decision"]
 
 @mcp.tool()
 async def memorize(
-    content: str,
+    content: _MemoryContent,
     type: str,
     metadata: dict[str, Any],
     ctx: Context[Any, Any, Any],
 ) -> dict[str, Any]:
     """Store a memory in the long-term memory system.
+
+    content: max 10,000 characters (hard limit, rejected past this). Recommended
+    ~500 characters per memory — a single atomic fact retrieves more precisely
+    than a long composite one. If a fact bundles several unrelated details, split
+    it across multiple memorize() calls rather than cramming it into one — don't
+    drop details to fit, split them instead.
 
     type: "fact" | "event" | "skill" | "session_log"
 

@@ -19,6 +19,15 @@ LATENCY_P99_TARGET_MS: Final[int] = 200
 LATENCY_SESSION_CTX_MS: Final[int] = 5
 PRECISION_AT_5_TARGET: Final[float] = 0.80
 
+# Hard reject limit for memorize(content). Sized off the *weaker* fallback model
+# (qwen3-embedding-0.6b, 8192-token limit) with a pessimistic Cyrillic char/token
+# ratio (~1.5, not the ~3 that holds for English) so the cap holds under either
+# embedding model: 8192 * 1.5 ≈ 12288, rounded down to 10000 for margin.
+MEMORY_CONTENT_MAX_LENGTH: Final[int] = 10_000
+# Soft guidance only (not enforced) — atomic facts retrieve more precisely than
+# long composite ones; see memorize()'s docstring.
+MEMORY_CONTENT_RECOMMENDED_LENGTH: Final[int] = 500
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(

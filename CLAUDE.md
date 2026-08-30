@@ -30,6 +30,9 @@ REDIS_KEY_PATTERN        = "session:{chat_id}"
 LATENCY_P99_TARGET_MS    = 200        # cached path only
 LATENCY_SESSION_CTX_MS   = 5         # get_session_context() hard limit
 PRECISION_AT_5_TARGET    = 0.80      # Recall@5 metric — renamed from precision@5, sparse ground truth (1-2 relevant per scenario)
+
+MEMORY_CONTENT_MAX_LENGTH = 10_000            # memorize(content) hard reject limit — sized off the weaker fallback model's token limit, not the primary
+MEMORY_CONTENT_RECOMMENDED_LENGTH = 500       # soft guidance, not enforced — atomic facts retrieve more precisely than long composite ones
 ```
 
 ---

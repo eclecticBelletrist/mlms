@@ -161,7 +161,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-13
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-08-30
 
 **Decision:** the cursor is the pair `(time, id)` with `WHERE time > %s OR (time = %s AND id > %s)`, ordered by `time, id`, instead of `time` alone.
 
@@ -170,5 +170,21 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so the tool cannot return more than `limit` events. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#13).
 
 **Affected files:** `src/mlms/storage/timeline.py` (`get_events`)
+
+---
+
+## Decision 15: `memorize(content)` length limit: hard 10,000 characters, soft 500
+
+**Decided:** 2026-08-30
+
+**Decision:** `content` above `MEMORY_CONTENT_MAX_LENGTH = 10_000` characters is rejected, not truncated. The check runs in the tool signature through a `BeforeValidator`, so the error reports the actual length and the limit; `Field(max_length=...)` stays alongside so the limit also appears in the tool's JSON Schema. The tool docstring recommends about 500 characters per fact (`MEMORY_CONTENT_RECOMMENDED_LENGTH`, guidance only), so composite facts are split across several calls.
+
+**Rationale:** `content` had no limit, and for facts the whole text is sent to the embedding API. At an assumed 1.5 characters per token for Cyrillic (an estimate, not measured with the real tokenizer), 10,000 characters is about 6,700 tokens. That is far below the 32k context of both Qwen3-Embedding models ([8B](https://huggingface.co/Qwen/Qwen3-Embedding-8B), [0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)) and within the `max_length = 8192` used in both model cards' usage examples. The margin is deliberate: the fallback `qwen3-embedding-0.6b` is intended for local serving (not implemented yet), where the usable context is set by the server.
+
+**Alternatives:**
+- Truncate silently: loses part of a fact without warning, while an error lets the agent shorten or split the text.
+- Different limits per `memorize()` type: only `fact` content and the `session_log` label (already capped at 100 characters) reach the embedding API, so `event` and `skill` are not restricted in practice, and per-type limits would only add complexity.
+
+**Affected files:** `src/mlms/server.py` (`_check_content_length`, `_MemoryContent`, `memorize` signature and docstring), `src/mlms/config.py`, `tests/unit/test_memorize_content_limit.py` (new)
 
 ---
