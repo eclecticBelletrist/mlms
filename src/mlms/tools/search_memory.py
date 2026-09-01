@@ -145,19 +145,19 @@ async def search_memory(
     project_id: str | None = resolved.get("project_id")
     time_range: dict[str, str] | None = resolved.get("time_range")
 
-    vec = await embed(query, redis)
-
     fact_results: list[MemoryResult] = []
     event_results: list[MemoryResult] = []
     skill_results: list[MemoryResult] = []
 
     if memory_type is None:
+        vec = await embed(query, redis)
         fact_results, event_results, skill_results = await asyncio.gather(
             _search_facts(vec, project_id, conn, 20),
             _search_events(query, project_id, time_range, conn, 20),
             _search_skills(query, conn, 10),
         )
     elif memory_type == "fact":
+        vec = await embed(query, redis)
         fact_results = await _search_facts(vec, project_id, conn, 20)
     elif memory_type == "event":
         event_results = await _search_events(query, project_id, time_range, conn, 20)

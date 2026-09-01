@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal, cast
 import psycopg
 import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.types import ToolAnnotations
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from pydantic import BeforeValidator, Field
 
@@ -114,8 +115,29 @@ mcp.settings.transport_security = TransportSecuritySettings(
 _MemType = Literal["fact", "event", "skill", "session_log"]
 _EventType = Literal["phase", "action", "decision"]
 
+# readOnlyHint already tells clients "won't write/delete" — destructiveHint/idempotentHint
+# add nothing on a read-only tool, so read-only annotations carry only the two fields that
+# are actually informative: readOnlyHint and openWorldHint (does it call the external Qwen
+# embedding API?).
+_READ_ONLY_LOCAL = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
+# get_facts(about=...) and get_session_log(semantic_query=...) call embed() conditionally,
+# same as search_memory's fact branch — openWorldHint has to be True on all three or it lies
+# about the two that were missed on the first pass.
+_READ_ONLY_EXTERNAL = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
 
-@mcp.tool()
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        # additive-only: creates a new fact/event/skill/log row, never deletes or
+        # overwrites one (soft versioning via is_current, see storage/facts.py).
+        destructiveHint=False,
+        # every call creates a new row/version — repeating it is not a no-op.
+        idempotentHint=False,
+        # fact/session_log branches call the external Qwen embedding API.
+        openWorldHint=True,
+    )
+)
 async def memorize(
     content: _MemoryContent,
     type: str,
@@ -172,7 +194,7 @@ async def memorize(
         )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_EXTERNAL)
 async def get_facts(
     ctx: Context[Any, Any, Any],
     about: str | None = None,
@@ -203,7 +225,7 @@ async def get_facts(
     return [r.model_dump(mode="json") for r in rows]
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_LOCAL)
 async def get_timeline(
     ctx: Context[Any, Any, Any],
     project_id: str | None = None,
@@ -230,7 +252,7 @@ async def get_timeline(
     return [r.model_dump(mode="json") for r in rows]
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_EXTERNAL)
 async def get_session_log(
     ctx: Context[Any, Any, Any],
     chat_id: str | None = None,
@@ -264,7 +286,7 @@ async def get_session_log(
     return [r.model_dump(mode="json") for r in rows]
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_LOCAL)
 async def get_session_context(
     chat_id: str,
     ctx: Context[Any, Any, Any],
@@ -275,7 +297,7 @@ async def get_session_context(
     return result.model_dump(mode="json") if result is not None else None
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_LOCAL)
 async def get_skills(
     ctx: Context[Any, Any, Any],
     domain: str | None = None,
@@ -288,7 +310,24 @@ async def get_skills(
     return [r.model_dump(mode="json") for r in rows]
 
 
-@mcp.tool()
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        # Soft-delete only: flips is_current, never DROPs a row (see storage/facts.py
+        # anti-pattern note in CLAUDE.md). Judgment call, not an unambiguous protocol
+        # fact — from the calling LLM's view, the reverted fact vanishes from every
+        # default get_facts()/search_memory() listing, which reads like a deletion
+        # even though the row is still physically present.
+        destructiveHint=False,
+        # Calling revert_fact(fact_id) twice in a row with no concurrent memorize()
+        # in between is a no-op the second time (the fetch has no is_current filter).
+        # False anyway — it's a guard against a concurrent memorize() interleaving
+        # and mutating the replaces_id chain between the two calls, not a claim that
+        # a single-caller retry is unsafe.
+        idempotentHint=False,
+        openWorldHint=False,
+    )
+)
 async def revert_fact(
     fact_id: str,
     ctx: Context[Any, Any, Any],
@@ -300,18 +339,18 @@ async def revert_fact(
         return await _revert_fact(fact_id=UUID(fact_id), conn=conn)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_EXTERNAL)
 async def search_memory(
     query: str,
     ctx: Context[Any, Any, Any],
     filters: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Search across ALL memory layers simultaneously (facts + timeline + session_log + skills).
+    """Search across ALL memory layers simultaneously (facts + timeline + skills).
 
     query: natural-language search, e.g. "what did we decide about the database"
     filters (optional dict):
       "project_id": "a1b2c3d4-0000-0000-0000-000000000001"
-      "memory_type": "fact" | "event" | "skill" | "session_log"
+      "memory_type": "fact" | "event" | "skill"
       "time_range": {"start": "ISO8601", "end": "ISO8601"}
 
     Returns ranked results from all layers with a "layer" field indicating source.
@@ -322,7 +361,7 @@ async def search_memory(
     return [r.model_dump(mode="json") for r in rows]
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY_LOCAL)
 async def export_project(
     project_id: str,
     ctx: Context[Any, Any, Any],

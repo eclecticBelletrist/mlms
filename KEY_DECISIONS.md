@@ -145,7 +145,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-20
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-01
 
 **Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column added in migration `007`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that both versions have the same `project_id` and refuses otherwise.
 
@@ -153,7 +153,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `alembic/versions/007_add_project_id_session_log_replaces_id_facts.py`, `src/mlms/tools/revert_fact.py`
 
-**See also:** Decision 6.
+**See also:** Decision 6, Decision 16.
 
 ---
 
@@ -177,6 +177,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-30
 
+**Last updated:** 2026-09-01
+
 **Decision:** `content` above `MEMORY_CONTENT_MAX_LENGTH = 10_000` characters is rejected, not truncated. The check runs in the tool signature through a `BeforeValidator`, so the error reports the actual length and the limit; `Field(max_length=...)` stays alongside so the limit also appears in the tool's JSON Schema. The tool docstring recommends about 500 characters per fact (`MEMORY_CONTENT_RECOMMENDED_LENGTH`, guidance only), so composite facts are split across several calls.
 
 **Rationale:** `content` had no limit, and for facts the whole text is sent to the embedding API. At an assumed 1.5 characters per token for Cyrillic (an estimate, not measured with the real tokenizer), 10,000 characters is about 6,700 tokens. That is far below the 32k context of both Qwen3-Embedding models ([8B](https://huggingface.co/Qwen/Qwen3-Embedding-8B), [0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)) and within the `max_length = 8192` used in both model cards' usage examples. The margin is deliberate: the fallback `qwen3-embedding-0.6b` is intended for local serving (not implemented yet), where the usable context is set by the server.
@@ -186,5 +188,23 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - Different limits per `memorize()` type: only `fact` content and the `session_log` label (already capped at 100 characters) reach the embedding API, so `event` and `skill` are not restricted in practice, and per-type limits would only add complexity.
 
 **Affected files:** `src/mlms/server.py` (`_check_content_length`, `_MemoryContent`, `memorize` signature and docstring), `src/mlms/config.py`, `tests/unit/test_memorize_content_limit.py` (new)
+
+---
+
+## Decision 16: MCP tool annotations: minimal set on read-only tools, all four fields on write tools
+
+**Decided:** 2026-09-01
+
+**Decision:** every tool carries `ToolAnnotations`. Read-only tools set only `readOnlyHint=True` and `openWorldHint`, because `destructiveHint` and `idempotentHint` are meaningful only when `readOnlyHint` is false ([MCP schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-06-18/schema.ts)). `memorize` and `revert_fact` set all four fields explicitly: a missing `destructiveHint` defaults to `true` for a tool that is not read-only, and neither tool deletes rows.
+
+**`openWorldHint`** follows whether a tool can reach the external embedding API, not the tool type. It is `True` for `get_facts` (with `about`), `get_session_log` (with `semantic_query`), `memorize` and `search_memory`, and `False` for `get_timeline`, `get_session_context`, `get_skills`, `revert_fact` and `export_project`. The hint is static per tool, so a tool that calls the API only for some arguments is marked `True`. The schema default is `true`, so the `False` values are the ones that matter.
+
+**`revert_fact` hints:**
+- `destructiveHint=False` is a judgment call. No row is deleted (`is_current` is flipped), but for the calling agent a reverted fact disappears from the default `get_facts` and `search_memory` results, which both filter on `is_current=TRUE`.
+- `idempotentHint=False` is set conservatively: a concurrent `memorize()` can change the version chain between two calls.
+
+**Affected files:** `src/mlms/server.py`, `tests/unit/test_server_tool_annotations.py` (new)
+
+**See also:** Decision 10.
 
 ---
