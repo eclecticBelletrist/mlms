@@ -43,6 +43,11 @@ _GET_ALL_LATEST = (
     f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills ORDER BY name, version DESC LIMIT %s"
 )
 
+_GET_ALL_LATEST_BY_DOMAIN = (
+    f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills"
+    " WHERE domain = %s ORDER BY name, version DESC LIMIT %s"
+)
+
 _GET_LATEST_BY_NAME = (
     f"SELECT {_SELECT_COLS} FROM skills WHERE name = %s ORDER BY version DESC LIMIT 1"
 )
@@ -87,12 +92,15 @@ async def insert_skill(
 async def get_skills(
     *,
     name: str | None = None,
+    domain: str | None = None,
     limit: int = 20,
     conn: psycopg.AsyncConnection[Any],
 ) -> list[Skill]:
     cur = conn.cursor(row_factory=psycopg.rows.dict_row)
     if name is not None:
         await cur.execute(_GET_LATEST_BY_NAME, (name,))
+    elif domain is not None:
+        await cur.execute(_GET_ALL_LATEST_BY_DOMAIN, (domain, limit))
     else:
         await cur.execute(_GET_ALL_LATEST, (limit,))
     rows: list[dict[str, Any]] = await cur.fetchall()

@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock, patch
 import psycopg
 import pytest
 
+from mlms.storage.session_log import get_session_log as _storage_get_session_log
 from mlms.storage.session_log import insert_session_entry
 from mlms.tools.get_facts import get_facts
 from mlms.tools.get_session_log import get_session_log
@@ -162,3 +163,46 @@ class TestSessionAugmentedRAGFlow:
 
         assert len(facts) == 1
         assert "Python" in facts[0].content
+
+
+class TestSessionLogSelectiveFilterWithHNSW:
+    """Reproduces the pgvector recall pitfall behind 3.5: HNSW pulls its ef_search
+    candidate window (default 40) BEFORE any WHERE filter runs, so a selective
+    entry_type filter can lose a real match that isn't among the top ~40 nearest by
+    raw distance. hnsw.iterative_scan (storage/session_log.py) is what keeps the
+    index searching until the filtered LIMIT is actually filled.
+    """
+
+    async def test_selective_entry_type_survives_dense_decoy_field(
+        self, pg: psycopg.AsyncConnection[Any]
+    ) -> None:
+        chat_id = f"chat-{uuid.uuid4()}"
+
+        # 50 decoys at the exact query vector — all rank ahead of the target by
+        # cosine distance, comfortably exceeding the default ef_search=40 window.
+        for i in range(50):
+            await insert_session_entry(
+                chat_id=chat_id,
+                entry_type="topic",
+                label=f"decoy-{i}",
+                embedding_vec=_VEC_PY,
+                conn=pg,
+            )
+
+        # Target: the only "action" entry, embedding nudged off the query vector so
+        # it ranks behind the decoy wall by raw distance.
+        target_vec = [0.98, 0.02] + [0.0] * 1534
+        await insert_session_entry(
+            chat_id=chat_id,
+            entry_type="action",
+            label="the-target",
+            embedding_vec=target_vec,
+            conn=pg,
+        )
+        await pg.commit()
+
+        rows = await _storage_get_session_log(
+            semantic_query=_VEC_PY, entry_type="action", limit=5, conn=pg
+        )
+
+        assert any(r.label == "the-target" for r in rows)

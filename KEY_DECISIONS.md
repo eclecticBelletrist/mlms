@@ -29,7 +29,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-09
 
-**Last updated:** 2026-08-25
+**Last updated:** 2026-09-01
 
 **Decision:** HNSW index on `facts.embedding` and `session_log.embedding`.
 
@@ -43,7 +43,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `alembic/versions/002_create_facts.py`, `alembic/versions/004_create_session_log.py`, `alembic/versions/006_change_embedding_dim.py`
 
-**See also:** Decision 1.
+**See also:** Decision 1, Decision 17.
 
 ---
 
@@ -206,5 +206,25 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `src/mlms/server.py`, `tests/unit/test_server_tool_annotations.py` (new)
 
 **See also:** Decision 10.
+
+---
+
+## Decision 17: Filters applied in SQL before `LIMIT`, HNSW iterative scan for filtered session-log search
+
+**Decided:** 2026-09-01
+
+**Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
+
+**Rationale:**
+- Both tools used to filter in Python after the storage layer had already applied `LIMIT`. Matching rows ranked below the first `LIMIT` rows were lost even though they existed.
+- The HNSW index has the same effect: pgvector applies the filter after scanning the index's candidate list (`hnsw.ef_search`, default 40), so a selective filter can return fewer than `LIMIT` rows ([README, filtering](https://github.com/pgvector/pgvector#filtering)). Iterative scans (pgvector 0.8.0 and later) keep scanning until enough rows are found or `hnsw.max_scan_tuples` (20,000 by default) is reached ([README, iterative index scans](https://github.com/pgvector/pgvector#iterative-index-scans)).
+
+**Implementation note:** the pool runs with `autocommit=True` (`server.py`), so every bare `execute()` is its own transaction and `SET LOCAL` would be gone before the query runs. The `SET LOCAL` and the search `SELECT` therefore share one explicit transaction, the same pattern as `upsert_fact` (Decision 6). A plain `SET` is session-scoped ([PostgreSQL docs](https://www.postgresql.org/docs/current/sql-set.html)) and would stay on the pooled connection for the next borrower; the pool has no `reset` callback configured.
+
+**Alternatives:** exact (non-indexed) search on `session_log` avoids approximate-recall loss but gives up the HNSW index chosen in Decision 2. It was not pursued and not measured; it remains an option if approximate misses become visible.
+
+**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack, not yet run against a live database)
+
+**See also:** Decision 2.
 
 ---

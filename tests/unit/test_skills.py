@@ -204,6 +204,27 @@ class TestGetSkills:
         result = await get_skills(conn=conn)
         assert isinstance(result[0].id, uuid.UUID)
 
+    async def test_domain_filter_uses_where_domain_clause(self) -> None:
+        conn, cur = _make_get_conn([])
+        await get_skills(domain="sql", conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        params: tuple[Any, ...] = cur.execute.call_args[0][1]
+        assert "WHERE domain = " in sql
+        assert "DISTINCT ON" in sql
+        assert "sql" in params
+
+    async def test_domain_filter_respects_limit(self) -> None:
+        conn, cur = _make_get_conn([])
+        await get_skills(domain="sql", limit=3, conn=conn)
+        params: tuple[Any, ...] = cur.execute.call_args[0][1]
+        assert 3 in params
+
+    async def test_no_domain_omits_domain_filter(self) -> None:
+        conn, cur = _make_get_conn([])
+        await get_skills(conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "WHERE domain" not in sql
+
 
 # ── edge cases ────────────────────────────────────────────────────────────────
 

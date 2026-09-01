@@ -44,11 +44,12 @@ async def get_session_log(
         chat_id=chat_id,
         semantic_query=vec,
         project_id=UUID(project_id) if project_id is not None else None,
+        entry_type=entry_type,
         limit=limit,
         conn=conn,
     )
 
-    results = [
+    return [
         SessionLogEntry(
             time=e.time,
             chat_id=e.chat_id,
@@ -60,8 +61,3 @@ async def get_session_log(
         )
         for e in entries
     ]
-
-    if entry_type is not None:
-        results = [r for r in results if r.entry_type == entry_type]
-
-    return results

@@ -69,24 +69,25 @@ class TestGetSessionLogModes:
 
 
 class TestGetSessionLogFiltering:
-    async def test_entry_type_filter_applied(self) -> None:
-        entries = [
-            _make_entry(entry_type="decision"),
-            _make_entry(entry_type="action"),
-        ]
+    async def test_entry_type_passed_to_storage(self) -> None:
+        with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
+            await get_session_log(
+                chat_id="c", entry_type="decision", conn=MagicMock(), redis=MagicMock()
+            )
+        assert mock_storage.call_args.kwargs["entry_type"] == "decision"
+
+    async def test_no_entry_type_passes_none_to_storage(self) -> None:
+        with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
+            await get_session_log(chat_id="c", conn=MagicMock(), redis=MagicMock())
+        assert mock_storage.call_args.kwargs["entry_type"] is None
+
+    async def test_returns_whatever_storage_returns_unfiltered(self) -> None:
+        entries = [_make_entry(entry_type=t) for t in ("decision", "action", "topic")]
         with patch(_P_STORAGE, new=AsyncMock(return_value=entries)):
             result = await get_session_log(
                 chat_id="c", entry_type="decision", conn=MagicMock(), redis=MagicMock()
             )
-        assert len(result) == 1
-        assert result[0].entry_type == "decision"
-
-    async def test_no_filter_returns_all(self) -> None:
-        entries = [_make_entry(entry_type=t) for t in ("decision", "action", "topic")]
-        with patch(_P_STORAGE, new=AsyncMock(return_value=entries)):
-            result = await get_session_log(
-                chat_id="c", conn=MagicMock(), redis=MagicMock()
-            )
+        # storage is the source of truth for filtering now — tool no longer re-filters
         assert len(result) == 3
 
     async def test_returns_session_log_entry_pydantic(self) -> None:

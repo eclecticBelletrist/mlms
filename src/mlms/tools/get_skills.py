@@ -26,8 +26,8 @@ async def get_skills(
     limit: int = 20,
     conn: psycopg.AsyncConnection[Any],
 ) -> list[Skill]:
-    raw = await _storage_get_skills(limit=limit, conn=conn)
-    results = [
+    raw = await _storage_get_skills(domain=domain, limit=limit, conn=conn)
+    return [
         Skill(
             id=s.id,
             name=s.name,
@@ -39,6 +39,3 @@ async def get_skills(
         )
         for s in raw
     ]
-    if domain is not None:
-        results = [r for r in results if r.domain == domain]
-    return results

@@ -40,17 +40,11 @@ _INSERT = """
 
 _SELECT_COLS = "SELECT time, chat_id, type, label, content, tags, meta FROM session_log"
 
-_IN_SESSION = _SELECT_COLS + " WHERE chat_id = %s ORDER BY time DESC LIMIT %s"
-
-_CROSS_SESSION = (
-    _SELECT_COLS + " WHERE embedding IS NOT NULL" + " ORDER BY embedding <=> %s::vector LIMIT %s"
-)
-
-_CROSS_SESSION_FILTERED = (
-    _SELECT_COLS
-    + " WHERE embedding IS NOT NULL AND project_id = %s::uuid"
-    + " ORDER BY embedding <=> %s::vector LIMIT %s"
-)
+# pgvector HNSW is approximate: it pulls its ef_search candidate window (default 40)
+# before any WHERE filter runs, so a selective type/project filter can leave fewer than
+# LIMIT matches even when plenty exist in the table. hnsw.iterative_scan makes the index
+# keep expanding the search until LIMIT is filled (or hnsw.max_scan_tuples is hit).
+_ITERATIVE_SCAN = "SET LOCAL hnsw.iterative_scan = 'strict_order'"
 
 
 async def insert_session_entry(
@@ -82,6 +76,7 @@ async def get_session_log(
     chat_id: str | None = None,
     semantic_query: list[float] | None = None,
     project_id: UUID | None = None,
+    entry_type: str | None = None,
     limit: int = 20,
     conn: psycopg.AsyncConnection[Any],
 ) -> list[SessionEntry]:
@@ -93,13 +88,37 @@ async def get_session_log(
     cur = conn.cursor(row_factory=psycopg.rows.dict_row)
 
     if chat_id is not None:
-        await cur.execute(_IN_SESSION, (chat_id, limit))
+        where = ["chat_id = %s"]
+        params: list[Any] = [chat_id]
+        if entry_type is not None:
+            where.append("type = %s")
+            params.append(entry_type)
+        params.append(limit)
+        query = f"{_SELECT_COLS} WHERE {' AND '.join(where)} ORDER BY time DESC LIMIT %s"
+        await cur.execute(query, params)
     else:
         assert semantic_query is not None
+        where = ["embedding IS NOT NULL"]
+        params = []
         if project_id is not None:
-            await cur.execute(_CROSS_SESSION_FILTERED, (project_id, _vec_literal(semantic_query), limit))
-        else:
-            await cur.execute(_CROSS_SESSION, (_vec_literal(semantic_query), limit))
+            where.append("project_id = %s::uuid")
+            params.append(project_id)
+        if entry_type is not None:
+            where.append("type = %s")
+            params.append(entry_type)
+        params.append(_vec_literal(semantic_query))
+        params.append(limit)
+        query = (
+            f"{_SELECT_COLS} WHERE {' AND '.join(where)}"
+            " ORDER BY embedding <=> %s::vector LIMIT %s"
+        )
+        # SET LOCAL only holds for the current transaction, and this connection runs in
+        # autocommit — each bare execute() is its own transaction — so the GUC and the
+        # SELECT must share one explicit transaction, or the setting is gone before the
+        # query runs.
+        async with conn.transaction():
+            await cur.execute(_ITERATIVE_SCAN)
+            await cur.execute(query, params)
 
     rows: list[dict[str, Any]] = await cur.fetchall()
     return [

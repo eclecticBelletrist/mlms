@@ -37,20 +37,21 @@ class TestGetSkills:
             result = await get_skills(conn=MagicMock())
         assert result == []
 
-    async def test_domain_filter_excludes_non_matching(self) -> None:
-        skills = [
-            _make_storage_skill(domain="sql"),
-            _make_storage_skill(domain="python"),
-        ]
-        with patch(_P_STORAGE, new=AsyncMock(return_value=skills)):
-            result = await get_skills(domain="sql", conn=MagicMock())
-        assert len(result) == 1
-        assert result[0].domain == "sql"
+    async def test_domain_passed_to_storage(self) -> None:
+        with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
+            await get_skills(domain="sql", conn=MagicMock())
+        assert mock_storage.call_args.kwargs["domain"] == "sql"
 
-    async def test_domain_none_returns_all(self) -> None:
+    async def test_no_domain_passes_none_to_storage(self) -> None:
+        with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
+            await get_skills(conn=MagicMock())
+        assert mock_storage.call_args.kwargs["domain"] is None
+
+    async def test_returns_whatever_storage_returns_unfiltered(self) -> None:
         skills = [_make_storage_skill(domain=d) for d in ("sql", "python", "general")]
         with patch(_P_STORAGE, new=AsyncMock(return_value=skills)):
-            result = await get_skills(conn=MagicMock())
+            result = await get_skills(domain="sql", conn=MagicMock())
+        # storage is the source of truth for filtering now — tool no longer re-filters
         assert len(result) == 3
 
     async def test_limit_passed_to_storage(self) -> None:
@@ -70,11 +71,3 @@ class TestGetSkills:
         assert r.content == "use indexes"
         assert r.version == 3
 
-    async def test_domain_filter_on_none_domain_skill(self) -> None:
-        skills = [
-            _make_storage_skill(domain=None),
-            _make_storage_skill(domain="sql"),
-        ]
-        with patch(_P_STORAGE, new=AsyncMock(return_value=skills)):
-            result = await get_skills(domain="sql", conn=MagicMock())
-        assert len(result) == 1

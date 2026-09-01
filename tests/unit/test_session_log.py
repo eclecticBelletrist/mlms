@@ -27,9 +27,15 @@ def _make_conn(fetchall_result: list[dict[str, Any]] | None = None) -> tuple[Any
     cur.execute = AsyncMock(return_value=None)
     cur.fetchall = AsyncMock(return_value=fetchall_result or [])
 
+    # transaction() must be an async context manager that does NOT suppress exceptions —
+    # only the cross-session (vector search) branch enters it, for SET LOCAL hnsw.iterative_scan.
+    tx = AsyncMock()
+    tx.__aexit__ = AsyncMock(return_value=False)
+
     conn: Any = MagicMock()
     conn.execute = AsyncMock(return_value=None)
     conn.cursor.return_value = cur
+    conn.transaction.return_value = tx
 
     return conn, cur
 
@@ -181,6 +187,20 @@ class TestGetSessionLogInSession:
         result = await get_session_log(chat_id=_CHAT, conn=conn)
         assert len(result) == 3
 
+    async def test_in_session_entry_type_filter_in_sql(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(chat_id=_CHAT, entry_type="decision", conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        params: list[Any] = cur.execute.call_args[0][1]
+        assert "type = " in sql
+        assert "decision" in params
+
+    async def test_in_session_no_entry_type_omits_filter(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(chat_id=_CHAT, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "type = " not in sql
+
 
 # ── get_session_log — cross-session mode ──────────────────────────────────────
 
@@ -227,6 +247,36 @@ class TestGetSessionLogCrossSession:
         conn, _ = _make_conn([])
         result = await get_session_log(semantic_query=_EMBEDDING, conn=conn)
         assert result == []
+
+    async def test_cross_session_entry_type_filter_in_sql(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, entry_type="action", conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        params: list[Any] = cur.execute.call_args[0][1]
+        assert "type = " in sql
+        assert "action" in params
+
+    async def test_cross_session_no_entry_type_omits_filter(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "type = " not in sql
+
+    async def test_cross_session_wraps_query_in_transaction(self) -> None:
+        conn, _ = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, conn=conn)
+        conn.transaction.assert_called_once()
+
+    async def test_cross_session_sets_iterative_scan_before_select(self) -> None:
+        conn, cur = _make_conn([])
+        await get_session_log(semantic_query=_EMBEDDING, conn=conn)
+        first_call_sql: str = cur.execute.call_args_list[0][0][0]
+        assert "hnsw.iterative_scan" in first_call_sql
+
+    async def test_in_session_does_not_use_transaction(self) -> None:
+        conn, _ = _make_conn([])
+        await get_session_log(chat_id=_CHAT, conn=conn)
+        conn.transaction.assert_not_called()
 
 
 # ── get_session_log — cross-session with project_id filter ────────────────────
