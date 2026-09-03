@@ -1,4 +1,5 @@
 import os
+
 import psycopg
 
 url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)

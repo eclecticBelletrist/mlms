@@ -5,8 +5,6 @@ from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mlms.tools.get_facts import Fact, get_facts
 
 _VEC = [0.1] * 1536

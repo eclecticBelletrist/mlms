@@ -19,7 +19,7 @@ import os
 import random
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -58,7 +58,7 @@ LEXICAL_GAP_MAX = {
 _STOPS = {
     "а", "в", "и", "к", "на", "не", "с", "о", "от", "по", "за", "из",
     "то", "что", "как", "это", "для", "при", "до", "же", "но", "он", "она",
-    "оно", "они", "их", "им", "его", "её", "ли", "уже", "ещё", "но", "так",
+    "оно", "они", "их", "им", "его", "её", "ли", "уже", "ещё", "так",
     "is", "the", "a", "an", "in", "of", "to", "and", "or", "for", "with",
     "this", "that", "are", "was", "were", "be", "been", "it", "its", "by",
     "at", "from", "on", "as", "not", "has", "have", "had", "will", "can",
@@ -592,7 +592,7 @@ async def main() -> None:
         print(f"OK: BM25 Recall@5={recall:.3f} in target range [0.20–0.55]")
     print()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     result = {
         "meta": {
             "generated_at": now,

@@ -162,7 +162,7 @@ async def main() -> None:
 
     print()
     print("=" * 55)
-    print("SAR A/B BENCHMARK — semantic_drift (n={})".format(n))
+    print(f"SAR A/B BENCHMARK — semantic_drift (n={n})")
     print("=" * 55)
     print(f"  {'Mode':<28} {'Recall@5':>8}")
     print(f"  {'-'*28} {'-'*8}")

@@ -6,8 +6,6 @@ import uuid
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from mlms.config import COSINE_CONFLICT_THRESHOLD
 from mlms.storage.facts import FactResult, _vec_literal, upsert_fact
 

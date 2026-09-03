@@ -14,7 +14,6 @@ import psycopg
 import psycopg.rows
 import pytest
 
-from mlms.config import COSINE_CONFLICT_THRESHOLD
 from mlms.storage.facts import upsert_fact
 from mlms.tools.memorize import memorize
 

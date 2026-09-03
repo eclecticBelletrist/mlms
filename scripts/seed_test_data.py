@@ -23,7 +23,7 @@ import logging
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -578,7 +578,7 @@ def _save_partial(scenarios: list[dict[str, Any]]) -> None:
         counts[s["category"]] += 1
     payload = {
         "version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "total": len(scenarios),
         "categories": {cat: counts.get(cat, 0) for cat in CATEGORIES},
         "models_used": list(MODEL_SHORT.values()),
@@ -671,7 +671,7 @@ async def main() -> None:
 
     final_payload = {
         "version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "total": len(scenarios),
         "categories": {cat: counts.get(cat, 0) for cat in CATEGORIES},
         "models_used": list(MODEL_SHORT.values()),
