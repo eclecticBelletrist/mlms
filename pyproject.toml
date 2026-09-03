@@ -13,7 +13,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "mcp>=1.23.0",  # DNS rebinding protection fix, CVE-2025-66416 / GHSA-9h52-p55h-vw2f
     "asyncpg>=0.29",
-    "psycopg[async]>=3.1",
+    "psycopg[async,binary]>=3.1",  # binary: bundled libpq, no system libpq required
     "psycopg_pool>=3.2",
     "pgvector>=0.3",
     "redis[asyncio]>=5.0",
@@ -32,7 +32,6 @@ dev = [
     "pytest-benchmark>=4.0",
     "mypy>=1.10",
     "ruff>=0.5",
-    "types-redis",
     "rank-bm25>=0.2",
 ]
 
