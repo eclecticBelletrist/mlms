@@ -8,6 +8,7 @@
 Usage:
     MLMS_INTEGRATION=1 python scripts/run_ab_benchmark.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -78,9 +79,7 @@ async def _run_ab_scenario(
     )
 
     try:
-        id_map = await _seed_facts(
-            scenario["setup"].get("facts", []), pid, conn=conn, rd=rd
-        )
+        id_map = await _seed_facts(scenario["setup"].get("facts", []), pid, conn=conn, rd=rd)
         for label in session_log_labels:
             await insert_session_entry(
                 chat_id=chat_id,
@@ -101,9 +100,7 @@ async def _run_ab_scenario(
         )
 
         # SAR: session log labels + query
-        session_entries = await get_session_log(
-            chat_id=chat_id, limit=50, conn=conn, redis=rd
-        )
+        session_entries = await get_session_log(chat_id=chat_id, limit=50, conn=conn, redis=rd)
         enriched = " ".join(e.label for e in session_entries) + " " + query
         sar_facts = await get_facts(
             about=enriched.strip(), project_id=str(pid), limit=5, conn=conn, redis=rd
@@ -112,7 +109,13 @@ async def _run_ab_scenario(
             len(relevant_db_ids), 1
         )
 
-        log.info("  %-28s naive=%.2f  sar=%.2f  delta=%+.2f", sid, naive_recall, sar_recall, sar_recall - naive_recall)
+        log.info(
+            "  %-28s naive=%.2f  sar=%.2f  delta=%+.2f",
+            sid,
+            naive_recall,
+            sar_recall,
+            sar_recall - naive_recall,
+        )
         return {"id": sid, "naive_recall": naive_recall, "sar_recall": sar_recall}
 
     finally:
@@ -129,7 +132,8 @@ async def main() -> None:
 
     data = json.loads(_FIXTURE.read_text(encoding="utf-8"))
     scenarios = [
-        s for s in data["scenarios"]
+        s
+        for s in data["scenarios"]
         if s["category"] == "semantic_drift" and s["meta"].get("ab_test")
     ]
     log.info("Running A/B benchmark on %d semantic_drift scenarios", len(scenarios))
@@ -162,10 +166,10 @@ async def main() -> None:
 
     print()
     print("=" * 55)
-    print("SAR A/B BENCHMARK — semantic_drift (n={})".format(n))
+    print(f"SAR A/B BENCHMARK — semantic_drift (n={n})")
     print("=" * 55)
     print(f"  {'Mode':<28} {'Recall@5':>8}")
-    print(f"  {'-'*28} {'-'*8}")
+    print(f"  {'-' * 28} {'-' * 8}")
     print(f"  {'Naive (raw query)':<28} {naive_avg:>8.3f}")
     print(f"  {'SAR (session-enriched)':<28} {sar_avg:>8.3f}")
     print(f"  {'Delta (SAR - naive)':<28} {delta:>+8.3f}")
@@ -177,16 +181,20 @@ async def main() -> None:
 
     out = Path(__file__).parent / "ab_results.json"
     out.write_text(
-        json.dumps({
-            "n": n,
-            "naive_avg": round(naive_avg, 4),
-            "sar_avg": round(sar_avg, 4),
-            "delta": round(delta, 4),
-            "sar_better": naive_wins,
-            "tie": ties,
-            "naive_better": naive_better,
-            "scenarios": results,
-        }, indent=2, ensure_ascii=False),
+        json.dumps(
+            {
+                "n": n,
+                "naive_avg": round(naive_avg, 4),
+                "sar_avg": round(sar_avg, 4),
+                "delta": round(delta, 4),
+                "sar_better": naive_wins,
+                "tie": ties,
+                "naive_better": naive_better,
+                "scenarios": results,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     log.info("Results saved -> %s", out)

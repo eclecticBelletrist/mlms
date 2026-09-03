@@ -31,9 +31,7 @@ async def test_facts_survive_redis_expire(
     pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID, rd: Any
 ) -> None:
     """PostgreSQL is the durable store — Redis flush must not lose any facts."""
-    await upsert_fact(
-        content="durable fact", project_id=project_id, embedding_vec=_VEC_A, conn=pg
-    )
+    await upsert_fact(content="durable fact", project_id=project_id, embedding_vec=_VEC_A, conn=pg)
 
     # Simulate all Redis keys expiring
     await rd.flushdb()

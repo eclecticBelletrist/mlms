@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -45,7 +45,7 @@ async def export_project(
     return json.dumps(
         {
             "project_id": project_id,
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "facts": facts,
             "timeline": timeline,
             "skills": skills,

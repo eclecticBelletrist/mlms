@@ -11,6 +11,7 @@ Usage:
 
 Requires in .env: OPENROUTER_API_KEY, MODEL_CLAUDE, MODEL_GPT4O, MODEL_GROK
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,7 +20,7 @@ import os
 import random
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -36,8 +37,16 @@ COST_LOG_FILE = FIXTURES / "cost_log.json"
 
 # ── config ─────────────────────────────────────────────────────────────────
 DOMAINS = [
-    "kubernetes", "postgresql", "redis", "kafka", "fastapi",
-    "react", "docker", "elasticsearch", "nginx", "pytorch",
+    "kubernetes",
+    "postgresql",
+    "redis",
+    "kafka",
+    "fastapi",
+    "react",
+    "docker",
+    "elasticsearch",
+    "nginx",
+    "pytorch",
 ]
 FACTS_PER_DOMAIN = 40
 
@@ -56,16 +65,83 @@ LEXICAL_GAP_MAX = {
 
 # Russian + English stopwords for lexical gap scoring
 _STOPS = {
-    "а", "в", "и", "к", "на", "не", "с", "о", "от", "по", "за", "из",
-    "то", "что", "как", "это", "для", "при", "до", "же", "но", "он", "она",
-    "оно", "они", "их", "им", "его", "её", "ли", "уже", "ещё", "но", "так",
-    "is", "the", "a", "an", "in", "of", "to", "and", "or", "for", "with",
-    "this", "that", "are", "was", "were", "be", "been", "it", "its", "by",
-    "at", "from", "on", "as", "not", "has", "have", "had", "will", "can",
-    "do", "does", "did", "if", "then", "when", "how", "what", "which",
+    "а",
+    "в",
+    "и",
+    "к",
+    "на",
+    "не",
+    "с",
+    "о",
+    "от",
+    "по",
+    "за",
+    "из",
+    "то",
+    "что",
+    "как",
+    "это",
+    "для",
+    "при",
+    "до",
+    "же",
+    "но",
+    "он",
+    "она",
+    "оно",
+    "они",
+    "их",
+    "им",
+    "его",
+    "её",
+    "ли",
+    "уже",
+    "ещё",
+    "так",
+    "is",
+    "the",
+    "a",
+    "an",
+    "in",
+    "of",
+    "to",
+    "and",
+    "or",
+    "for",
+    "with",
+    "this",
+    "that",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "it",
+    "its",
+    "by",
+    "at",
+    "from",
+    "on",
+    "as",
+    "not",
+    "has",
+    "have",
+    "had",
+    "will",
+    "can",
+    "do",
+    "does",
+    "did",
+    "if",
+    "then",
+    "when",
+    "how",
+    "what",
+    "which",
 }
 
 API_BASE = "https://openrouter.ai/api/v1"
+
 
 # ── env loading ─────────────────────────────────────────────────────────────
 def _load_dotenv() -> None:
@@ -94,14 +170,16 @@ _cost_log: list[dict] = []
 
 
 def _track(model: str, usage: dict, purpose: str) -> None:
-    _cost_log.append({
-        "model": model,
-        "purpose": purpose,
-        "prompt_tokens": usage.get("prompt_tokens", 0),
-        "completion_tokens": usage.get("completion_tokens", 0),
-        "total_tokens": usage.get("total_tokens", 0),
-        "cost_usd": usage.get("cost", 0.0),
-    })
+    _cost_log.append(
+        {
+            "model": model,
+            "purpose": purpose,
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+            "cost_usd": usage.get("cost", 0.0),
+        }
+    )
 
 
 def _total_cost() -> float:
@@ -208,14 +286,20 @@ async def generate_corpus(client: httpx.AsyncClient) -> list[dict]:
         start_id = i * FACTS_PER_DOMAIN + 1
         end_id = start_id + FACTS_PER_DOMAIN - 1
         prompt = _CORPUS_PROMPT.format(
-            n=FACTS_PER_DOMAIN, domain=domain,
-            start_id=start_id, end_id=end_id,
+            n=FACTS_PER_DOMAIN,
+            domain=domain,
+            start_id=start_id,
+            end_id=end_id,
         )
         print(f"  Generating {FACTS_PER_DOMAIN} facts: {domain} (f{start_id:03d}–f{end_id:03d})...")
-        raw = await _chat(client, GENERATOR, [{"role": "user", "content": prompt}], f"corpus_{domain}")
+        raw = await _chat(
+            client, GENERATOR, [{"role": "user", "content": prompt}], f"corpus_{domain}"
+        )
         facts: list[dict] = _extract_json(raw)  # type: ignore[assignment]
         if len(facts) != FACTS_PER_DOMAIN:
-            print(f"    WARNING: expected {FACTS_PER_DOMAIN}, got {len(facts)} — padding/truncating")
+            print(
+                f"    WARNING: expected {FACTS_PER_DOMAIN}, got {len(facts)} — padding/truncating"
+            )
             facts = facts[:FACTS_PER_DOMAIN]
         for j, fact in enumerate(facts):
             fact["id"] = f"f{start_id + j:03d}"
@@ -401,7 +485,9 @@ async def _gen_one(
 
     for attempt in range(3):
         attempt_label = f"{sid} attempt {attempt + 1}/3"
-        raw = await _chat(client, GENERATOR, [{"role": "user", "content": prompt}], f"scenario_{sid}")
+        raw = await _chat(
+            client, GENERATOR, [{"role": "user", "content": prompt}], f"scenario_{sid}"
+        )
 
         if "CANNOT_GENERATE" in raw:
             print(f"    [{attempt_label}] CANNOT_GENERATE — retry")
@@ -415,7 +501,9 @@ async def _gen_one(
 
         relevant_ids: list[str] = data.get("relevant_ids", [])
         if not (min_relevant <= len(relevant_ids) <= 5):
-            print(f"    [{attempt_label}] relevant_ids count={len(relevant_ids)}, need {min_relevant}-5 — retry")
+            print(
+                f"    [{attempt_label}] relevant_ids count={len(relevant_ids)}, need {min_relevant}-5 — retry"
+            )
             continue
 
         excerpt_ids = {f["id"] for f in excerpt}
@@ -438,14 +526,22 @@ async def _gen_one(
             continue
 
         # Verifier 1: too_easy?
-        rel_text = "\n".join(f"[{f['id']}] {f['content']}" for f in excerpt if f["id"] in relevant_ids)
+        rel_text = "\n".join(
+            f"[{f['id']}] {f['content']}" for f in excerpt if f["id"] in relevant_ids
+        )
         v1_raw = await _chat(
-            client, VERIFIER_1,
-            [{"role": "user", "content": _VERIFIER_1_PROMPT.format(
-                facts_text=rel_text,
-                query=query,
-                relevant_ids=", ".join(relevant_ids),
-            )}],
+            client,
+            VERIFIER_1,
+            [
+                {
+                    "role": "user",
+                    "content": _VERIFIER_1_PROMPT.format(
+                        facts_text=rel_text,
+                        query=query,
+                        relevant_ids=", ".join(relevant_ids),
+                    ),
+                }
+            ],
             f"v1_{sid}",
         )
         too_easy, v1_reason = _parse_verdict(v1_raw)
@@ -454,16 +550,24 @@ async def _gen_one(
             continue
 
         # Verifier 2: sar_solvable?
-        session_text = "\n".join(f"[{e.get('role','?')}] {e.get('content','')}" for e in session_log)
+        session_text = "\n".join(
+            f"[{e.get('role', '?')}] {e.get('content', '')}" for e in session_log
+        )
         enriched = (" ".join(e.get("content", "") for e in session_log) + " " + query).strip()
         v2_raw = await _chat(
-            client, VERIFIER_2,
-            [{"role": "user", "content": _VERIFIER_2_PROMPT.format(
-                facts_text=rel_text,
-                session_text=session_text,
-                enriched=enriched,
-                relevant_ids=", ".join(relevant_ids),
-            )}],
+            client,
+            VERIFIER_2,
+            [
+                {
+                    "role": "user",
+                    "content": _VERIFIER_2_PROMPT.format(
+                        facts_text=rel_text,
+                        session_text=session_text,
+                        enriched=enriched,
+                        relevant_ids=", ".join(relevant_ids),
+                    ),
+                }
+            ],
             f"v2_{sid}",
         )
         sar_solvable, v2_reason = _parse_verdict(v2_raw)
@@ -515,7 +619,12 @@ async def generate_scenarios(client: httpx.AsyncClient, corpus: list[dict]) -> l
     targets: list[tuple[str, str]] = []
     for stype, count in SCENARIO_PLAN:
         for i in range(1, count + 1):
-            prefix = {"lexical_drift": "ld", "semantic_drift": "sd", "cross_domain": "cd", "multi_hop": "mh"}[stype]
+            prefix = {
+                "lexical_drift": "ld",
+                "semantic_drift": "sd",
+                "cross_domain": "cd",
+                "multi_hop": "mh",
+            }[stype]
             targets.append((f"{prefix}_{i:03d}", stype))
 
     for sid, stype in targets:
@@ -533,7 +642,9 @@ async def generate_scenarios(client: httpx.AsyncClient, corpus: list[dict]) -> l
         last_mechanism = scenario["meta"]["drift_mechanism"]
 
         if len(existing) % 10 == 0:
-            CKPT_SCENARIOS.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+            CKPT_SCENARIOS.write_text(
+                json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
             print(f"    checkpoint: {len(existing)} scenarios saved")
 
     CKPT_SCENARIOS.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -544,6 +655,7 @@ async def generate_scenarios(client: httpx.AsyncClient, corpus: list[dict]) -> l
 # ═══════════════════════════════════════════════════════════════════════════
 # STAGE 3 — BM25 validation
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def bm25_validate(corpus: list[dict], scenarios: list[dict]) -> float:
     from rank_bm25 import BM25Okapi  # type: ignore[import]
@@ -566,6 +678,7 @@ def bm25_validate(corpus: list[dict], scenarios: list[dict]) -> float:
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 async def main() -> None:
     print(f"Using: GENERATOR={GENERATOR} VERIFIER_1={VERIFIER_1} VERIFIER_2={VERIFIER_2}")
     print(f"Output: {OUT_FILE}")
@@ -585,14 +698,16 @@ async def main() -> None:
     print(f"BM25 naive Recall@5 (full 400-fact corpus) = {recall:.3f}")
     if recall > 0.55:
         print(f"WARNING: dataset too easy — BM25 Recall@5={recall:.3f} exceeds 0.55 ceiling")
-        print("         Consider tightening lexical_gap_score thresholds or regenerating easy scenarios.")
+        print(
+            "         Consider tightening lexical_gap_score thresholds or regenerating easy scenarios."
+        )
     elif recall < 0.20:
         print(f"WARNING: dataset may be too hard — BM25 Recall@5={recall:.3f} below 0.20 floor")
     else:
         print(f"OK: BM25 Recall@5={recall:.3f} in target range [0.20–0.55]")
     print()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     result = {
         "meta": {
             "generated_at": now,

@@ -76,21 +76,15 @@ async def test_smoke_get_facts(
     assert any(f.content == "get_facts smoke" for f in facts)
 
 
-async def test_smoke_get_timeline(
-    pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
-) -> None:
-    await insert_event(
-        project_id=project_id, event_type="action", title="smoke-event", conn=pg
-    )
+async def test_smoke_get_timeline(pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID) -> None:
+    await insert_event(project_id=project_id, event_type="action", title="smoke-event", conn=pg)
     events = await get_timeline(project_id=str(project_id), conn=pg)
     assert any(e.title == "smoke-event" for e in events)
 
 
 async def test_smoke_get_session_log(pg: psycopg.AsyncConnection[Any], rd: Any) -> None:
     chat_id = f"smoke-log-{uuid.uuid4()}"
-    await insert_session_entry(
-        chat_id=chat_id, entry_type="topic", label="smoke-topic", conn=pg
-    )
+    await insert_session_entry(chat_id=chat_id, entry_type="topic", label="smoke-topic", conn=pg)
     entries = await get_session_log(chat_id=chat_id, conn=pg, redis=rd)
     assert len(entries) >= 1
     assert entries[0].label == "smoke-topic"
@@ -132,9 +126,7 @@ async def test_smoke_search_memory(
     assert results[0].layer == "fact"
 
 
-async def test_smoke_revert_fact(
-    pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
-) -> None:
+async def test_smoke_revert_fact(pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID) -> None:
     # Pre-built chain: v1 (retired) ← v2 (current)
     v1_id = uuid.uuid4()
     await pg.execute(

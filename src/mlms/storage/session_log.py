@@ -109,8 +109,7 @@ async def get_session_log(
         params.append(_vec_literal(semantic_query))
         params.append(limit)
         query = (
-            f"{_SELECT_COLS} WHERE {' AND '.join(where)}"
-            " ORDER BY embedding <=> %s::vector LIMIT %s"
+            f"{_SELECT_COLS} WHERE {' AND '.join(where)} ORDER BY embedding <=> %s::vector LIMIT %s"
         )
         # SET LOCAL only holds for the current transaction, and this connection runs in
         # autocommit — each bare execute() is its own transaction — so the GUC and the

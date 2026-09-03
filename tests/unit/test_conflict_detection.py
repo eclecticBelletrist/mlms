@@ -11,8 +11,6 @@ import uuid
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from mlms.config import COSINE_CONFLICT_THRESHOLD
 from mlms.storage.facts import upsert_fact
 

@@ -4,6 +4,7 @@ Revision ID: 004
 Revises: 003
 Create Date: 2026-05-08
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -14,8 +15,15 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 _VALID_TYPES = (
-    "topic", "decision", "problem", "solution",
-    "insight", "action", "source", "context", "result"
+    "topic",
+    "decision",
+    "problem",
+    "solution",
+    "insight",
+    "action",
+    "source",
+    "context",
+    "result",
 )
 
 
@@ -35,10 +43,7 @@ def upgrade() -> None:
         )
     """)
 
-    op.execute(
-        "SELECT create_hypertable('session_log', 'time',"
-        " if_not_exists => TRUE)"
-    )
+    op.execute("SELECT create_hypertable('session_log', 'time', if_not_exists => TRUE)")
 
     op.execute("CREATE INDEX ON session_log (chat_id, time DESC)")
 

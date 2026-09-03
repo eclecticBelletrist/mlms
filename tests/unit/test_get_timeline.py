@@ -5,8 +5,6 @@ from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from mlms.tools.get_timeline import TimelineEvent, get_timeline
 
 _NOW = datetime(2024, 3, 10, 9, 0, 0, tzinfo=UTC)

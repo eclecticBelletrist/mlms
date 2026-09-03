@@ -1,11 +1,10 @@
 """
 Generate synthetic_100.json benchmark dataset for MLMS Recall@5 evaluation.
 
-Pipeline per batch (5 scenarios):
-  Stage 1 — GENERATE  : LLM via OpenRouter structured output (tool_use)
-  Stage 2 — VERIFY    : cross-family LLM checks ground truth
-  Stage 3 — VALIDATE  : structural checks + auto-fix
-  Stage 4 — ACCUMULATE: append to partial checkpoint
+Each batch of 5 scenarios is generated through OpenRouter with structured output
+(tool_use), validated (fact ids, session_log rules), checked by a model from another
+family that may relabel the relevant facts, validated again and appended to the
+partial checkpoint.
 
 Usage:
     python scripts/seed_test_data.py [--max-batches N] [--verbose]
@@ -23,7 +22,7 @@ import logging
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -39,15 +38,15 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# Constants
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 # OpenRouter model IDs — override via .env (MODEL_CLAUDE / MODEL_GPT4O / MODEL_GROK)
 MODELS: dict[str, str] = {
     "claude": os.getenv("MODEL_CLAUDE", "anthropic/claude-sonnet-4.6"),
-    "gpt4o":  os.getenv("MODEL_GPT4O",  "openai/gpt-5.2"),
-    "grok":   os.getenv("MODEL_GROK",   "x-ai/grok-4.20"),
+    "gpt4o": os.getenv("MODEL_GPT4O", "openai/gpt-5.2"),
+    "grok": os.getenv("MODEL_GROK", "x-ai/grok-4.20"),
 }
 
 # Short names for meta.generated_by / meta.verified_by fields
@@ -58,8 +57,8 @@ MODEL_SHORT: dict[str, str] = {k: v.split("/")[-1] for k, v in MODELS.items()}
 # Cross-family rotation: Anthropic → OpenAI → xAI → Anthropic
 MODEL_ROTATION = [
     ("claude", "gpt4o"),
-    ("gpt4o",  "grok"),
-    ("grok",   "claude"),
+    ("gpt4o", "grok"),
+    ("grok", "claude"),
 ]
 
 # 5 batches × 4 categories = 20 batches total
@@ -74,13 +73,13 @@ FINAL_PATH = Path("tests/fixtures/synthetic_100.json")
 
 # meta fields that are category-specific, patched after generation
 _CATEGORY_META: dict[str, dict[str, bool]] = {
-    "lexical":        {"tests_session_augmentation": False, "ab_test": False},
-    "semantic_drift": {"tests_session_augmentation": True,  "ab_test": True},
-    "conflict":       {"tests_session_augmentation": False, "ab_test": False},
-    "cross_session":  {"tests_session_augmentation": False, "ab_test": False},
+    "lexical": {"tests_session_augmentation": False, "ab_test": False},
+    "semantic_drift": {"tests_session_augmentation": True, "ab_test": True},
+    "conflict": {"tests_session_augmentation": False, "ab_test": False},
+    "cross_session": {"tests_session_augmentation": False, "ab_test": False},
 }
 
-# ── Prompts ──────────────────────────────────────────────────────────────────
+# Prompts
 
 SYSTEM_GENERATE = """\
 Ты генерируешь тест-кейсы для evaluation retrieval-системы.
@@ -97,7 +96,9 @@ SYSTEM_GENERATE = """\
 - Не используй домены из списка used_topics\
 """
 
-SYSTEM_VERIFY = "Ты проверяешь корректность ground truth разметки тест-кейсов для evaluation retrieval-системы."
+SYSTEM_VERIFY = (
+    "Ты проверяешь корректность ground truth разметки тест-кейсов для evaluation retrieval-системы."
+)
 
 CATEGORY_DESCRIPTIONS: dict[str, str] = {
     "lexical": """\
@@ -145,13 +146,13 @@ query_session.session_log: ВСЕГДА пустой массив. SAR нево�
 """,
 }
 
-# ── Tool schemas ─────────────────────────────────────────────────────────────
+# Tool schemas
 
 _FACT_ITEM = {
     "type": "object",
     "properties": {
-        "id":         {"type": "string"},
-        "content":    {"type": "string"},
+        "id": {"type": "string"},
+        "content": {"type": "string"},
         "is_relevant": {"type": "boolean"},
     },
     "required": ["id", "content", "is_relevant"],
@@ -159,33 +160,33 @@ _FACT_ITEM = {
 
 _META_PROPS = {
     "tests_session_augmentation": {"type": "boolean"},
-    "ab_test":       {"type": "boolean"},
-    "difficulty":    {"type": "string", "enum": ["easy", "medium", "hard"]},
-    "generated_by":  {"type": "string"},
-    "verified_by":   {"type": "string"},
-    "auto_fixed":    {"type": "boolean"},
+    "ab_test": {"type": "boolean"},
+    "difficulty": {"type": "string", "enum": ["easy", "medium", "hard"]},
+    "generated_by": {"type": "string"},
+    "verified_by": {"type": "string"},
+    "auto_fixed": {"type": "boolean"},
 }
 
 _EXPECTED_PROPS = {
-    "relevant_ids":   {"type": "array", "items": {"type": "string"}},
+    "relevant_ids": {"type": "array", "items": {"type": "string"}},
     "irrelevant_ids": {"type": "array", "items": {"type": "string"}},
 }
 
 _STANDARD_SCENARIO = {
     "type": "object",
     "properties": {
-        "id":       {"type": "string"},
+        "id": {"type": "string"},
         "category": {"type": "string"},
-        "domain":   {"type": "string"},
+        "domain": {"type": "string"},
         "setup": {
             "type": "object",
             "properties": {
-                "facts":       {"type": "array", "items": _FACT_ITEM, "minItems": 4, "maxItems": 6},
+                "facts": {"type": "array", "items": _FACT_ITEM, "minItems": 4, "maxItems": 6},
                 "session_log": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["facts", "session_log"],
         },
-        "query":    {"type": "string"},
+        "query": {"type": "string"},
         "expected": {
             "type": "object",
             "properties": _EXPECTED_PROPS,
@@ -203,9 +204,9 @@ _STANDARD_SCENARIO = {
 _CROSS_SESSION_SCENARIO = {
     "type": "object",
     "properties": {
-        "id":       {"type": "string"},
+        "id": {"type": "string"},
         "category": {"type": "string"},
-        "domain":   {"type": "string"},
+        "domain": {"type": "string"},
         "setup": {
             "type": "object",
             "properties": {
@@ -213,14 +214,19 @@ _CROSS_SESSION_SCENARIO = {
                     "type": "object",
                     "properties": {
                         "chat_id": {"type": "string"},
-                        "facts":   {"type": "array", "items": _FACT_ITEM, "minItems": 3, "maxItems": 6},
+                        "facts": {
+                            "type": "array",
+                            "items": _FACT_ITEM,
+                            "minItems": 3,
+                            "maxItems": 6,
+                        },
                     },
                     "required": ["chat_id", "facts"],
                 },
                 "query_session": {
                     "type": "object",
                     "properties": {
-                        "chat_id":    {"type": "string"},
+                        "chat_id": {"type": "string"},
                         "session_log": {"type": "array", "items": {"type": "string"}},
                     },
                     "required": ["chat_id", "session_log"],
@@ -228,7 +234,7 @@ _CROSS_SESSION_SCENARIO = {
             },
             "required": ["source_session", "query_session"],
         },
-        "query":    {"type": "string"},
+        "query": {"type": "string"},
         "expected": {
             "type": "object",
             "properties": _EXPECTED_PROPS,
@@ -301,7 +307,7 @@ _VERIFY_TOOL: dict[str, Any] = {
     },
 }
 
-# ── OpenRouter API ────────────────────────────────────────────────────────────
+# OpenRouter API
 
 
 async def _call_openrouter(
@@ -321,7 +327,6 @@ async def _call_openrouter(
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/mlms",
                         "X-Title": "MLMS Benchmark Generator",
                     },
                     json={
@@ -360,7 +365,7 @@ async def _call_openrouter(
     raise RuntimeError(f"max retries exceeded for {model_id}")
 
 
-# ── Validation ───────────────────────────────────────────────────────────────
+# Validation
 
 
 def _fact_ids(scenario: dict[str, Any], category: str) -> list[str]:
@@ -406,7 +411,7 @@ def _validate_scenario(scenario: dict[str, Any], category: str) -> bool:
     return True
 
 
-# ── Stage 1: Generate ─────────────────────────────────────────────────────────
+# Stage 1: Generate
 
 
 async def _generate_batch(
@@ -454,7 +459,7 @@ async def _generate_batch(
     return scenarios
 
 
-# ── Stage 2: Verify ───────────────────────────────────────────────────────────
+# Stage 2: Verify
 
 
 async def _verify_scenario(
@@ -475,9 +480,7 @@ async def _verify_scenario(
         else scenario["setup"]["session_log"]
     )
 
-    facts_text = "\n".join(
-        f"{idx + 1}. [{f['id']}] {f['content']}" for idx, f in enumerate(facts)
-    )
+    facts_text = "\n".join(f"{idx + 1}. [{f['id']}] {f['content']}" for idx, f in enumerate(facts))
 
     extra = ""
     if category in ("semantic_drift", "cross_session"):
@@ -488,7 +491,7 @@ async def _verify_scenario(
         )
 
     user_prompt = (
-        f'Проверь корректность ground truth разметки этого тест-кейса.\n\n'
+        f"Проверь корректность ground truth разметки этого тест-кейса.\n\n"
         f'Запрос: "{scenario["query"]}"\n'
         f'Категория: "{category}"\n'
         f"Session_log: {json.dumps(session_log, ensure_ascii=False)}\n\n"
@@ -559,7 +562,7 @@ async def _verify_batch(
     return verified, auto_fixed
 
 
-# ── Checkpoint I/O ────────────────────────────────────────────────────────────
+# Checkpoint I/O
 
 
 def _load_partial() -> tuple[list[dict[str, Any]], set[str]]:
@@ -578,7 +581,7 @@ def _save_partial(scenarios: list[dict[str, Any]]) -> None:
         counts[s["category"]] += 1
     payload = {
         "version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "total": len(scenarios),
         "categories": {cat: counts.get(cat, 0) for cat in CATEGORIES},
         "models_used": list(MODEL_SHORT.values()),
@@ -587,15 +590,20 @@ def _save_partial(scenarios: list[dict[str, Any]]) -> None:
     PARTIAL_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-# ── Orchestration ─────────────────────────────────────────────────────────────
+# Orchestration
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-batches", type=int, default=TOTAL_BATCHES,
-                        help="Stop after N batches (default: all 20)")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Log full scenario JSON and verify reasoning")
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=TOTAL_BATCHES,
+        help="Stop after N batches (default: all 20)",
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Log full scenario JSON and verify reasoning"
+    )
     args = parser.parse_args()
     max_batches: int = args.max_batches
     verbose: bool = args.verbose
@@ -613,7 +621,9 @@ async def main() -> None:
         return
 
     if start_batch > 0:
-        log.info("Resuming from batch %d (%d scenarios already done)", start_batch + 1, len(scenarios))
+        log.info(
+            "Resuming from batch %d (%d scenarios already done)", start_batch + 1, len(scenarios)
+        )
 
     for batch_idx in range(start_batch, end_batch):
         category = BATCH_TO_CATEGORY[batch_idx]
@@ -629,29 +639,24 @@ async def main() -> None:
             MODELS[ver_key],
         )
 
-        # Stage 1 — generate
-        batch = await _generate_batch(
-            category, list(used_topics), gen_key, api_key, category_start
-        )
+        batch = await _generate_batch(category, list(used_topics), gen_key, api_key, category_start)
 
         if verbose:
             for s in batch:
                 log.info("  GENERATED %s\n%s", s["id"], json.dumps(s, ensure_ascii=False, indent=2))
 
-        # Stage 3 — validate (before verify, so verifier sees clean IDs)
+        # validate before verifying, so the verifier sees clean IDs
         batch = [s for s in batch if _validate_scenario(s, category)]
         if len(batch) < SCENARIOS_PER_BATCH:
             log.warning("  only %d valid scenarios after validation (expected 5)", len(batch))
 
-        # Stage 2 — verify
         batch, auto_fixed = await _verify_batch(batch, category, ver_key, api_key, verbose=verbose)
 
-        # Stage 3 — re-validate after potential fixes
+        # the verifier may have changed relevant_ids
         batch = [s for s in batch if _validate_scenario(s, category)]
 
         log.info("  auto_fixed=%d  valid=%d", auto_fixed, len(batch))
 
-        # Stage 4 — accumulate
         scenarios.extend(batch)
         for s in batch:
             if s.get("domain"):
@@ -660,28 +665,34 @@ async def main() -> None:
         _save_partial(scenarios)
 
     if len(scenarios) < TOTAL_BATCHES * SCENARIOS_PER_BATCH:
-        log.info("Partial run done (%d/%d scenarios). synthetic_100.json not written.",
-                 len(scenarios), TOTAL_BATCHES * SCENARIOS_PER_BATCH)
+        log.info(
+            "Partial run done (%d/%d scenarios). synthetic_100.json not written.",
+            len(scenarios),
+            TOTAL_BATCHES * SCENARIOS_PER_BATCH,
+        )
         return
 
-    # Assemble final file
     counts: dict[str, int] = defaultdict(int)
     for s in scenarios:
         counts[s["category"]] += 1
 
     final_payload = {
         "version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "total": len(scenarios),
         "categories": {cat: counts.get(cat, 0) for cat in CATEGORIES},
         "models_used": list(MODEL_SHORT.values()),
         "scenarios": scenarios,
     }
+    # one-off final write at end of a sequential CLI run, nothing else pending on the
+    # event loop here — not worth an anyio.Path dependency
     FINAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FINAL_PATH.write_text(json.dumps(final_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    FINAL_PATH.write_text(  # noqa: ASYNC240
+        json.dumps(final_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     log.info("Wrote %s  (%d scenarios total)", FINAL_PATH, len(scenarios))
 
-    # ── Stats ─────────────────────────────────────────────────────────────────
+    # Stats
     print("\n=== auto_fixed stats ===")
     grand_total = 0
     for cat in CATEGORIES:
