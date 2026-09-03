@@ -227,7 +227,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack, not yet run against a live database)
 
-**See also:** Decision 2.
+**See also:** Decision 2, Decision 19.
 
 ---
 
@@ -244,5 +244,30 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Stub removal:** the `types-redis` stub targets redis 4.6, and its [PyPI page](https://pypi.org/project/types-redis/) says redis ships its own annotations since 5.0.0 and asks to uninstall the stub. The locked redis-py 8.0.0 has `py.typed`. The stub caused false mypy errors: it has no `aclose` (which exists at runtime), and it makes `Redis` generic in its string type. Without it, `Redis[bytes]` in `embedding.py` became `Redis`, and no `# type: ignore` was needed.
 
 **Affected files:** `pyproject.toml`, `uv.lock`, `src/mlms/embedding.py`
+
+---
+
+## Decision 19: CI covers lint, types and unit tests; integration tests stay manual
+
+**Decided:** 2026-09-03
+
+**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src` and the unit tests with the coverage gate (`fail_under = 80` in `pyproject.toml`). The integration tests are not run in CI.
+
+**Rationale:** the integration tests need PostgreSQL with pgvector and TimescaleDB plus Redis, and this first CI version does not start them. Without `MLMS_INTEGRATION=1` the tests skip themselves. The workflow also passes `-m "not integration"`, but no test carries that marker yet, so the skip guard is the only thing that excludes them.
+
+**Consequence:** what only the integration tests cover (pool behavior, conflict flow, filtered session-log search with the HNSW iterative scan from Decision 17) is checked only when someone runs `MLMS_INTEGRATION=1 pytest tests/integration` against `docker compose up`. A green CI run says nothing about those tests. Recorded in `docs/known-issues.md` ("CI does not run integration tests").
+
+**Alternatives:** starting the `timescaledb-ha` image from Decision 5 and Redis as `services:` containers. It looks feasible and was left for a later step.
+
+**Reproducibility and hardening:**
+- `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
+- Actions are pinned to exact tags (`actions/checkout@v7.0.1`, `astral-sh/setup-uv@v10.0.1`), not moving major tags. From v8.0.0 `setup-uv` no longer publishes major or minor tags ([release notes](https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0)); `checkout` is pinned the same way for consistency. A commit SHA would be stricter (the same release notes recommend it) and was not used.
+- `permissions: contents: read` limits the workflow token, `timeout-minutes: 10` stops a hung job, and `ubuntu-24.04` replaces the floating `ubuntu-latest`.
+- A new push to the same pull request cancels its previous run. Runs on push to `main` are grouped per commit and never cancelled.
+- One job on Python 3.11, the lowest version allowed by `requires-python`.
+
+**Affected files:** `.github/workflows/ci.yml`, `docs/known-issues.md`
+
+**See also:** Decision 17.
 
 ---

@@ -63,6 +63,12 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 `get_events()` in `storage/timeline.py` implements full keyset pagination `(time, id)`, covered by tests. But the MCP tool `tools/get_timeline.py` does not use it — it bypasses it with its own inline SQL (`ORDER BY time DESC LIMIT %s`), without a cursor and without `has_next`. In practice: if `timeline_events` has accumulated more events than `limit`, only the first `limit` by descending time are reachable through the MCP tool, and the rest cannot be reached by any call. Deliberately not wired up for now — it requires changing the tool's response model (`next_cursor` exposed), a risk under publication haste.
 
+## CI
+
+### 14. CI does not run the integration tests
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs only `pytest -m "not integration"` — lint (ruff), types (mypy), unit tests with an 80% coverage gate. `tests/integration/*` require `docker compose up` (Postgres with pgvector+TimescaleDB, Redis) — a non-standard image, not covered by the default GitHub Actions `services:` without a separate custom image. Deliberately not wired up for now — the integration tests are still run manually (`MLMS_INTEGRATION=1 pytest tests/integration -v` with a locally started `docker compose up`).
+
 ## TODO/FIXME in code
 
 There are no direct `TODO`/`FIXME` comments in the code — the project follows the "no over-commenting" principle. But:
