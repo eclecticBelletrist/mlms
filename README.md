@@ -95,10 +95,9 @@ auth layer — see the positioning note above before exposing one off `localhost
 
 The `docker compose up -d` above starts **development infrastructure only** — Postgres and
 Redis with plaintext local credentials, ports open on the host. There is no production
-deployment path yet: no Dockerfile for the MLMS server itself, no `.env.example`, no
-secrets management, no hardened compose profile. That work hasn't started — it's tracked as
-upcoming, not published prematurely. Don't run this setup as anything but a local dev
-instance.
+deployment path yet: no Dockerfile for the MLMS server itself, no secrets management, no
+hardened compose profile. That work hasn't started — it's tracked as upcoming, not published
+prematurely. Don't run this setup as anything but a local dev instance.
 
 ## Tools
 
