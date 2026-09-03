@@ -1,11 +1,10 @@
 """
 Generate synthetic_100.json benchmark dataset for MLMS Recall@5 evaluation.
 
-Pipeline per batch (5 scenarios):
-  Stage 1 — GENERATE  : LLM via OpenRouter structured output (tool_use)
-  Stage 2 — VERIFY    : cross-family LLM checks ground truth
-  Stage 3 — VALIDATE  : structural checks + auto-fix
-  Stage 4 — ACCUMULATE: append to partial checkpoint
+Each batch of 5 scenarios is generated through OpenRouter with structured output
+(tool_use), validated (fact ids, session_log rules), checked by a model from another
+family that may relabel the relevant facts, validated again and appended to the
+partial checkpoint.
 
 Usage:
     python scripts/seed_test_data.py [--max-batches N] [--verbose]
@@ -39,7 +38,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# Constants
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
@@ -80,7 +79,7 @@ _CATEGORY_META: dict[str, dict[str, bool]] = {
     "cross_session": {"tests_session_augmentation": False, "ab_test": False},
 }
 
-# ── Prompts ──────────────────────────────────────────────────────────────────
+# Prompts
 
 SYSTEM_GENERATE = """\
 Ты генерируешь тест-кейсы для evaluation retrieval-системы.
@@ -147,7 +146,7 @@ query_session.session_log: ВСЕГДА пустой массив. SAR нево�
 """,
 }
 
-# ── Tool schemas ─────────────────────────────────────────────────────────────
+# Tool schemas
 
 _FACT_ITEM = {
     "type": "object",
@@ -308,7 +307,7 @@ _VERIFY_TOOL: dict[str, Any] = {
     },
 }
 
-# ── OpenRouter API ────────────────────────────────────────────────────────────
+# OpenRouter API
 
 
 async def _call_openrouter(
@@ -328,7 +327,6 @@ async def _call_openrouter(
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/mlms",
                         "X-Title": "MLMS Benchmark Generator",
                     },
                     json={
@@ -367,7 +365,7 @@ async def _call_openrouter(
     raise RuntimeError(f"max retries exceeded for {model_id}")
 
 
-# ── Validation ───────────────────────────────────────────────────────────────
+# Validation
 
 
 def _fact_ids(scenario: dict[str, Any], category: str) -> list[str]:
@@ -413,7 +411,7 @@ def _validate_scenario(scenario: dict[str, Any], category: str) -> bool:
     return True
 
 
-# ── Stage 1: Generate ─────────────────────────────────────────────────────────
+# Stage 1: Generate
 
 
 async def _generate_batch(
@@ -461,7 +459,7 @@ async def _generate_batch(
     return scenarios
 
 
-# ── Stage 2: Verify ───────────────────────────────────────────────────────────
+# Stage 2: Verify
 
 
 async def _verify_scenario(
@@ -564,7 +562,7 @@ async def _verify_batch(
     return verified, auto_fixed
 
 
-# ── Checkpoint I/O ────────────────────────────────────────────────────────────
+# Checkpoint I/O
 
 
 def _load_partial() -> tuple[list[dict[str, Any]], set[str]]:
@@ -592,7 +590,7 @@ def _save_partial(scenarios: list[dict[str, Any]]) -> None:
     PARTIAL_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-# ── Orchestration ─────────────────────────────────────────────────────────────
+# Orchestration
 
 
 async def main() -> None:
@@ -641,27 +639,24 @@ async def main() -> None:
             MODELS[ver_key],
         )
 
-        # Stage 1 — generate
         batch = await _generate_batch(category, list(used_topics), gen_key, api_key, category_start)
 
         if verbose:
             for s in batch:
                 log.info("  GENERATED %s\n%s", s["id"], json.dumps(s, ensure_ascii=False, indent=2))
 
-        # Stage 3 — validate (before verify, so verifier sees clean IDs)
+        # validate before verifying, so the verifier sees clean IDs
         batch = [s for s in batch if _validate_scenario(s, category)]
         if len(batch) < SCENARIOS_PER_BATCH:
             log.warning("  only %d valid scenarios after validation (expected 5)", len(batch))
 
-        # Stage 2 — verify
         batch, auto_fixed = await _verify_batch(batch, category, ver_key, api_key, verbose=verbose)
 
-        # Stage 3 — re-validate after potential fixes
+        # the verifier may have changed relevant_ids
         batch = [s for s in batch if _validate_scenario(s, category)]
 
         log.info("  auto_fixed=%d  valid=%d", auto_fixed, len(batch))
 
-        # Stage 4 — accumulate
         scenarios.extend(batch)
         for s in batch:
             if s.get("domain"):
@@ -677,7 +672,6 @@ async def main() -> None:
         )
         return
 
-    # Assemble final file
     counts: dict[str, int] = defaultdict(int)
     for s in scenarios:
         counts[s["category"]] += 1
@@ -690,11 +684,15 @@ async def main() -> None:
         "models_used": list(MODEL_SHORT.values()),
         "scenarios": scenarios,
     }
+    # one-off final write at end of a sequential CLI run, nothing else pending on the
+    # event loop here — not worth an anyio.Path dependency
     FINAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FINAL_PATH.write_text(json.dumps(final_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    FINAL_PATH.write_text(  # noqa: ASYNC240
+        json.dumps(final_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     log.info("Wrote %s  (%d scenarios total)", FINAL_PATH, len(scenarios))
 
-    # ── Stats ─────────────────────────────────────────────────────────────────
+    # Stats
     print("\n=== auto_fixed stats ===")
     grand_total = 0
     for cat in CATEGORIES:
