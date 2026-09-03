@@ -70,4 +70,3 @@ class TestGetSkills:
         assert r.domain == "database"
         assert r.content == "use indexes"
         assert r.version == 3
-

@@ -27,7 +27,7 @@ pytestmark = pytest.mark.skipif(
     reason="Set MLMS_INTEGRATION=1 to run (requires docker compose up)",
 )
 
-_VEC_PY = [1.0] + [0.0] * 1535         # "python" cluster
+_VEC_PY = [1.0] + [0.0] * 1535  # "python" cluster
 _VEC_SQL = [0.0, 1.0] + [0.0] * 1534  # "sql" cluster — orthogonal
 
 
@@ -55,12 +55,8 @@ class TestSessionLogRetrieval:
         chat_a = f"chat-{uuid.uuid4()}"
         chat_b = f"chat-{uuid.uuid4()}"
 
-        await insert_session_entry(
-            chat_id=chat_a, entry_type="topic", label="A topic", conn=pg
-        )
-        await insert_session_entry(
-            chat_id=chat_b, entry_type="topic", label="B topic", conn=pg
-        )
+        await insert_session_entry(chat_id=chat_a, entry_type="topic", label="A topic", conn=pg)
+        await insert_session_entry(chat_id=chat_b, entry_type="topic", label="B topic", conn=pg)
         await pg.commit()
 
         rows = await get_session_log(chat_id=chat_a, conn=pg, redis=rd)
@@ -71,9 +67,7 @@ class TestSessionLogRetrieval:
     ) -> None:
         chat_id = f"chat-{uuid.uuid4()}"
         for label in ("first", "second", "third"):
-            await insert_session_entry(
-                chat_id=chat_id, entry_type="action", label=label, conn=pg
-            )
+            await insert_session_entry(chat_id=chat_id, entry_type="action", label=label, conn=pg)
         await pg.commit()
 
         rows = await get_session_log(chat_id=chat_id, conn=pg, redis=rd)

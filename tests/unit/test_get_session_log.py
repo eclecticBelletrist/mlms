@@ -62,9 +62,7 @@ class TestGetSessionLogModes:
     async def test_cross_session_passes_vec_to_storage(self) -> None:
         with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)):
             with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
-                await get_session_log(
-                    semantic_query="q", conn=MagicMock(), redis=MagicMock()
-                )
+                await get_session_log(semantic_query="q", conn=MagicMock(), redis=MagicMock())
         assert mock_storage.call_args.kwargs["semantic_query"] == _VEC
 
 

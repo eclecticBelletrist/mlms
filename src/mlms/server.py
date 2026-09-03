@@ -334,6 +334,7 @@ async def revert_fact(
 ) -> dict[str, Any]:
     """Revert a fact to its previous version. fact_id must be the current version."""
     from uuid import UUID
+
     app: _AppCtx = ctx.request_context.lifespan_context
     async with _acquire(app) as conn:
         return await _revert_fact(fact_id=UUID(fact_id), conn=conn)

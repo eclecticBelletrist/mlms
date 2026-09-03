@@ -24,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 _DIM = 1536
 # Orthogonal unit vectors — cosine similarity = 0 → NO conflict (0 < 0.96)
 _VEC_ALPHA: list[float] = [1.0] + [0.0] * (_DIM - 1)
-_VEC_BETA: list[float]  = [0.0, 1.0] + [0.0] * (_DIM - 2)
+_VEC_BETA: list[float] = [0.0, 1.0] + [0.0] * (_DIM - 2)
 
 # Identical direction — cosine distance = 0 → CONFLICT (0 ≤ 1 - 0.96 = 0.04)
 _VEC_SAME: list[float] = [1.0] + [0.0] * (_DIM - 1)
@@ -49,9 +49,7 @@ class TestConflictDetection:
         r1 = await upsert_fact(
             content="A", project_id=project_id, embedding_vec=_VEC_ALPHA, conn=pg
         )
-        r2 = await upsert_fact(
-            content="B", project_id=project_id, embedding_vec=_VEC_BETA, conn=pg
-        )
+        r2 = await upsert_fact(content="B", project_id=project_id, embedding_vec=_VEC_BETA, conn=pg)
         assert (await _fetch(pg, r1.id))["is_current"] is True
         assert (await _fetch(pg, r2.id))["is_current"] is True
         assert r1.is_conflict is False

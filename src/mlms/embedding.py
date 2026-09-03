@@ -40,7 +40,7 @@ def _retry_wait(response: httpx.Response, attempt: int) -> float:
     if header is not None:
         with contextlib.suppress(ValueError):
             return float(header)
-    return 2.0 ** attempt
+    return 2.0**attempt
 
 
 async def _call_api(text: str, model: str, *, max_retries: int = 3) -> list[float]:
@@ -65,7 +65,13 @@ async def _call_api(text: str, model: str, *, max_retries: int = 3) -> list[floa
                 if attempt == max_retries - 1:
                     raise
                 wait = 2.0 ** (attempt + 1)
-                logger.warning("connect error (attempt %d/%d) in %.1fs: %s", attempt + 1, max_retries, wait, exc)
+                logger.warning(
+                    "connect error (attempt %d/%d) in %.1fs: %s",
+                    attempt + 1,
+                    max_retries,
+                    wait,
+                    exc,
+                )
                 await asyncio.sleep(wait)
                 continue
             if r.status_code != 429 or attempt == max_retries - 1:

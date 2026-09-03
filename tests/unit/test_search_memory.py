@@ -95,9 +95,7 @@ class TestSearchMemoryResults:
             with patch(_P_FACTS, new=AsyncMock(return_value=[_fact(0.3)])):
                 with patch(_P_EVENTS, new=AsyncMock(return_value=[_event(0.9)])):
                     with patch(_P_SKILLS, new=AsyncMock(return_value=[])):
-                        result = await search_memory(
-                            query="q", conn=MagicMock(), redis=MagicMock()
-                        )
+                        result = await search_memory(query="q", conn=MagicMock(), redis=MagicMock())
         assert result[0].score == 0.9
         assert result[1].score == 0.3
 
@@ -106,9 +104,7 @@ class TestSearchMemoryResults:
             with patch(_P_FACTS, new=AsyncMock(return_value=[_fact()])):
                 with patch(_P_EVENTS, new=AsyncMock(return_value=[])):
                     with patch(_P_SKILLS, new=AsyncMock(return_value=[])):
-                        result = await search_memory(
-                            query="q", conn=MagicMock(), redis=MagicMock()
-                        )
+                        result = await search_memory(query="q", conn=MagicMock(), redis=MagicMock())
         assert isinstance(result[0], MemoryResult)
 
     async def test_empty_all_layers_returns_empty(self) -> None:
@@ -116,9 +112,7 @@ class TestSearchMemoryResults:
             with patch(_P_FACTS, new=AsyncMock(return_value=[])):
                 with patch(_P_EVENTS, new=AsyncMock(return_value=[])):
                     with patch(_P_SKILLS, new=AsyncMock(return_value=[])):
-                        result = await search_memory(
-                            query="q", conn=MagicMock(), redis=MagicMock()
-                        )
+                        result = await search_memory(query="q", conn=MagicMock(), redis=MagicMock())
         assert result == []
 
     async def test_project_id_filter_passed_to_facts(self) -> None:

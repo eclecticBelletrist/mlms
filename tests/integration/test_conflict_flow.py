@@ -22,12 +22,14 @@ pytestmark = pytest.mark.skipif(
     reason="Set MLMS_INTEGRATION=1 to run (requires docker compose up)",
 )
 
-_VEC_A = [0.9] + [0.0] * 1535          # unit vector along dim-0
-_VEC_B = [0.9999] + [0.0] * 1535       # nearly identical → conflict (sim ≈ 1.0)
-_VEC_C = [0.0, 0.9] + [0.0] * 1534    # orthogonal → no conflict
+_VEC_A = [0.9] + [0.0] * 1535  # unit vector along dim-0
+_VEC_B = [0.9999] + [0.0] * 1535  # nearly identical → conflict (sim ≈ 1.0)
+_VEC_C = [0.0, 0.9] + [0.0] * 1534  # orthogonal → no conflict
 
 
-async def _fetch_facts(conn: psycopg.AsyncConnection[Any], project_id: uuid.UUID) -> list[dict[str, Any]]:
+async def _fetch_facts(
+    conn: psycopg.AsyncConnection[Any], project_id: uuid.UUID
+) -> list[dict[str, Any]]:
     cur = conn.cursor(row_factory=psycopg.rows.dict_row)
     await cur.execute(
         "SELECT id, version, is_current FROM facts WHERE project_id = %s ORDER BY version",
@@ -51,10 +53,14 @@ class TestConflictFlowDirect:
     async def test_similar_fact_triggers_conflict_soft_deletes_old(
         self, pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
     ) -> None:
-        r1 = await upsert_fact(content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg)
+        r1 = await upsert_fact(
+            content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg
+        )
         await pg.commit()
 
-        r2 = await upsert_fact(content="fact A v2", project_id=project_id, embedding_vec=_VEC_B, conn=pg)
+        r2 = await upsert_fact(
+            content="fact A v2", project_id=project_id, embedding_vec=_VEC_B, conn=pg
+        )
         await pg.commit()
 
         assert r2.is_conflict
@@ -71,8 +77,12 @@ class TestConflictFlowDirect:
     async def test_dissimilar_fact_no_conflict_both_current(
         self, pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
     ) -> None:
-        r1 = await upsert_fact(content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg)
-        r2 = await upsert_fact(content="fact C", project_id=project_id, embedding_vec=_VEC_C, conn=pg)
+        r1 = await upsert_fact(
+            content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg
+        )
+        r2 = await upsert_fact(
+            content="fact C", project_id=project_id, embedding_vec=_VEC_C, conn=pg
+        )
         await pg.commit()
 
         assert not r2.is_conflict

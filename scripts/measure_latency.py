@@ -4,6 +4,7 @@
 Usage:
     MLMS_INTEGRATION=1 python scripts/measure_latency.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -62,9 +63,7 @@ async def bench_session_context(rd: Any) -> list[float]:
 
 async def bench_get_facts(conn: psycopg.AsyncConnection[Any], rd: Any) -> list[float]:
     pid = uuid.uuid4()
-    await conn.execute(
-        "INSERT INTO projects (id, name) VALUES (%s, %s)", (pid, f"bench-gf-{pid}")
-    )
+    await conn.execute("INSERT INTO projects (id, name) VALUES (%s, %s)", (pid, f"bench-gf-{pid}"))
 
     seeds = [
         "User prefers PostgreSQL for relational data storage",
@@ -179,7 +178,7 @@ async def main() -> None:
     print("LATENCY BENCHMARK RESULTS (ms)")
     print("=" * 68)
     print(f"  {'Operation':<28} {'p50':>7} {'p95':>7} {'p99':>7}  Result")
-    print(f"  {'-'*28} {'-'*7} {'-'*7} {'-'*7}  ------")
+    print(f"  {'-' * 28} {'-' * 7} {'-' * 7} {'-' * 7}  ------")
     for op, r in results.items():
         p99 = r["p99"]
         t = r["target_ms"]

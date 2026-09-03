@@ -4,6 +4,7 @@
 Usage:
     MLMS_INTEGRATION=1 python scripts/run_benchmark.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -172,7 +173,10 @@ async def main() -> None:
         for i, scenario in enumerate(scenarios, 1):
             log.info(
                 "[%3d/%d] %-30s %s",
-                i, len(scenarios), scenario["id"], scenario["category"],
+                i,
+                len(scenarios),
+                scenario["id"],
+                scenario["category"],
             )
             try:
                 r = await _run_scenario(scenario, conn=conn, rd=rd)
@@ -183,8 +187,14 @@ async def main() -> None:
                 log.info("  naive=%.2f%s  final=%.2f", r["naive_recall"], extra, r["recall"])
             except Exception as exc:
                 log.error("  ERROR in %s: %s", scenario["id"], exc, exc_info=True)
-                results.append({"id": scenario["id"], "category": scenario["category"],
-                                "naive_recall": 0.0, "recall": 0.0})
+                results.append(
+                    {
+                        "id": scenario["id"],
+                        "category": scenario["category"],
+                        "naive_recall": 0.0,
+                        "recall": 0.0,
+                    }
+                )
                 fails.append(scenario["id"])
     finally:
         await conn.close()

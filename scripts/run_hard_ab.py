@@ -14,6 +14,7 @@ Recall@5 = |relevant in top-5| / |relevant|
 Usage:
     MLMS_INTEGRATION=1 python scripts/run_hard_ab.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -80,13 +81,21 @@ async def _api_embed(
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 r = await client.post(
                     f"{api_base}/embeddings",
-                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
                     json=payload,
                 )
                 r.raise_for_status()
                 raw = r.json()["data"][0]["embedding"]
             break
-        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as exc:
+        except (
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.ConnectTimeout,
+            httpx.RemoteProtocolError,
+        ) as exc:
             if attempt == 3:
                 raise
             log.warning("embed retry %d/3 (%s): %s", attempt + 1, model, exc)
@@ -102,6 +111,7 @@ async def _api_embed(
 
 def _bm25_top(fact_texts: list[str], query: str, k: int) -> set[int]:
     from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
+
     tokenized = [t.lower().split() for t in fact_texts]
     scores = list(BM25Okapi(tokenized).get_scores(query.lower().split()))
     return set(sorted(range(len(scores)), key=lambda i: -scores[i])[:k])
@@ -115,14 +125,12 @@ def _cosine_top(fact_vecs: list[list[float]], q_vec: list[float], k: int) -> set
 @dataclass
 class Backend:
     label: str
-    model: str | None      # None = BM25
+    model: str | None  # None = BM25
     api_base: str = ""
     api_key: str = ""
     request_dim: int | None = None  # None = no truncation, e.g. for Ollama
-    max_chars: int | None = None    # truncate input text before embedding (mxbai 512-token limit)
-    _cache: dict[tuple[str, str], list[float]] = field(
-        default_factory=dict, init=False, repr=False
-    )
+    max_chars: int | None = None  # truncate input text before embedding (mxbai 512-token limit)
+    _cache: dict[tuple[str, str], list[float]] = field(default_factory=dict, init=False, repr=False)
 
     async def embed(self, text: str) -> list[float]:
         assert self.model is not None
@@ -199,12 +207,14 @@ async def _run_backend(
             log.error("[%s] %s failed: %s", backend.label, s["id"], exc)
             naive_r = sar_r = 0.0
 
-        rows.append({
-            "id": s["id"],
-            "type": s["type"],
-            "naive_recall": naive_r,
-            "sar_recall": sar_r,
-        })
+        rows.append(
+            {
+                "id": s["id"],
+                "type": s["type"],
+                "naive_recall": naive_r,
+                "sar_recall": sar_r,
+            }
+        )
 
     return {"label": backend.label, "n": len(rows), "rows": rows}
 
@@ -220,16 +230,19 @@ def _aggregate(result: dict[str, Any]) -> dict[str, Any]:
         return round(naive, 4), round(sar, 4), round(sar - naive, 4)
 
     types = ["lexical_drift", "semantic_drift", "cross_domain", "multi_hop"]
-    by_type = {
-        t: _avg([r for r in rows if r["type"] == t]) for t in types
-    }
+    by_type = {t: _avg([r for r in rows if r["type"] == t]) for t in types}
     overall = _avg(rows)
     return {
         "label": result["label"],
         "n": result["n"],
         "overall": {"naive": overall[0], "sar": overall[1], "delta": overall[2]},
         "by_type": {
-            t: {"naive": v[0], "sar": v[1], "delta": v[2], "n": sum(1 for r in rows if r["type"] == t)}
+            t: {
+                "naive": v[0],
+                "sar": v[1],
+                "delta": v[2],
+                "n": sum(1 for r in rows if r["type"] == t),
+            }
             for t, v in by_type.items()
         },
     }
@@ -244,14 +257,20 @@ def _print_results(agg: list[dict[str, Any]]) -> None:
     print()
     print("OVERALL (all 93 scenarios, 400-fact corpus)")
     print(f"  {'Model':<25} {'N':>4}  {'Naive':>7}  {'SAR':>7}  {'Delta':>8}")
-    print(f"  {'-'*25} {'-'*4}  {'-'*7}  {'-'*7}  {'-'*8}")
+    print(f"  {'-' * 25} {'-' * 4}  {'-' * 7}  {'-' * 7}  {'-' * 8}")
     for r in agg:
         o = r["overall"]
-        print(f"  {r['label']:<25} {r['n']:>4}  {o['naive']:>7.3f}  {o['sar']:>7.3f}  {o['delta']:>+8.3f}")
+        print(
+            f"  {r['label']:<25} {r['n']:>4}  {o['naive']:>7.3f}  {o['sar']:>7.3f}  {o['delta']:>+8.3f}"
+        )
 
     types = ["lexical_drift", "semantic_drift", "cross_domain", "multi_hop"]
-    type_labels = {"lexical_drift": "lexical_drift", "semantic_drift": "sem_drift",
-                   "cross_domain": "cross_domain", "multi_hop": "multi_hop"}
+    type_labels = {
+        "lexical_drift": "lexical_drift",
+        "semantic_drift": "sem_drift",
+        "cross_domain": "cross_domain",
+        "multi_hop": "multi_hop",
+    }
 
     print()
     print("PER-TYPE BREAKDOWN (Naive / SAR / Delta)")
@@ -263,7 +282,7 @@ def _print_results(agg: list[dict[str, Any]]) -> None:
     for _ in types:
         hdr2 += f"  {'N':>4}{'Naive':>6}{'SAR':>6}{'D':>6}"
     print(hdr2)
-    print(f"  {'-'*25}" + "  " + ("  " + "-"*21) * len(types))
+    print(f"  {'-' * 25}" + "  " + ("  " + "-" * 21) * len(types))
 
     for r in agg:
         row = f"  {r['label']:<25}"
@@ -326,11 +345,15 @@ async def main() -> None:
         agg = _aggregate(raw)
         all_results.append(agg)
         o = agg["overall"]
-        log.info("[%s] naive=%.3f  sar=%.3f  delta=%+.3f", backend.label, o["naive"], o["sar"], o["delta"])
+        log.info(
+            "[%s] naive=%.3f  sar=%.3f  delta=%+.3f",
+            backend.label,
+            o["naive"],
+            o["sar"],
+            o["delta"],
+        )
 
-    _RESULTS.write_text(
-        json.dumps(all_results, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _RESULTS.write_text(json.dumps(all_results, indent=2, ensure_ascii=False), encoding="utf-8")
     log.info("Results -> %s", _RESULTS)
 
     _print_results(all_results)

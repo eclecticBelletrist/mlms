@@ -5,14 +5,14 @@ from typing import Final
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-EMBEDDING_DIM: Final[int] = 1536          # Matryoshka truncation of Qwen3-8B; < 2000 HNSW limit
+EMBEDDING_DIM: Final[int] = 1536  # Matryoshka truncation of Qwen3-8B; < 2000 HNSW limit
 EMBEDDING_MODEL: Final[str] = "qwen3-embedding-8b"
 EMBEDDING_FALLBACK: Final[str] = "qwen3-embedding-0.6b"
 
 # 0.96 is a calibration starting point, not a fixed production value
 COSINE_CONFLICT_THRESHOLD: Final[float] = 0.96
 
-REDIS_SESSION_TTL: Final[int] = 172800    # 48 h
+REDIS_SESSION_TTL: Final[int] = 172800  # 48 h
 REDIS_KEY_PATTERN: Final[str] = "session:{chat_id}"
 
 LATENCY_P99_TARGET_MS: Final[int] = 200

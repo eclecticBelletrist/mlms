@@ -4,6 +4,7 @@ Revision ID: 003
 Revises: 002
 Create Date: 2026-05-08
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -27,10 +28,7 @@ def upgrade() -> None:
         )
     """)
 
-    op.execute(
-        "SELECT create_hypertable('timeline_events', 'time',"
-        " if_not_exists => TRUE)"
-    )
+    op.execute("SELECT create_hypertable('timeline_events', 'time', if_not_exists => TRUE)")
     # TimescaleDB requires partition column in any unique constraint
     op.execute("ALTER TABLE timeline_events ADD PRIMARY KEY (id, time)")
 

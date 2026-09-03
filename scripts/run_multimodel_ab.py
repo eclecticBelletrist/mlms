@@ -11,6 +11,7 @@ BM25 uses rank_bm25; OpenAI model requires OPENAI_API_KEY.
 Usage:
     MLMS_INTEGRATION=1 [OPENAI_API_KEY=sk-...] python scripts/run_multimodel_ab.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -72,6 +73,7 @@ async def _api_embed(
 
 def _bm25_scores(corpus: list[str], query: str) -> list[float]:
     from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
+
     tokenized = [doc.lower().split() for doc in corpus]
     return list(BM25Okapi(tokenized).get_scores(query.lower().split()))
 
@@ -90,7 +92,9 @@ class Backend:
 
     async def embed(self, text: str) -> list[float]:
         assert self.model is not None
-        return await _api_embed(text, self.model, api_base=self.api_base, api_key=self.api_key, cache=self._cache)
+        return await _api_embed(
+            text, self.model, api_base=self.api_base, api_key=self.api_key, cache=self._cache
+        )
 
 
 async def _ab_scenario(scenario: dict[str, Any], backend: Backend) -> dict[str, float]:
@@ -155,19 +159,32 @@ async def main() -> None:
 
     data = json.loads(_FIXTURE.read_text(encoding="utf-8"))
     scenarios = [
-        s for s in data["scenarios"]
+        s
+        for s in data["scenarios"]
         if s["category"] == "semantic_drift" and s["meta"].get("ab_test")
     ]
     log.info("Loaded %d semantic_drift scenarios", len(scenarios))
 
     backends: list[Backend] = [
-        Backend("Qwen3-8B", EMBEDDING_MODEL, settings.embedding_api_base, settings.embedding_api_key),
-        Backend("Qwen3-0.6B", EMBEDDING_FALLBACK, settings.embedding_api_base, settings.embedding_api_key),
+        Backend(
+            "Qwen3-8B", EMBEDDING_MODEL, settings.embedding_api_base, settings.embedding_api_key
+        ),
+        Backend(
+            "Qwen3-0.6B",
+            EMBEDDING_FALLBACK,
+            settings.embedding_api_base,
+            settings.embedding_api_key,
+        ),
     ]
     openai_key = os.getenv("OPENAI_API_KEY", "")
     if openai_key:
         backends.append(
-            Backend("text-embedding-3-small", "text-embedding-3-small", "https://api.openai.com/v1", openai_key)
+            Backend(
+                "text-embedding-3-small",
+                "text-embedding-3-small",
+                "https://api.openai.com/v1",
+                openai_key,
+            )
         )
     else:
         log.info("OPENAI_API_KEY not set -- skipping text-embedding-3-small")
@@ -178,14 +195,16 @@ async def main() -> None:
         log.info("=== %s ===", backend.label)
         res = await _run_backend(scenarios, backend)
         all_results.append(res)
-        log.info("  naive=%.3f  sar=%.3f  delta=%+.3f", res["naive_avg"], res["sar_avg"], res["delta"])
+        log.info(
+            "  naive=%.3f  sar=%.3f  delta=%+.3f", res["naive_avg"], res["sar_avg"], res["delta"]
+        )
 
     print()
     print("=" * 65)
     print(f"MULTI-MODEL SAR A/B -- semantic_drift (n={len(scenarios)})")
     print("=" * 65)
     print(f"  {'Model':<30} {'Naive':>7} {'SAR':>7} {'Delta':>8}")
-    print(f"  {'-'*30} {'-'*7} {'-'*7} {'-'*8}")
+    print(f"  {'-' * 30} {'-' * 7} {'-' * 7} {'-' * 8}")
     for r in all_results:
         print(f"  {r['label']:<30} {r['naive_avg']:>7.3f} {r['sar_avg']:>7.3f} {r['delta']:>+8.3f}")
     print("=" * 65)

@@ -46,8 +46,8 @@ OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 # OpenRouter model IDs — override via .env (MODEL_CLAUDE / MODEL_GPT4O / MODEL_GROK)
 MODELS: dict[str, str] = {
     "claude": os.getenv("MODEL_CLAUDE", "anthropic/claude-sonnet-4.6"),
-    "gpt4o":  os.getenv("MODEL_GPT4O",  "openai/gpt-5.2"),
-    "grok":   os.getenv("MODEL_GROK",   "x-ai/grok-4.20"),
+    "gpt4o": os.getenv("MODEL_GPT4O", "openai/gpt-5.2"),
+    "grok": os.getenv("MODEL_GROK", "x-ai/grok-4.20"),
 }
 
 # Short names for meta.generated_by / meta.verified_by fields
@@ -58,8 +58,8 @@ MODEL_SHORT: dict[str, str] = {k: v.split("/")[-1] for k, v in MODELS.items()}
 # Cross-family rotation: Anthropic → OpenAI → xAI → Anthropic
 MODEL_ROTATION = [
     ("claude", "gpt4o"),
-    ("gpt4o",  "grok"),
-    ("grok",   "claude"),
+    ("gpt4o", "grok"),
+    ("grok", "claude"),
 ]
 
 # 5 batches × 4 categories = 20 batches total
@@ -74,10 +74,10 @@ FINAL_PATH = Path("tests/fixtures/synthetic_100.json")
 
 # meta fields that are category-specific, patched after generation
 _CATEGORY_META: dict[str, dict[str, bool]] = {
-    "lexical":        {"tests_session_augmentation": False, "ab_test": False},
-    "semantic_drift": {"tests_session_augmentation": True,  "ab_test": True},
-    "conflict":       {"tests_session_augmentation": False, "ab_test": False},
-    "cross_session":  {"tests_session_augmentation": False, "ab_test": False},
+    "lexical": {"tests_session_augmentation": False, "ab_test": False},
+    "semantic_drift": {"tests_session_augmentation": True, "ab_test": True},
+    "conflict": {"tests_session_augmentation": False, "ab_test": False},
+    "cross_session": {"tests_session_augmentation": False, "ab_test": False},
 }
 
 # ── Prompts ──────────────────────────────────────────────────────────────────
@@ -97,7 +97,9 @@ SYSTEM_GENERATE = """\
 - Не используй домены из списка used_topics\
 """
 
-SYSTEM_VERIFY = "Ты проверяешь корректность ground truth разметки тест-кейсов для evaluation retrieval-системы."
+SYSTEM_VERIFY = (
+    "Ты проверяешь корректность ground truth разметки тест-кейсов для evaluation retrieval-системы."
+)
 
 CATEGORY_DESCRIPTIONS: dict[str, str] = {
     "lexical": """\
@@ -150,8 +152,8 @@ query_session.session_log: ВСЕГДА пустой массив. SAR нево�
 _FACT_ITEM = {
     "type": "object",
     "properties": {
-        "id":         {"type": "string"},
-        "content":    {"type": "string"},
+        "id": {"type": "string"},
+        "content": {"type": "string"},
         "is_relevant": {"type": "boolean"},
     },
     "required": ["id", "content", "is_relevant"],
@@ -159,33 +161,33 @@ _FACT_ITEM = {
 
 _META_PROPS = {
     "tests_session_augmentation": {"type": "boolean"},
-    "ab_test":       {"type": "boolean"},
-    "difficulty":    {"type": "string", "enum": ["easy", "medium", "hard"]},
-    "generated_by":  {"type": "string"},
-    "verified_by":   {"type": "string"},
-    "auto_fixed":    {"type": "boolean"},
+    "ab_test": {"type": "boolean"},
+    "difficulty": {"type": "string", "enum": ["easy", "medium", "hard"]},
+    "generated_by": {"type": "string"},
+    "verified_by": {"type": "string"},
+    "auto_fixed": {"type": "boolean"},
 }
 
 _EXPECTED_PROPS = {
-    "relevant_ids":   {"type": "array", "items": {"type": "string"}},
+    "relevant_ids": {"type": "array", "items": {"type": "string"}},
     "irrelevant_ids": {"type": "array", "items": {"type": "string"}},
 }
 
 _STANDARD_SCENARIO = {
     "type": "object",
     "properties": {
-        "id":       {"type": "string"},
+        "id": {"type": "string"},
         "category": {"type": "string"},
-        "domain":   {"type": "string"},
+        "domain": {"type": "string"},
         "setup": {
             "type": "object",
             "properties": {
-                "facts":       {"type": "array", "items": _FACT_ITEM, "minItems": 4, "maxItems": 6},
+                "facts": {"type": "array", "items": _FACT_ITEM, "minItems": 4, "maxItems": 6},
                 "session_log": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["facts", "session_log"],
         },
-        "query":    {"type": "string"},
+        "query": {"type": "string"},
         "expected": {
             "type": "object",
             "properties": _EXPECTED_PROPS,
@@ -203,9 +205,9 @@ _STANDARD_SCENARIO = {
 _CROSS_SESSION_SCENARIO = {
     "type": "object",
     "properties": {
-        "id":       {"type": "string"},
+        "id": {"type": "string"},
         "category": {"type": "string"},
-        "domain":   {"type": "string"},
+        "domain": {"type": "string"},
         "setup": {
             "type": "object",
             "properties": {
@@ -213,14 +215,19 @@ _CROSS_SESSION_SCENARIO = {
                     "type": "object",
                     "properties": {
                         "chat_id": {"type": "string"},
-                        "facts":   {"type": "array", "items": _FACT_ITEM, "minItems": 3, "maxItems": 6},
+                        "facts": {
+                            "type": "array",
+                            "items": _FACT_ITEM,
+                            "minItems": 3,
+                            "maxItems": 6,
+                        },
                     },
                     "required": ["chat_id", "facts"],
                 },
                 "query_session": {
                     "type": "object",
                     "properties": {
-                        "chat_id":    {"type": "string"},
+                        "chat_id": {"type": "string"},
                         "session_log": {"type": "array", "items": {"type": "string"}},
                     },
                     "required": ["chat_id", "session_log"],
@@ -228,7 +235,7 @@ _CROSS_SESSION_SCENARIO = {
             },
             "required": ["source_session", "query_session"],
         },
-        "query":    {"type": "string"},
+        "query": {"type": "string"},
         "expected": {
             "type": "object",
             "properties": _EXPECTED_PROPS,
@@ -475,9 +482,7 @@ async def _verify_scenario(
         else scenario["setup"]["session_log"]
     )
 
-    facts_text = "\n".join(
-        f"{idx + 1}. [{f['id']}] {f['content']}" for idx, f in enumerate(facts)
-    )
+    facts_text = "\n".join(f"{idx + 1}. [{f['id']}] {f['content']}" for idx, f in enumerate(facts))
 
     extra = ""
     if category in ("semantic_drift", "cross_session"):
@@ -488,7 +493,7 @@ async def _verify_scenario(
         )
 
     user_prompt = (
-        f'Проверь корректность ground truth разметки этого тест-кейса.\n\n'
+        f"Проверь корректность ground truth разметки этого тест-кейса.\n\n"
         f'Запрос: "{scenario["query"]}"\n'
         f'Категория: "{category}"\n'
         f"Session_log: {json.dumps(session_log, ensure_ascii=False)}\n\n"
@@ -592,10 +597,15 @@ def _save_partial(scenarios: list[dict[str, Any]]) -> None:
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-batches", type=int, default=TOTAL_BATCHES,
-                        help="Stop after N batches (default: all 20)")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Log full scenario JSON and verify reasoning")
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=TOTAL_BATCHES,
+        help="Stop after N batches (default: all 20)",
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Log full scenario JSON and verify reasoning"
+    )
     args = parser.parse_args()
     max_batches: int = args.max_batches
     verbose: bool = args.verbose
@@ -613,7 +623,9 @@ async def main() -> None:
         return
 
     if start_batch > 0:
-        log.info("Resuming from batch %d (%d scenarios already done)", start_batch + 1, len(scenarios))
+        log.info(
+            "Resuming from batch %d (%d scenarios already done)", start_batch + 1, len(scenarios)
+        )
 
     for batch_idx in range(start_batch, end_batch):
         category = BATCH_TO_CATEGORY[batch_idx]
@@ -630,9 +642,7 @@ async def main() -> None:
         )
 
         # Stage 1 — generate
-        batch = await _generate_batch(
-            category, list(used_topics), gen_key, api_key, category_start
-        )
+        batch = await _generate_batch(category, list(used_topics), gen_key, api_key, category_start)
 
         if verbose:
             for s in batch:
@@ -660,8 +670,11 @@ async def main() -> None:
         _save_partial(scenarios)
 
     if len(scenarios) < TOTAL_BATCHES * SCENARIOS_PER_BATCH:
-        log.info("Partial run done (%d/%d scenarios). synthetic_100.json not written.",
-                 len(scenarios), TOTAL_BATCHES * SCENARIOS_PER_BATCH)
+        log.info(
+            "Partial run done (%d/%d scenarios). synthetic_100.json not written.",
+            len(scenarios),
+            TOTAL_BATCHES * SCENARIOS_PER_BATCH,
+        )
         return
 
     # Assemble final file
