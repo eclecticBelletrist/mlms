@@ -1,12 +1,13 @@
-# DEPRECATED: delta=0 на synthetic_100 (тривиальный результат, 5 фактов при k=5). Используй run_hard_ab.py.
-# DEPRECATED: тривиальные результаты на synthetic_100 — 5 фактов/сценарий, BM25=1.0, Qwen3-0.6B N/A (OpenRouter 404)
-# Используй: scripts/run_hard_ab.py (synthetic_hard.json, 400 фактов, 4 backend-а включая Ollama)
-
 #!/usr/bin/env python
 """Multi-model A/B: SAR delta across Qwen3-8B, Qwen3-0.6B, text-embedding-3-small, BM25.
 
 Retrieval is in-memory (no pgvector). Each model gets its own vector space.
 BM25 uses rank_bm25; OpenAI model requires OPENAI_API_KEY.
+
+Superseded by run_hard_ab.py. In synthetic_100 nearly every scenario has at most five facts,
+so with k=5 every backend returns all of them and ties
+(docs/mlms_benchmark_design.md, section 2.4).
+Qwen3-0.6B is not served by OpenRouter, so its calls fail and are scored 0.
 
 Usage:
     MLMS_INTEGRATION=1 [OPENAI_API_KEY=sk-...] python scripts/run_multimodel_ab.py
@@ -117,8 +118,8 @@ async def _ab_scenario(scenario: dict[str, Any], backend: Backend) -> dict[str, 
         q_naive = await backend.embed(query)
         q_sar = await backend.embed(enriched)
         # vectors are L2-normalised → dot product == cosine similarity
-        naive_scores = [sum(a * b for a, b in zip(q_naive, fv)) for fv in fact_vecs]
-        sar_scores = [sum(a * b for a, b in zip(q_sar, fv)) for fv in fact_vecs]
+        naive_scores = [sum(a * b for a, b in zip(q_naive, fv, strict=False)) for fv in fact_vecs]
+        sar_scores = [sum(a * b for a, b in zip(q_sar, fv, strict=False)) for fv in fact_vecs]
         naive_top = {fact_ids[i] for i in _top_k_idx(naive_scores, k)}
         sar_top = {fact_ids[i] for i in _top_k_idx(sar_scores, k)}
 

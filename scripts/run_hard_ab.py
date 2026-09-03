@@ -101,10 +101,7 @@ async def _api_embed(
             log.warning("embed retry %d/3 (%s): %s", attempt + 1, model, exc)
             await asyncio.sleep(delay)
             delay *= 2
-    if request_dim is not None:
-        vec = _truncate_normalize(raw, request_dim)
-    else:
-        vec = _normalize(raw)
+    vec = _truncate_normalize(raw, request_dim) if request_dim is not None else _normalize(raw)
     cache[key] = vec
     return vec
 
@@ -118,7 +115,7 @@ def _bm25_top(fact_texts: list[str], query: str, k: int) -> set[int]:
 
 
 def _cosine_top(fact_vecs: list[list[float]], q_vec: list[float], k: int) -> set[int]:
-    scores = [sum(a * b for a, b in zip(q_vec, fv)) for fv in fact_vecs]
+    scores = [sum(a * b for a, b in zip(q_vec, fv, strict=False)) for fv in fact_vecs]
     return set(sorted(range(len(scores)), key=lambda i: -scores[i])[:k])
 
 
