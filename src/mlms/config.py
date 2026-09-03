@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -45,7 +45,9 @@ class Settings(BaseSettings):
         alias="EMBEDDING_API_BASE",
     )
 
-    mcp_transport: str = Field(default="stdio", alias="MCP_TRANSPORT")
+    mcp_transport: Literal["stdio", "sse", "streamable-http"] = Field(
+        default="stdio", alias="MCP_TRANSPORT"
+    )
     mcp_host: str = Field(default="0.0.0.0", alias="MCP_HOST")
     mcp_port: int = Field(default=8000, alias="MCP_PORT")
 

@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal, cast
 import psycopg
 import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.fastmcp.server import TransportSecuritySettings
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from pydantic import BeforeValidator, Field

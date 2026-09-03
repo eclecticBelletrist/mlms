@@ -83,7 +83,7 @@ async def _call_api(text: str, model: str, *, max_retries: int = 3) -> list[floa
     raise RuntimeError("unreachable")
 
 
-async def embed(text: str, redis: Redis[bytes]) -> list[float]:
+async def embed(text: str, redis: Redis) -> list[float]:
     """Return cached embedding or call API; falls back to smaller model on failure."""
     last_exc: Exception | None = None
 
