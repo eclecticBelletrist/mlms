@@ -213,6 +213,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-01
 
+**Last updated:** 2026-09-03
+
 **Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
 
 **Rationale:**
@@ -226,5 +228,21 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack, not yet run against a live database)
 
 **See also:** Decision 2.
+
+---
+
+## Decision 18: `psycopg[binary]` instead of a system libpq, and no `types-redis` stub
+
+**Decided:** 2026-09-03
+
+**Decision:** `psycopg` is installed with the `binary` extra, and the `types-redis` dev dependency is removed.
+
+**Rationale:** without the `binary` extra, psycopg needs client libraries on the machine ([psycopg installation docs](https://www.psycopg.org/psycopg3/docs/basic/install.html)), and `uv.lock` never contained `psycopg-binary`. A fresh install from the lock therefore depended on what the machine happened to have installed. The binary package is self-contained.
+
+**Trade-off:** the same docs prefer a local installation for production, linked against the system libpq and libssl so that OS updates apply to psycopg too. The binary wheel bundles its own copies, so a production image may build psycopg from source instead.
+
+**Stub removal:** the `types-redis` stub targets redis 4.6, and its [PyPI page](https://pypi.org/project/types-redis/) says redis ships its own annotations since 5.0.0 and asks to uninstall the stub. The locked redis-py 8.0.0 has `py.typed`. The stub caused false mypy errors: it has no `aclose` (which exists at runtime), and it makes `Redis` generic in its string type. Without it, `Redis[bytes]` in `embedding.py` became `Redis`, and no `# type: ignore` was needed.
+
+**Affected files:** `pyproject.toml`, `uv.lock`, `src/mlms/embedding.py`
 
 ---
