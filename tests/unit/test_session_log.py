@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid as _uuid
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -280,8 +281,6 @@ class TestGetSessionLogCrossSession:
 
 
 # ── get_session_log — cross-session with project_id filter ────────────────────
-
-import uuid as _uuid
 
 
 class TestGetSessionLogProjectFilter:

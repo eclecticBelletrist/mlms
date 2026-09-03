@@ -77,9 +77,7 @@ class TestConflictFlowDirect:
     async def test_dissimilar_fact_no_conflict_both_current(
         self, pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
     ) -> None:
-        await upsert_fact(
-            content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg
-        )
+        await upsert_fact(content="fact A", project_id=project_id, embedding_vec=_VEC_A, conn=pg)
         r2 = await upsert_fact(
             content="fact C", project_id=project_id, embedding_vec=_VEC_C, conn=pg
         )

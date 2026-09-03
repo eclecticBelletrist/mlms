@@ -143,9 +143,11 @@ class TestEmbed:
         async def fail_always(text: str, model: str) -> list[float]:
             raise httpx.TimeoutException("timeout")
 
-        with patch("mlms.embedding._call_api", side_effect=fail_always):
-            with pytest.raises(RuntimeError, match="Both embedding models"):
-                await embed("hello", redis)
+        with (
+            patch("mlms.embedding._call_api", side_effect=fail_always),
+            pytest.raises(RuntimeError, match="Both embedding models"),
+        ):
+            await embed("hello", redis)
 
     async def test_result_is_l2_normalised(self, redis: AsyncMock) -> None:
         raw_vec = list(range(1, 4097))  # 4096-dim, un-normalized
@@ -242,17 +244,19 @@ class TestCallApi:
         with (
             patch("mlms.embedding.httpx.AsyncClient", mock_class),
             patch("mlms.embedding.asyncio.sleep", new_callable=AsyncMock),
+            pytest.raises(httpx.HTTPStatusError) as exc_info,
         ):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await _call_api("hello", EMBEDDING_MODEL, max_retries=3)
+            await _call_api("hello", EMBEDDING_MODEL, max_retries=3)
 
         assert exc_info.value.response.status_code == 429
 
     async def test_no_retry_on_5xx(self) -> None:
         _, mock_class = _make_mock_client([_resp(500)])
 
-        with patch("mlms.embedding.httpx.AsyncClient", mock_class):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await _call_api("hello", EMBEDDING_MODEL)
+        with (
+            patch("mlms.embedding.httpx.AsyncClient", mock_class),
+            pytest.raises(httpx.HTTPStatusError) as exc_info,
+        ):
+            await _call_api("hello", EMBEDDING_MODEL)
 
         assert exc_info.value.response.status_code == 500

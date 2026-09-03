@@ -40,11 +40,13 @@ class TestGetSessionLogModes:
         assert result == []
 
     async def test_in_session_mode_no_embed(self) -> None:
-        with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
-            with patch(_P_EMBED, new=AsyncMock()) as mock_embed:
-                await get_session_log(chat_id="c1", conn=MagicMock(), redis=MagicMock())
-                mock_embed.assert_not_called()
-                mock_storage.assert_called_once()
+        with (
+            patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage,
+            patch(_P_EMBED, new=AsyncMock()) as mock_embed,
+        ):
+            await get_session_log(chat_id="c1", conn=MagicMock(), redis=MagicMock())
+            mock_embed.assert_not_called()
+            mock_storage.assert_called_once()
 
     async def test_in_session_passes_chat_id_to_storage(self) -> None:
         with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
@@ -52,17 +54,21 @@ class TestGetSessionLogModes:
         assert mock_storage.call_args.kwargs["chat_id"] == "my-chat"
 
     async def test_cross_session_embeds_query(self) -> None:
-        with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)) as mock_embed:
-            with patch(_P_STORAGE, new=AsyncMock(return_value=[])):
-                await get_session_log(
-                    semantic_query="find prior decisions", conn=MagicMock(), redis=MagicMock()
-                )
+        with (
+            patch(_P_EMBED, new=AsyncMock(return_value=_VEC)) as mock_embed,
+            patch(_P_STORAGE, new=AsyncMock(return_value=[])),
+        ):
+            await get_session_log(
+                semantic_query="find prior decisions", conn=MagicMock(), redis=MagicMock()
+            )
         mock_embed.assert_called_once()
 
     async def test_cross_session_passes_vec_to_storage(self) -> None:
-        with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)):
-            with patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage:
-                await get_session_log(semantic_query="q", conn=MagicMock(), redis=MagicMock())
+        with (
+            patch(_P_EMBED, new=AsyncMock(return_value=_VEC)),
+            patch(_P_STORAGE, new=AsyncMock(return_value=[])) as mock_storage,
+        ):
+            await get_session_log(semantic_query="q", conn=MagicMock(), redis=MagicMock())
         assert mock_storage.call_args.kwargs["semantic_query"] == _VEC
 
 

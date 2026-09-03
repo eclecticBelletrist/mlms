@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal, cast
 import psycopg
 import redis.asyncio as aioredis
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.server import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from pydantic import BeforeValidator, Field
@@ -95,8 +96,6 @@ async def _acquire(app: _AppCtx) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
 
 
 mcp: FastMCP = FastMCP("mlms", lifespan=_lifespan)
-
-from mcp.server.fastmcp.server import TransportSecuritySettings
 
 # CVE-2025-66416 (GHSA-9h52-p55h-vw2f): HTTP-based transports (sse/streamable-http) need
 # explicit DNS rebinding protection — mcp_host defaults to 0.0.0.0, so the SDK's automatic
