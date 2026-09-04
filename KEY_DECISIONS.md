@@ -75,9 +75,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-29
 
+**Last updated:** 2026-09-04
+
 **Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0`.
 
-**Rationale:** CVE-2025-66416 ([GHSA-9h52-p55h-vw2f](https://github.com/advisories/GHSA-9h52-p55h-vw2f)): the MCP Python SDK did not enable DNS rebinding protection by default (fixed in 1.23.0). It affects only `sse` and `streamable-http`; the default `stdio` transport opens no network port. The SDK now enables the protection automatically, but only when the host is `127.0.0.1`, `localhost` or `::1` ([`fastmcp/server.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/fastmcp/server.py)). MLMS defaults `mcp_host` to `0.0.0.0`, so the setting has to be explicit. `allowed_origins` is required too, because the SDK validates `Origin` inside the same gate ([`transport_security.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/transport_security.py)). The floor guards against a re-resolve of `uv.lock` (currently `1.27.2`) going below the fixed version.
+**Rationale:** CVE-2025-66416 ([GHSA-9h52-p55h-vw2f](https://github.com/advisories/GHSA-9h52-p55h-vw2f)): the MCP Python SDK did not enable DNS rebinding protection by default (fixed in 1.23.0). It affects only `sse` and `streamable-http`; the default `stdio` transport opens no network port. The SDK now enables the protection automatically, but only when the host is `127.0.0.1`, `localhost` or `::1` ([`fastmcp/server.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/fastmcp/server.py)). MLMS defaults `mcp_host` to `0.0.0.0`, so the setting has to be explicit. `allowed_origins` is required too, because the SDK validates `Origin` inside the same gate ([`transport_security.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/transport_security.py)). The floor guards against a re-resolve of `uv.lock` (currently `1.27.2`) going below the fixed version. The range has no upper bound, so a resolution outside `uv.lock` currently picks mcp 2.x, which renames `FastMCP` (Decision 20).
 
 **Consequence:** if `MCP_HOST` points outside loopback (LAN, VPS, domain), every request gets `421 Invalid Host Header` until that host is added to both lists in `server.py`. This is deliberate; the same confusion is reported in other MCP servers ([blockscout/mcp-server #333](https://github.com/blockscout/mcp-server/issues/333)). A regression test (`tests/unit/test_server_transport_security.py`) fails if the protection is turned off again.
 
@@ -85,7 +87,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
-**See also:** Decision 9.
+**See also:** Decision 9, Decision 20.
 
 ---
 
@@ -129,7 +131,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-16
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-04
 
 **Decision:** `MCP_TRANSPORT` (default `stdio`) selects the transport in `server.py`. For `sse` and `streamable-http` the server also reads `MCP_HOST` / `MCP_PORT`.
 
@@ -137,7 +139,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/config.py`, `src/mlms/server.py`
 
-**See also:** Decision 4 (DNS rebinding applies only to the HTTP transports).
+**See also:** Decision 4 (DNS rebinding applies only to the HTTP transports), Decision 20 (the container uses `streamable-http`).
 
 ---
 
@@ -251,6 +253,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-03
 
+**Last updated:** 2026-09-04
+
 **Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src` and the unit tests with the coverage gate (`fail_under = 80` in `pyproject.toml`). The integration tests are not run in CI.
 
 **Rationale:** the integration tests need PostgreSQL with pgvector and TimescaleDB plus Redis, and this first CI version does not start them. Without `MLMS_INTEGRATION=1` the tests skip themselves. The workflow also passes `-m "not integration"`, but no test carries that marker yet, so the skip guard is the only thing that excludes them.
@@ -268,6 +272,28 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `.github/workflows/ci.yml`, `docs/known-issues.md`
 
-**See also:** Decision 17.
+**See also:** Decision 17, Decision 20.
+
+---
+
+## Decision 20: Dockerfile and compose service: install from `uv.lock`, HTTP transport, migrations on start
+
+**Decided:** 2026-09-04
+
+**Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and runs `alembic upgrade head` before starting the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
+
+**Install from `uv.lock`, not `pip install .`:** `pyproject.toml` declares `mcp>=1.23.0` with no upper bound. `pip install .` resolves it from PyPI and ignores `uv.lock`, so it currently installs mcp 2.x, where `FastMCP` was renamed to `MCPServer` and `mcp.server.fastmcp` no longer exists ([migration guide](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/migration.md)). The container then fails on start with `ModuleNotFoundError`. `uv sync --locked` installs exactly the versions in `uv.lock`, the set the CI runs against (Decision 19), and fails if the lock is out of sync with `pyproject.toml`. `--no-editable` installs the package into the virtualenv as a regular copy instead of a link to `src/`. The missing upper bound is not fixed: the SDK's own README recommends a `<2` bound until an application has migrated ([README](https://github.com/modelcontextprotocol/python-sdk#readme)), and outside `uv.lock` (plain `pip`, or a re-resolve) `mcp` still resolves to 2.x (see Decision 4).
+
+**Transport:** `stdio` needs the MCP client to start the server as a child process and attach its stdin. A detached Compose service has no such stdin, so the container must use an HTTP transport. `streamable-http` was chosen over `sse` because it replaces the HTTP+SSE transport in the MCP specification ([transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)); `config.py` accepts both.
+
+**Migrations on start:** a fresh `postgres_data` volume has no schema, so without an upgrade the server would fail on its first database call, and `restart: unless-stopped` would turn that into a crash loop. Running them manually was rejected for that reason. The `CMD` runs `alembic upgrade head && python -m mlms.server`, so `alembic.ini` and `alembic/` are copied into the image, and every container start runs the migrations.
+
+**`HEALTHCHECK`:** a TCP connect to `MCP_PORT` in Python. The `python:slim` image does not ship `curl`, and the check needs no MCP-specific request. It shows that the port accepts connections, not that the MCP endpoint works. The directive has not been observed working: the image was built only with podman, which skips `HEALTHCHECK` for OCI-format images.
+
+**Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `alembic/` and `src/` and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose up -d --build`.
+
+**Affected files:** `Dockerfile`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
+
+**See also:** Decision 4, Decision 9, Decision 19.
 
 ---

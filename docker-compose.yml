@@ -30,6 +30,29 @@ services:
       retries: 10
       start_period: 5s
 
+  mlms:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Service names, not localhost — this container talks to the other two over
+      # the compose network, unlike the host-run defaults in .env.example.
+      DATABASE_URL: postgresql+psycopg://mlms:mlms@postgres:5432/mlms
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_API_BASE: ${EMBEDDING_API_BASE:-https://openrouter.ai/api/v1}
+      # stdio can't serve a detached compose service (no attached stdin) — HTTP-based
+      # transport is required here, see KEY_DECISIONS.md Decision 20.
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
