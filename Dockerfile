@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock alembic.ini ./
 COPY alembic/ ./alembic/
 COPY src/ ./src/
+COPY entrypoint.sh ./
 RUN uv sync --locked --no-editable
 
 ENV PATH="/app/.venv/bin:${PATH}"
@@ -22,4 +23,4 @@ USER mlms
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
     CMD python -c "import os, socket; socket.create_connection(('127.0.0.1', int(os.environ.get('MCP_PORT', 8000))), timeout=2)"
 
-CMD ["sh", "-c", "alembic upgrade head && python -m mlms.server"]
+CMD ["./entrypoint.sh"]
