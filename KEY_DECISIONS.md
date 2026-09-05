@@ -95,7 +95,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-05
 
 **Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha:pg16`, instead of `postgres` plus separately installed extensions.
 
@@ -104,6 +104,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Rationale:** the image already ships TimescaleDB and pgvector (the [Dockerfile](https://github.com/timescale/timescaledb-docker-ha/blob/master/Dockerfile#L186) installs `postgresql-${pg}-pgvector`), so there are no init scripts to mount and no extensions to compile.
 
 **Affected files:** `docker-compose.yml`
+
+**See also:** Decision 20.5.
 
 ---
 
@@ -296,6 +298,24 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
 
-**See also:** Decision 4, Decision 9, Decision 19.
+**See also:** Decision 4, Decision 9, Decision 19, and Decision 20.5.
+
+---
+
+## Decision 20.5: Postgres credentials read from `.env`, Redis stays unauthenticated
+
+**Decided:** 2026-09-05
+
+**Decision:** `docker-compose.yml`'s `postgres` service and the `mlms` service's `DATABASE_URL` both read `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` from environment variables with the same `mlms`/`mlms`/`mlms` default, declared in `.env.example`. The `postgres` healthcheck reads the same variables from the container's own environment (`$$POSTGRES_USER`/`$$POSTGRES_DB`, a literal not interpolated by Compose, per the [Compose spec](https://github.com/compose-spec/compose-spec/blob/master/12-interpolation.md)) instead of repeating the default a third time.
+
+**Rationale:** `mlms`/`mlms`/`mlms` used to be hardcoded in three places — `postgres`'s own environment, the `mlms` service's `DATABASE_URL`, and the healthcheck command. A password change meant editing all three consistently. `.env.example`'s variables are read only by Compose's interpolation; the application's own `Settings` (`extra="ignore"`) never reads `POSTGRES_*`, so the shipped default there is set equal to the app's `DATABASE_URL` default to avoid the two silently drifting apart.
+
+**Alternatives:** parametrizing `redis` the same way was not pursued. `redis` has no authentication enabled at all in this compose file, so there is no existing credential to expose through `.env` — that would mean turning auth on (`requirepass`), a bigger change than this one, left for later.
+
+**Known limitation:** changing `POSTGRES_PASSWORD` only takes effect against a fresh `postgres_data` volume — the image applies `POSTGRES_*` only at first initialization. An existing volume needs `docker compose down -v` or a manual `ALTER ROLE`. The characters `` @ : / % # `` in the password are not URL-encoded when composed into `DATABASE_URL`, so a password containing one of them breaks the connection string silently.
+
+**Affected files:** `docker-compose.yml`, `.env.example`, `README.md`
+
+**See also:** Decision 5, Decision 20.
 
 ---

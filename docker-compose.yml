@@ -2,15 +2,17 @@ services:
   postgres:
     image: timescale/timescaledb-ha:pg16
     environment:
-      POSTGRES_DB: mlms
-      POSTGRES_USER: mlms
-      POSTGRES_PASSWORD: mlms
+      POSTGRES_DB: ${POSTGRES_DB:-mlms}
+      POSTGRES_USER: ${POSTGRES_USER:-mlms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlms}
     volumes:
       - postgres_data:/home/postgres/pgdata/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mlms -d mlms"]
+      # $$ (not ${...}) reads the container's own POSTGRES_USER/POSTGRES_DB set above —
+      # a second inline default here would duplicate the "mlms" fallback in two places.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -40,7 +42,7 @@ services:
     environment:
       # Service names, not localhost — this container talks to the other two over
       # the compose network, unlike the host-run defaults in .env.example.
-      DATABASE_URL: postgresql+psycopg://mlms:mlms@postgres:5432/mlms
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mlms}:${POSTGRES_PASSWORD:-mlms}@postgres:5432/${POSTGRES_DB:-mlms}
       REDIS_URL: redis://redis:6379/0
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING_API_BASE: ${EMBEDDING_API_BASE:-https://openrouter.ai/api/v1}

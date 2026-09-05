@@ -101,9 +101,11 @@ container runs `alembic upgrade head` before starting, and speaks `streamable-ht
 (`docker build .`); it isn't published to a registry.
 
 That said, this is still a desktop/local setup, not a hardened production one: `postgres`
-and `redis` credentials are plaintext and hardcoded in `docker-compose.yml` (not yet
-`.env`-driven), ports are open on the host, and there's no backup/restore guidance yet. Don't
-run this as anything but a local instance until those land.
+credentials are now `.env`-driven (`POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` in
+`.env.example`), but the shipped default is still `mlms`/`mlms` — nothing changes out of the
+box, only the ability to change it. `redis` has no authentication at all, hardcoded or
+otherwise. Ports are open on the host, and there's no backup/restore guidance yet. Don't run
+this as anything but a local instance until those land.
 
 ## Tools
 
