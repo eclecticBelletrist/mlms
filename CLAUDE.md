@@ -120,6 +120,13 @@ All non-obvious architectural decisions (index type changes, schema trade-offs, 
 must be recorded in `KEY_DECISIONS.md` at the project root.
 Format: date, decision, reason, alternatives rejected, affected files, trade-offs.
 
+**Write the final state, not the process.** A decision entry records what was decided and why —
+not a transcript of every attempt or false start that led there ("first thought it was X, then
+it turned out to be Y, then testing surfaced Z"). If it took three tries to land the fix, the
+entry says what the bug was, why it happened, and how it was fixed — not the sequence of who
+found what. `KEY_DECISIONS.md` shows how the project thinks and what got fixed, not a log of how
+the work went.
+
 **The private working notes file is local-only — never committed, never public.** Any file that
 IS committed/public (`KEY_DECISIONS.md`, `docs/known-issues.md`, `README.md`, code comments, commit
 messages) must never reference it by name or point a reader at it. If a point from it

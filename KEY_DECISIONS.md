@@ -75,7 +75,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-29
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-07
 
 **Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0`.
 
@@ -87,7 +87,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
-**See also:** Decision 9, Decision 20.
+**See also:** Decision 9, Decision 20, and Decision 22.
 
 ---
 
@@ -341,5 +341,29 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - The same command from a matching container (`docker run --network <compose-net> redis:7-alpine redis-cli -h redis --rdb -`) avoids that mismatch and was confirmed to work, but needs the compose network's name; `SAVE` + `docker compose cp` was kept as the shorter default.
 
 **Affected files:** `README.md`
+
+---
+
+## Decision 22: Origin allowlist needs a scheme-qualified list, separate from the Host allowlist
+
+**Decided:** 2026-09-07
+
+**Bug:** `_LOOPBACK_HOSTS` (`"127.0.0.1"`, `"localhost"`, no scheme) was reused for both `allowed_hosts` and `allowed_origins` in the DNS rebinding protection settings from Decision 4. A `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Comparing a real `Origin` header against the scheme-less list meant no `Origin` header could ever match, including a legitimate loopback one — every request carrying one was rejected with `403`. This went unnoticed because the check only matters for a client that actually sends an `Origin` header — a browser-based web client. A CLI/agent client that omits the header passes anyway, since the SDK treats a missing `Origin` as same-origin (`stdio`, the default transport, never runs this code at all — Decision 4). Found by testing the README hardening checklist below against a live `docker compose` stack, not by reading the SDK source.
+
+**Fix:** a separate `_LOOPBACK_ORIGINS` list (`_LOOPBACK_HOSTS` × `http`/`https`) feeds `allowed_origins`; `allowed_hosts` is unchanged. The regression test drives a real HTTP request through `TestClient(mcp.streamable_http_app())` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method.
+
+**README "Homelab/VPS hardening" section** (applies only when `MCP_TRANSPORT` is `sse`/`streamable-http`; `stdio` opens no port):
+- Firewall baseline: set `MCP_HOST=127.0.0.1` explicitly and deny inbound traffic on `MCP_PORT` at the firewall — the allowlist from Decision 4 rejects at the application layer, but the TCP port stays open underneath it.
+- Recommended: Tailscale or Cloudflare Tunnel, so no public port is opened at all — the same recommendation also follows from there being no auth on the HTTP transport yet (planned, not built). Whether either tool forwards the original `Host`/`Origin` through to the local server depends on the tool's own configuration (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`); this was not verified end-to-end against a live tunnel and is documented as unverified rather than assumed to work.
+- Alternative: a reverse proxy (nginx/caddy) terminating TLS in front of the server; every hostname it uses still has to be added to `_LOOPBACK_HOSTS`, or requests get `421`.
+- Verification recipe: `curl -H "Host: ..." -H "Origin: ..."` against `/mcp` (the transport's own route, not `/`), checking for `421` (bad Host), non-`421` (good Host), `403` (bad Origin) and non-`403` (good Origin) — run against a live `docker compose` instance, not assumed from the SDK source.
+
+**Known gap, accepted:** the allowlist match is exact and case-sensitive with no host normalization, so `::1`, `LOCALHOST`, or a trailing-dot `localhost.` fail the check. This fails toward rejecting a legitimate request, not toward accepting an illegitimate one, so it is documented in the README rather than fixed.
+
+**Alternatives:** an `MCP_ALLOWED_HOSTS` environment variable instead of editing `_LOOPBACK_HOSTS` directly — rejected as config infrastructure for a scenario (non-loopback deployment) that most users of a single-/few-user project won't hit.
+
+**Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `README.md`
+
+**See also:** Decision 4.
 
 ---

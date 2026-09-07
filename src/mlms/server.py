@@ -104,10 +104,17 @@ mcp: FastMCP = FastMCP("mlms", lifespan=_lifespan)
 # MCP_HOST beyond loopback (LAN/VPS/domain) without adding that host to both lists below
 # will make every request fail with 421 Invalid Host Header.
 _LOOPBACK_HOSTS = ["localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"]
+# Origin headers always carry a scheme (browsers/webapps send "http://127.0.0.1", never a
+# bare "127.0.0.1"), unlike Host — reusing _LOOPBACK_HOSTS here would make _validate_origin
+# reject every real Origin header, including legitimate loopback ones (found by testing a
+# live server, not just reading the SDK source).
+_LOOPBACK_ORIGINS = [
+    f"{scheme}://{host}" for scheme in ("http", "https") for host in _LOOPBACK_HOSTS
+]
 mcp.settings.transport_security = TransportSecuritySettings(
     enable_dns_rebinding_protection=True,
     allowed_hosts=_LOOPBACK_HOSTS,
-    allowed_origins=_LOOPBACK_HOSTS,
+    allowed_origins=_LOOPBACK_ORIGINS,
 )
 
 

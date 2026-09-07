@@ -147,6 +147,71 @@ docker compose cp ./dump.rdb redis:/data/dump.rdb
 docker compose start redis
 ```
 
+## Homelab/VPS hardening
+
+Everything below only matters if you set `MCP_TRANSPORT=sse` or `streamable-http` — the
+default `stdio` transport doesn't listen on the network at all, so none of this applies to it.
+
+**Layer 1 — don't rely on the app alone to keep the port closed.** `MCP_HOST` defaults to
+`0.0.0.0`, and the server's `allowed_hosts`/`allowed_origins` allowlist (see
+[`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 4) only rejects requests at the application
+layer with a `421` — the TCP port itself is still open to the world underneath that check.
+Set `MCP_HOST=127.0.0.1` explicitly and add a firewall rule (`ufw`/`iptables`) denying inbound
+traffic on `MCP_PORT` from outside — a second layer that still holds even if someone later
+changes `MCP_HOST` and forgets why.
+
+**Layer 2 — recommended: don't open a public port at all.** [Tailscale](https://tailscale.com/kb/1080/cli)
+or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+let a client reach the server over a private mesh or an outbound-only connection, with
+`MCP_HOST` staying `127.0.0.1`. This is also the meaningfully safer default given that there's
+no auth layer on the HTTP transport yet (a shared-secret/API-key check is planned but not
+built) — nothing this hardening does replaces authentication, it only narrows who can reach
+the server at all.
+
+Important caveat, not a guarantee out of the box: `allowed_hosts`/`allowed_origins` validate
+the `Host`/`Origin` **headers** of the incoming request, not which interface the connection
+came in on. Whether a tunnel or mesh tool forwards the original public `Host`/`Origin` through
+to your local server depends on its own config (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`).
+This was not verified end-to-end against a live Cloudflare Tunnel or Tailscale Serve setup —
+check your tool's docs and test it yourself (see verification step below) before trusting it;
+don't assume the public hostname is silently rewritten to `localhost` on the way in.
+
+**Layer 3 — reverse proxy with a real domain and TLS**, if you need one instead of a tunnel:
+put nginx or caddy in front, have it terminate TLS and proxy to the MCP server listening on
+`127.0.0.1`. This repo doesn't ship an nginx/caddy config — only the pattern. Whichever proxy
+you use, you still have to add every hostname/IP/domain your clients will actually connect
+through to `_LOOPBACK_HOSTS` in `src/mlms/server.py` (it feeds both `allowed_hosts` and
+`allowed_origins`), or every request gets `421 Invalid Host Header` — see Decision 4 for why
+that list exists and Decision 22 for why it isn't wired up to an env var.
+
+**Verify it's actually working** — this was run against a real `docker compose up` instance,
+not assumed from reading the SDK source. The Host/Origin check runs before anything else in
+the request, on the transport's own route — `/mcp` for `streamable-http`, `/sse` for `sse` —
+not on `/`, so a plain `GET /` won't exercise it. You're only checking the status code, not a
+full MCP handshake, so a non-`421`/`403` code on a "good" request (`406` in local testing) is
+expected and fine — Host and Origin fail with *different* codes:
+
+```bash
+# 421 — Host not on the allowlist
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: evil.example.com" http://<your-host>:<mcp-port>/mcp
+
+# not 421 (406 in local testing) — Host passed the check
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" http://<your-host>:<mcp-port>/mcp
+
+# not 403 — a legitimate loopback Origin (with scheme — Origin headers always carry one)
+# should pass, same as sending no Origin at all
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" -H "Origin: http://127.0.0.1" http://<your-host>:<mcp-port>/mcp
+
+# 403 — Origin present and not allowlisted (a different failure code from Host, not 421)
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" -H "Origin: https://evil.example.com" http://<your-host>:<mcp-port>/mcp
+```
+
+The allowlist match is exact and case-sensitive, with no host normalization — only the literal
+forms above (`127.0.0.1`/`localhost`, lowercase, no trailing dot) are covered. A client that
+happens to resolve `localhost` to the IPv6 loopback (`::1`), or sends `LOCALHOST`/`localhost.`,
+will fail-safe reject with a legitimate request. Not a security hole — the wrong direction of
+failure — but worth knowing if a "why is my local client getting 421" mystery ever comes up.
+
 ## Tools
 
 9 tools, registered over MCP `tools/list`:
