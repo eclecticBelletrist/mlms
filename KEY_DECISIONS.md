@@ -95,7 +95,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-07
 
 **Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha:pg16`, instead of `postgres` plus separately installed extensions.
 
@@ -105,7 +105,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `docker-compose.yml`
 
-**See also:** Decision 20.5.
+**See also:** Decision 20.5 and Decision 21.
 
 ---
 
@@ -306,6 +306,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-05
 
+**Last updated:** 2026-09-07
+
 **Decision:** `docker-compose.yml`'s `postgres` service and the `mlms` service's `DATABASE_URL` both read `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` from environment variables with the same `mlms`/`mlms`/`mlms` default, declared in `.env.example`. The `postgres` healthcheck reads the same variables from the container's own environment (`$$POSTGRES_USER`/`$$POSTGRES_DB`, a literal not interpolated by Compose, per the [Compose spec](https://github.com/compose-spec/compose-spec/blob/master/12-interpolation.md)) instead of repeating the default a third time.
 
 **Rationale:** `mlms`/`mlms`/`mlms` used to be hardcoded in three places — `postgres`'s own environment, the `mlms` service's `DATABASE_URL`, and the healthcheck command. A password change meant editing all three consistently. `.env.example`'s variables are read only by Compose's interpolation; the application's own `Settings` (`extra="ignore"`) never reads `POSTGRES_*`, so the shipped default there is set equal to the app's `DATABASE_URL` default to avoid the two silently drifting apart.
@@ -317,5 +319,27 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `docker-compose.yml`, `.env.example`, `README.md`
 
 **See also:** Decision 5, Decision 20.
+
+---
+
+## Decision 21: Backup/restore uses custom-format `pg_dump`/`pg_restore`, not plain SQL, and never `-j`
+
+**Decided:** 2026-09-06
+
+**Last updated:** 2026-09-07
+
+**Decision:** the backup/restore guide in README uses `pg_dump -Fc` (custom format) with `timescaledb_pre_restore()` / `pg_restore` / `timescaledb_post_restore()`, not a plain-text dump restored with `psql`. `pg_restore` runs without `-j` (parallel restore).
+
+**Rationale:** TimescaleDB's own backup guide requires the custom format plus the pre/post-restore pair to reconstruct hypertable metadata (chunk structure), not just row data ([Logical backup](https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup)). The same page recommends against dumping individual tables with `pg_dump -t`: even naming the hypertable and every one of its chunks explicitly is not enough to recreate the hypertable on restore. `pg_restore -j` is documented there as not correctly restoring the TimescaleDB catalogs, with a long-standing report of restores failing on foreign-key errors in the catalog tables under it ([timescaledb#1584](https://github.com/timescale/timescaledb/issues/1584)); official support for `-j` is still an open feature request ([#698](https://github.com/timescale/timescaledb/issues/698)), so the option is left out entirely rather than offered as a speed trade-off.
+
+**Restore targets a fresh database, not the live one:** running the guide's restore steps as originally written against an already-migrated `mlms` container (schema already applied by `alembic upgrade head` on startup) failed outright with "relation already exists" errors — `pg_restore` does not overwrite an existing schema. The guide now runs `DROP DATABASE` / `CREATE DATABASE` first rather than assuming an empty volume. No extra step is needed for extensions: `timescaledb` and `timescaledb_toolkit` are already installed into `template1` by the image's own init script ([`post_init.sh`](https://github.com/timescale/timescaledb-docker-ha/blob/master/scripts/post_init.sh)), so a freshly created database has them automatically, and `vector` is created by the dump itself (`pg_dump` includes `CREATE EXTENSION IF NOT EXISTS vector`). Restore was verified end-to-end: a memorized fact survived the full dump → drop → recreate → restore cycle with the same `id` and content, confirmed through a real `get_timeline` call, not just `SELECT COUNT(*)`.
+
+**Redis:** `SAVE` (not `BGSAVE`) runs synchronously before the file is copied out — simpler to reason about in a manual runbook, at the cost of blocking the server for the duration. `dump.rdb` is safe to copy while Redis keeps running: Redis writes the new snapshot to a temporary file and renames it into place only once it's complete ([Redis persistence docs](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)), so a copy taken mid-write still reads a complete, previous snapshot. `dump.rdb`/`/data` (`dbfilename`/`dir`) were confirmed via `CONFIG GET` against the running container, not assumed from the image defaults. Restore was verified the same way: a deleted `session:{chat_id}` key reappeared with its original content after restoring the snapshot.
+
+**Alternatives:**
+- `redis-cli --rdb <file>` run from the host: rejected because the host's `redis-cli` version can drift from the `redis:7-alpine` version in the container, and the replication protocol used to stream the RDB is version-sensitive.
+- The same command from a matching container (`docker run --network <compose-net> redis:7-alpine redis-cli -h redis --rdb -`) avoids that mismatch and was confirmed to work, but needs the compose network's name; `SAVE` + `docker compose cp` was kept as the shorter default.
+
+**Affected files:** `README.md`
 
 ---

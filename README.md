@@ -104,8 +104,48 @@ That said, this is still a desktop/local setup, not a hardened production one: `
 credentials are now `.env`-driven (`POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` in
 `.env.example`), but the shipped default is still `mlms`/`mlms` — nothing changes out of the
 box, only the ability to change it. `redis` has no authentication at all, hardcoded or
-otherwise. Ports are open on the host, and there's no backup/restore guidance yet. Don't run
-this as anything but a local instance until those land.
+otherwise. Ports are open on the host. Don't run this as anything but a local instance for
+now.
+
+## Backup and restore
+
+This shows you how to take a point-in-time snapshot of the two named volumes
+(`postgres_data`, `redis_data`) and put one back — it's a manual save point you run
+yourself, not a backup schedule.
+
+**Postgres.** Use the custom dump format and `pg_restore`, not a plain-text dump — Timescale's
+`pre_restore`/`post_restore` pair needs it to put hypertable metadata back correctly:
+
+```bash
+# snapshot
+docker compose exec -T postgres pg_dump -U mlms -d mlms -Fc > mlms.bak
+
+# restore — into an empty database, not the live one: it already has this schema in it,
+# and pg_restore will refuse to recreate tables/constraints that already exist
+docker compose exec -T postgres psql -U mlms -d postgres -c "DROP DATABASE mlms;"
+docker compose exec -T postgres psql -U mlms -d postgres -c "CREATE DATABASE mlms OWNER mlms;"
+docker compose exec -T postgres psql -U mlms -d mlms -c "SELECT timescaledb_pre_restore();"
+docker compose exec -T postgres pg_restore -U mlms -d mlms --no-owner < mlms.bak
+docker compose exec -T postgres psql -U mlms -d mlms -c "SELECT timescaledb_post_restore();"
+docker compose restart mlms
+```
+
+Skip `-j` on `pg_restore` — parallel restore is known to corrupt TimescaleDB's internal
+catalogs.
+
+**Redis.** `SAVE` blocks until the snapshot is written, so the file you copy out is always
+complete:
+
+```bash
+# snapshot
+docker compose exec redis redis-cli SAVE
+docker compose cp redis:/data/dump.rdb ./dump.rdb
+
+# restore
+docker compose stop redis
+docker compose cp ./dump.rdb redis:/data/dump.rdb
+docker compose start redis
+```
 
 ## Tools
 
