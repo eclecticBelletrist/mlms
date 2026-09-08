@@ -51,6 +51,10 @@ services:
       MCP_TRANSPORT: streamable-http
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
+      # 0.0.0.0 above is a non-loopback bind — the server refuses to start without this
+      # (Decision 23). No default here on purpose: unlike POSTGRES_PASSWORD above, there
+      # is no safe fallback value for an auth secret.
+      MCP_SHARED_SECRET: ${MCP_SHARED_SECRET:?set MCP_SHARED_SECRET in .env — see README}
     ports:
       - "8000:8000"
     restart: unless-stopped
