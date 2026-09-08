@@ -51,5 +51,11 @@ class Settings(BaseSettings):
     mcp_host: str = Field(default="0.0.0.0", alias="MCP_HOST")
     mcp_port: int = Field(default=8000, alias="MCP_PORT")
 
+    # Shared-secret gate for sse/streamable-http only — stdio has no network port, so this
+    # is never checked there. None on a loopback host keeps the stdio/desktop and loopback
+    # HTTP behavior; None on a non-loopback host is a startup fail-fast, not a silent
+    # pass-through. See Decision 23.
+    mcp_shared_secret: str | None = Field(default=None, alias="MCP_SHARED_SECRET")
+
 
 settings = Settings()

@@ -75,9 +75,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-29
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-08
 
-**Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0`.
+**Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0` (later raised to `mcp>=1.27.2`, see Decision 23).
 
 **Rationale:** CVE-2025-66416 ([GHSA-9h52-p55h-vw2f](https://github.com/advisories/GHSA-9h52-p55h-vw2f)): the MCP Python SDK did not enable DNS rebinding protection by default (fixed in 1.23.0). It affects only `sse` and `streamable-http`; the default `stdio` transport opens no network port. The SDK now enables the protection automatically, but only when the host is `127.0.0.1`, `localhost` or `::1` ([`fastmcp/server.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/fastmcp/server.py)). MLMS defaults `mcp_host` to `0.0.0.0`, so the setting has to be explicit. `allowed_origins` is required too, because the SDK validates `Origin` inside the same gate ([`transport_security.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/transport_security.py)). The floor guards against a re-resolve of `uv.lock` (currently `1.27.2`) going below the fixed version. The range has no upper bound, so a resolution outside `uv.lock` currently picks mcp 2.x, which renames `FastMCP` (Decision 20).
 
@@ -87,7 +87,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
-**See also:** Decision 9, Decision 20, and Decision 22.
+**See also:** Decision 9, Decision 20, Decision 22, and Decision 23.
 
 ---
 
@@ -282,11 +282,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-04
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-08
 
 **Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
 
-**Install from `uv.lock`, not `pip install .`:** `pyproject.toml` declares `mcp>=1.23.0` with no upper bound. `pip install .` resolves it from PyPI and ignores `uv.lock`, so it currently installs mcp 2.x, where `FastMCP` was renamed to `MCPServer` and `mcp.server.fastmcp` no longer exists ([migration guide](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/migration.md)). The container then fails on start with `ModuleNotFoundError`. `uv sync --locked` installs exactly the versions in `uv.lock`, the set the CI runs against (Decision 19), and fails if the lock is out of sync with `pyproject.toml`. `--no-editable` installs the package into the virtualenv as a regular copy instead of a link to `src/`. The missing upper bound is not fixed: the SDK's own README recommends a `<2` bound until an application has migrated ([README](https://github.com/modelcontextprotocol/python-sdk#readme)), and outside `uv.lock` (plain `pip`, or a re-resolve) `mcp` still resolves to 2.x (see Decision 4).
+**Install from `uv.lock`, not `pip install .`:** `pyproject.toml` declares `mcp>=1.27.2` with no upper bound. `pip install .` resolves it from PyPI and ignores `uv.lock`, so it currently installs mcp 2.x, where `FastMCP` was renamed to `MCPServer` and `mcp.server.fastmcp` no longer exists ([migration guide](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/migration.md)). The container then fails on start with `ModuleNotFoundError`. `uv sync --locked` installs exactly the versions in `uv.lock`, the set the CI runs against (Decision 19), and fails if the lock is out of sync with `pyproject.toml`. `--no-editable` installs the package into the virtualenv as a regular copy instead of a link to `src/`. The missing upper bound is not fixed: the SDK's own README recommends a `<2` bound until an application has migrated ([README](https://github.com/modelcontextprotocol/python-sdk#readme)), and outside `uv.lock` (plain `pip`, or a re-resolve) `mcp` still resolves to 2.x (see Decision 4).
 
 **Transport:** `stdio` needs the MCP client to start the server as a child process and attach its stdin. A detached Compose service has no such stdin, so the container must use an HTTP transport. `streamable-http` was chosen over `sse` because it replaces the HTTP+SSE transport in the MCP specification ([transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)); `config.py` accepts both.
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
 import sys
 from collections.abc import AsyncIterator
 
@@ -116,6 +117,65 @@ mcp.settings.transport_security = TransportSecuritySettings(
     allowed_hosts=_LOOPBACK_HOSTS,
     allowed_origins=_LOOPBACK_ORIGINS,
 )
+
+# Decision 23 — shared-secret gate for sse/streamable-http, layered on top of the
+# host/Origin allowlist above, not instead of it. _LOOPBACK_HOSTS above carries "host:*"
+# glob patterns for Origin/Host *header* matching; MCP_HOST is a plain bind address, so it
+# needs its own plain set here.
+_BIND_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+class _SharedSecretMiddleware:
+    """Bare ASGI middleware gating http scopes behind an Authorization: Bearer header.
+
+    Deliberately not FastMCP's token_verifier/AuthSettings path: that requires
+    issuer_url/resource_server_url and makes the server advertise OAuth discovery
+    metadata even with no real authorization server behind it — MCP clients that see
+    that metadata (including Claude Code, see anthropics/claude-code#59467) can ignore
+    a configured static Authorization header and fail into a broken OAuth flow. This
+    stays a flat token compare with no discovery surface at all.
+
+    Only ever constructed with a non-empty secret (see __main__) — rejects the ValueError
+    case as a coding-time invariant rather than a runtime "empty secret = allow all" path.
+    """
+
+    def __init__(self, app: Any, secret: str) -> None:
+        if not secret:
+            raise ValueError("shared secret must be non-empty")
+        self._app = app
+        self._secret = secret
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        # Only "http" carries an Authorization header to check here. Neither sse_app()
+        # nor streamable_http_app() ever emits a "websocket" scope (grepped the installed
+        # SDK — zero hits) — a prior version of this gated "websocket" too, but rejected it
+        # by sending http.response.* events into a websocket scope, which is protocol-invalid
+        # ASGI and would raise inside uvicorn rather than cleanly deny the connection. Simpler
+        # and correct: gate only the scope type that can actually appear.
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        # First match, not dict()-over-the-list: a dict would silently keep the *last*
+        # Authorization header if a client or proxy sent more than one — HTTP forbids
+        # repeating it, but nothing on the wire enforces that.
+        auth_header = next(
+            (v for k, v in (scope.get("headers") or []) if k == b"authorization"), b""
+        ).decode("latin-1")
+        # RFC 7235 §2.1: auth-scheme is case-insensitive ("bearer"/"BEARER" are both
+        # valid, and some HTTP client libraries normalize to one or the other).
+        scheme, _, rest = auth_header.partition(" ")
+        token = rest if scheme.lower() == "bearer" else ""
+        if not token or not secrets.compare_digest(token, self._secret):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [(b"content-type", b"text/plain")],
+                }
+            )
+            await send({"type": "http.response.body", "body": b"unauthorized"})
+            return
+        await self._app(scope, receive, send)
 
 
 _MemType = Literal["fact", "event", "skill", "session_log"]
@@ -379,11 +439,38 @@ async def export_project(
         return await _export_project(project_id=project_id, conn=conn)
 
 
+def _require_secret_on_non_loopback_bind(host: str, secret: str | None, transport: str) -> None:
+    """Decision 23: a non-loopback bind is exactly the homelab/VPS scenario the gate covers —
+    refuse to listen unauthenticated rather than pass through unnoticed."""
+    if host.strip().lower() in _BIND_LOOPBACK_HOSTS or secret:
+        return
+    raise SystemExit(
+        f"MCP_HOST={host!r} is not loopback: refusing to start {transport!r} without "
+        f"MCP_SHARED_SECRET set. Loopback hosts ({sorted(_BIND_LOOPBACK_HOSTS)}) don't "
+        "require it."
+    )
+
+
 if __name__ == "__main__":
     transport = settings.mcp_transport
     if transport in ("sse", "streamable-http"):
         mcp.settings.host = settings.mcp_host
         mcp.settings.port = settings.mcp_port
-        mcp.run(transport=transport)
+        _require_secret_on_non_loopback_bind(
+            settings.mcp_host, settings.mcp_shared_secret, transport
+        )
+        if settings.mcp_shared_secret:
+            import uvicorn
+
+            inner_app = mcp.sse_app() if transport == "sse" else mcp.streamable_http_app()
+            gated_app = _SharedSecretMiddleware(inner_app, settings.mcp_shared_secret)
+            uvicorn.run(
+                gated_app,
+                host=mcp.settings.host,
+                port=mcp.settings.port,
+                log_level=mcp.settings.log_level.lower(),
+            )
+        else:
+            mcp.run(transport=transport)
     else:
         mcp.run()
