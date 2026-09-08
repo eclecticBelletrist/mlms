@@ -348,13 +348,15 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-07
 
+**Last updated:** 2026-09-08
+
 **Bug:** `_LOOPBACK_HOSTS` (`"127.0.0.1"`, `"localhost"`, no scheme) was reused for both `allowed_hosts` and `allowed_origins` in the DNS rebinding protection settings from Decision 4. A `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Comparing a real `Origin` header against the scheme-less list meant no `Origin` header could ever match, including a legitimate loopback one — every request carrying one was rejected with `403`. This went unnoticed because the check only matters for a client that actually sends an `Origin` header — a browser-based web client. A CLI/agent client that omits the header passes anyway, since the SDK treats a missing `Origin` as same-origin (`stdio`, the default transport, never runs this code at all — Decision 4). Found by testing the README hardening checklist below against a live `docker compose` stack, not by reading the SDK source.
 
 **Fix:** a separate `_LOOPBACK_ORIGINS` list (`_LOOPBACK_HOSTS` × `http`/`https`) feeds `allowed_origins`; `allowed_hosts` is unchanged. The regression test drives a real HTTP request through `TestClient(mcp.streamable_http_app())` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method.
 
 **README "Homelab/VPS hardening" section** (applies only when `MCP_TRANSPORT` is `sse`/`streamable-http`; `stdio` opens no port):
 - Firewall baseline: set `MCP_HOST=127.0.0.1` explicitly and deny inbound traffic on `MCP_PORT` at the firewall — the allowlist from Decision 4 rejects at the application layer, but the TCP port stays open underneath it.
-- Recommended: Tailscale or Cloudflare Tunnel, so no public port is opened at all — the same recommendation also follows from there being no auth on the HTTP transport yet (planned, not built). Whether either tool forwards the original `Host`/`Origin` through to the local server depends on the tool's own configuration (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`); this was not verified end-to-end against a live tunnel and is documented as unverified rather than assumed to work.
+- Recommended: Tailscale or Cloudflare Tunnel, so no public port is opened at all. Whether either tool forwards the original `Host`/`Origin` through to the local server depends on the tool's own configuration (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`); this was not verified end-to-end against a live tunnel and is documented as unverified rather than assumed to work.
 - Alternative: a reverse proxy (nginx/caddy) terminating TLS in front of the server; every hostname it uses still has to be added to `_LOOPBACK_HOSTS`, or requests get `421`.
 - Verification recipe: `curl -H "Host: ..." -H "Origin: ..."` against `/mcp` (the transport's own route, not `/`), checking for `421` (bad Host), non-`421` (good Host), `403` (bad Origin) and non-`403` (good Origin) — run against a live `docker compose` instance, not assumed from the SDK source.
 
@@ -364,6 +366,30 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `README.md`
 
-**See also:** Decision 4.
+**See also:** Decision 4, and Decision 23.
+
+---
+
+## Decision 23: Shared-secret gate for sse/streamable-http, `MCP_SHARED_SECRET`
+
+**Decided:** 2026-09-08
+
+**Decision:** the HTTP transport originally had no authentication layer at all — a deliberate choice for single-/few-user, local-by-default use, not an oversight. That posture is unchanged for `stdio` (no network port, so no risk to authenticate against), but does not hold once `sse`/`streamable-http` bind to a non-loopback host (homelab/VPS). A bare ASGI middleware (`_SharedSecretMiddleware`) wraps `sse_app()`/`streamable_http_app()` — rather than replacing `mcp.run()`'s own transport-security wiring, so the loopback allowlist from Decision 4 (built inside those same app factories) stays in effect underneath this new layer — and rejects any `http`-scope request with `401` unless its `Authorization: Bearer <token>` matches `MCP_SHARED_SECRET` via `secrets.compare_digest`. A non-loopback `MCP_HOST` without `MCP_SHARED_SECRET` set now refuses to start (`_require_secret_on_non_loopback_bind`) instead of listening unauthenticated; loopback binds (`127.0.0.1`/`localhost`/`::1`) keep the secret optional.
+
+**Rationale:** the SDK's own `token_verifier`/`AuthSettings` path was rejected: `AuthSettings.issuer_url`/`.resource_server_url` are both required, and setting them makes the server publish OAuth discovery metadata even with no real authorization server behind it. A client that sees that metadata can ignore a configured static `Authorization` header and fail into a broken OAuth flow instead — reported for Claude Code's own MCP client ([anthropics/claude-code#59467](https://github.com/anthropics/claude-code/issues/59467)). The middleware does a flat token compare instead, with no discovery surface at all.
+
+**Known limitations, accepted:**
+- CVE-2026-52869 ([GHSA-jpw9-pfvf-9f58](https://github.com/advisories/GHSA-jpw9-pfvf-9f58), fixed in `mcp` 1.27.2, raising the floor set by Decision 4) closes a session-hijack gap by tracking each session's owning principal and rejecting a mismatched requester — but only for the SDK's own `BearerAuthBackend`, which sets `scope["user"]`. This project's middleware never sets it, so the SDK's ownership check compares `None != None` and never rejects; the advisory itself says as much ("Deployments using a custom authentication backend other than the built-in `BearerAuthBackend` should enforce an equivalent check themselves"). Accepted rather than fixed: the data model has no per-user isolation to protect regardless (`project_id`/`chat_id` are plain tool arguments, not an identity scope), so a hijacked session exposes nothing a valid secret holder couldn't already reach directly. Multi-user auth, token rotation, per-user scoping and rate limiting are out of scope for the same reason.
+- Confused-deputy/token-passthrough (community discussion [modelcontextprotocol/modelcontextprotocol#1247](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1247)) is out of scope by architecture, not omission: the server holds its own state and never proxies a client's token to a downstream service.
+
+**Consequence:** `docker-compose.yml`'s `mlms` service binds `MCP_HOST=0.0.0.0` (Decision 20) with no default `MCP_SHARED_SECRET` — unlike `POSTGRES_PASSWORD`, there is no safe default for an auth secret — so `docker compose up` now refuses to start until one is set in `.env`. Chosen deliberately over a warning-only migration: no real external user of this path yet. A cross-file test (`tests/unit/test_docker_compose_shared_secret.py`) parses the `mlms` block of `docker-compose.yml` directly (no `pyyaml`, not a declared dependency) and fails if a non-loopback `MCP_HOST` ever ships again without `MCP_SHARED_SECRET` wired through — a drift neither file's own unit tests can see on their own.
+
+**Alternatives:**
+- SDK `token_verifier`/`AuthSettings`: rejected above.
+- A `middleware:` constructor parameter on `FastMCP`: does not exist in this SDK — that parameter belongs to the unrelated third-party `fastmcp` (jlowin) package, not `mcp.server.fastmcp`.
+
+**Affected files:** `src/mlms/server.py` (`_SharedSecretMiddleware`, `_BIND_LOOPBACK_HOSTS`, `_require_secret_on_non_loopback_bind`), `src/mlms/config.py` (`mcp_shared_secret`), `pyproject.toml` (`mcp>=1.27.2`), `.env.example`, `docker-compose.yml`, `README.md`, `tests/unit/test_server_shared_secret.py`, `tests/unit/test_docker_compose_shared_secret.py`
+
+**See also:** Decision 4 (loopback allowlist this layers on top of), Decision 20 (the compose bind this now gates), Decision 22 (same README hardening section).
 
 ---

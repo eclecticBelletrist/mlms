@@ -163,10 +163,49 @@ changes `MCP_HOST` and forgets why.
 **Layer 2 — recommended: don't open a public port at all.** [Tailscale](https://tailscale.com/kb/1080/cli)
 or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
 let a client reach the server over a private mesh or an outbound-only connection, with
-`MCP_HOST` staying `127.0.0.1`. This is also the meaningfully safer default given that there's
-no auth layer on the HTTP transport yet (a shared-secret/API-key check is planned but not
-built) — nothing this hardening does replaces authentication, it only narrows who can reach
-the server at all.
+`MCP_HOST` staying `127.0.0.1`. Nothing below replaces this — a shared secret narrows *who*
+can use the server once a request arrives, not who can reach the port at all.
+
+**Layer 1.5 — shared-secret token, `MCP_SHARED_SECRET`.** Only checked on `sse`/
+`streamable-http`; `stdio` has no network port, so it never applies there. Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Set it as `MCP_SHARED_SECRET` in `.env`, and have every client send it back as
+`Authorization: Bearer <value>` on every request — not as a URL query parameter (query strings
+end up in proxy/access logs). A missing or wrong token gets `401`, checked before the request
+reaches any tool.
+
+If `MCP_HOST` is a loopback address (`127.0.0.1`/`localhost`/`::1`), the secret stays optional —
+this matches the project's original single-/few-user, local-by-default posture (see
+[`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 23).
+If `MCP_HOST` is anything else (`0.0.0.0`, a LAN/VPN IP) — exactly the case this section is
+about — the server refuses to start at all without `MCP_SHARED_SECRET` set, rather than
+listening unauthenticated.
+
+This is deliberately not a full multi-user auth system: one static token, no rotation, no
+per-user scoping, no rate limiting. It's a gate against "anyone who can reach the port gets
+full read/write access to every memory," not a replacement for Layers 1–3 above.
+
+Two things it does **not** protect against, worth knowing rather than assuming away:
+
+- **`MCP_HOST=127.0.0.1` inside a container published as `-p 0.0.0.0:8000:8000` (or behind
+  any reverse proxy terminating publicly) is network-reachable even though the process binds
+  loopback.** The fail-fast above only looks at the `MCP_HOST` value the process itself sees —
+  it can't see the port mapping or proxy in front of it. Same blind spot as the `Host`/`Origin`
+  check two paragraphs below, just for the new gate instead of the old one.
+- **The shared secret gives every holder equal access — it doesn't stop one holder from
+  reading/replaying another holder's session.** All clients use the same token, so this is a
+  wall around the server, not a wall between clients on the inside of it. If that boundary
+  ever matters to you, this feature isn't it.
+- **`sse` + a browser's built-in `EventSource` API don't mix with this.** `EventSource` has no
+  way to set custom request headers, so it can't send `Authorization: Bearer`. Every connection
+  attempt from such a client gets `401`. This isn't fixable by moving the token into the URL —
+  that's the query-string leak this section already tells you to avoid. If your `sse` client is
+  a browser tab making a raw `EventSource` connection (not an MCP client library that controls
+  its own headers), this gate isn't compatible with it.
 
 Important caveat, not a guarantee out of the box: `allowed_hosts`/`allowed_origins` validate
 the `Host`/`Origin` **headers** of the incoming request, not which interface the connection
@@ -235,7 +274,7 @@ pytest -m unit                 # fast, no external services
 docker compose up -d && pytest -m integration   # needs Postgres + Redis
 ```
 
-262 test functions across 24 files, unit + integration + benchmark suites. Coverage gate
+274 test functions across 26 files, unit + integration + benchmark suites. Coverage gate
 (`fail_under = 80`) and strict mypy are configured in `pyproject.toml` but run locally only
 — there's no CI wired up yet.
 
