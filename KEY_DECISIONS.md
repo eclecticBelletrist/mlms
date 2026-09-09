@@ -51,7 +51,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-24
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-09
 
 **Decision:** the server uses a `psycopg_pool.AsyncConnectionPool` instead of one `AsyncConnection` held for the whole lifespan. Each tool call checks out a connection with `async with pool.connection()`.
 
@@ -65,7 +65,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `pool.open(wait=True, timeout=10)`. By default the pool accepts clients before `min_size` connections are ready ([psycopg_pool docs](https://www.psycopg.org/psycopg3/docs/advanced/pool.html#pool-startup-check)), so an unreachable database would give a "healthy" start and fail only on the first tool call. The old single `connect()` failed at startup, and `wait=True` keeps that.
 - `PoolTimeout` and `OperationalError` are caught in `_acquire()` and raised as a short `PoolUnavailable` message with no stack trace; `pool.get_stats()` is logged.
 
-**Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. Within one session, the single connection used to serialize the database part of tool calls, which made this race unlikely. The pool removes that serialization, so two overlapping `memorize()` calls with the same `chat_id` in one session can now lose a session-context update. Calls from different sessions never shared a connection, so for devices on separate sessions the race existed before the pool.
+**Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. Within one session, the single connection used to serialize the database part of tool calls, which made this race unlikely. The pool removes that serialization, so two overlapping `memorize()` calls with the same `chat_id` in one session can now overwrite each other's session-context write. Calls from different sessions never shared a connection, so for devices on separate sessions the race existed before the pool. Currently `_refresh_redis()` is the only code that writes the hash and the only field it changes is `last_activity`, so the practical loss is a slightly older timestamp; the race would start losing real data if another code path began writing `open_todos`, `active_entities` or `recent_decisions`. The cause is the read-modify-write on one Redis hash, not a mismatch between Postgres and Redis. Redis working memory is treated as a best-effort cache, not a source of truth, so this is left unfixed; recorded in `docs/known-issues.md` (#9).
 
 **Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py` (new).
 
@@ -165,13 +165,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-13
 
-**Last updated:** 2026-08-30
+**Last updated:** 2026-09-09
 
 **Decision:** the cursor is the pair `(time, id)` with `WHERE time > %s OR (time = %s AND id > %s)`, ordered by `time, id`, instead of `time` alone.
 
 **Rationale:** timestamps are not unique. With a `time`-only cursor, events sharing a timestamp across a page boundary are skipped or repeated. `id` gives a strict tie-break.
 
-**Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so the tool cannot return more than `limit` events. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#13).
+**Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so the tool cannot return more than `limit` events. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#16).
 
 **Affected files:** `src/mlms/storage/timeline.py` (`get_events`)
 
@@ -374,6 +374,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-08
 
+**Last updated:** 2026-09-09
+
 **Decision:** the HTTP transport originally had no authentication layer at all — a deliberate choice for single-/few-user, local-by-default use, not an oversight. That posture is unchanged for `stdio` (no network port, so no risk to authenticate against), but does not hold once `sse`/`streamable-http` bind to a non-loopback host (homelab/VPS). A bare ASGI middleware (`_SharedSecretMiddleware`) wraps `sse_app()`/`streamable_http_app()` — rather than replacing `mcp.run()`'s own transport-security wiring, so the loopback allowlist from Decision 4 (built inside those same app factories) stays in effect underneath this new layer — and rejects any `http`-scope request with `401` unless its `Authorization: Bearer <token>` matches `MCP_SHARED_SECRET` via `secrets.compare_digest`. A non-loopback `MCP_HOST` without `MCP_SHARED_SECRET` set now refuses to start (`_require_secret_on_non_loopback_bind`) instead of listening unauthenticated; loopback binds (`127.0.0.1`/`localhost`/`::1`) keep the secret optional.
 
 **Rationale:** the SDK's own `token_verifier`/`AuthSettings` path was rejected: `AuthSettings.issuer_url`/`.resource_server_url` are both required, and setting them makes the server publish OAuth discovery metadata even with no real authorization server behind it. A client that sees that metadata can ignore a configured static `Authorization` header and fail into a broken OAuth flow instead — reported for Claude Code's own MCP client ([anthropics/claude-code#59467](https://github.com/anthropics/claude-code/issues/59467)). The middleware does a flat token compare instead, with no discovery surface at all.
@@ -391,5 +393,25 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `src/mlms/server.py` (`_SharedSecretMiddleware`, `_BIND_LOOPBACK_HOSTS`, `_require_secret_on_non_loopback_bind`), `src/mlms/config.py` (`mcp_shared_secret`), `pyproject.toml` (`mcp>=1.27.2`), `.env.example`, `docker-compose.yml`, `README.md`, `tests/unit/test_server_shared_secret.py`, `tests/unit/test_docker_compose_shared_secret.py`
 
 **See also:** Decision 4 (loopback allowlist this layers on top of), Decision 20 (the compose bind this now gates), Decision 22 (same README hardening section).
+
+---
+
+## Decision 24: `skills` are global: no `project_id` column
+
+**Decided:** 2026-05-08
+
+**Last updated:** 2026-09-09
+
+**Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`005_create_skills.py`) created `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`.
+
+**Rationale:** without a column there is nothing to filter on, and adding one would also decide whether skills are per-project or deliberately shared across projects, an open design question. It is left for a deliberate redesign, not a patch.
+
+**Consequence:** with several `project_id`s in one database, `export_project(project_id="X")` returns a `skills` section with every skill in the system, under the same top-level `project_id` as the rest of the export, which misleads a reader. `get_skills` has no `project_id` parameter, and the skill layer of `search_memory` searches all skills. The `export_project`/`get_skills` symptom is recorded in `docs/known-issues.md` (#15).
+
+**Alternatives:**
+- Drop the top-level `project_id` from the `export_project` JSON or label the `skills` section as global: changes the tool's response contract to fix a documentation problem.
+- Add a `project_id` column to `skills` in a new migration: a real redesign that needs the per-project-or-global question answered first, not a mechanical edit.
+
+**Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `alembic/versions/005_create_skills.py`, `docs/known-issues.md`
 
 ---
