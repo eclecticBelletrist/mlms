@@ -31,7 +31,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-09
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-16
 
 **Decision:** HNSW index on `facts.embedding` and `session_log.embedding`.
 
@@ -43,9 +43,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Trade-offs:** HNSW search is approximately logarithmic in table size, at the price of higher memory use and a slower index build. At the expected volume (up to about 100K rows, an estimate rather than a measurement) this is acceptable.
 
-**Affected files:** `alembic/versions/002_create_facts.py`, `alembic/versions/004_create_session_log.py`, `alembic/versions/006_change_embedding_dim.py`
+**Affected files:** `alembic/versions/002_create_facts.py`, `alembic/versions/004_create_session_log.py`, `alembic/versions/006_change_embedding_dim.py`, `alembic/versions/013_hnsw_indexes_concurrently.py`
 
-**See also:** Decision 1, Decision 17.
+**See also:** Decision 1, Decision 17, Decision 25.
 
 ---
 
@@ -119,7 +119,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-09-16 (isolation level raised to SERIALIZABLE)
 
-**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates.
+**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates. If the connection is already inside a transaction, the `SET` is skipped and the write runs at that transaction's isolation level (Decision 26).
 
 **Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement. The isolation level is raised because at the default `READ COMMITTED` the check and the insert are separate statements, so two concurrent `memorize()` calls with near-identical content both pass the check and both insert an `is_current=TRUE` row. `get_facts` and `search_memory` filter on `is_current=TRUE`, so they would return both versions.
 
@@ -131,7 +131,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/storage/facts.py` (`upsert_fact`), `src/mlms/config.py`
 
-**See also:** Decision 3, Decision 10.
+**See also:** Decision 3, Decision 10, Decision 26.
 
 ---
 
@@ -223,7 +223,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-01
 
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-16
 
 **Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
 
@@ -235,7 +235,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Alternatives:** exact (non-indexed) search on `session_log` avoids approximate-recall loss but gives up the HNSW index chosen in Decision 2. It was not pursued and not measured; it remains an option if approximate misses become visible.
 
-**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack, not yet run against a live database)
+**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack)
 
 **See also:** Decision 2, Decision 19.
 
@@ -288,7 +288,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-04
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-16
 
 **Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
 
@@ -304,7 +304,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
 
-**See also:** Decision 4, Decision 9, Decision 19, and Decision 20.5.
+**See also:** Decision 4, Decision 9, Decision 19, Decision 20.5, and Decision 25.
 
 ---
 
@@ -418,5 +418,39 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - Add a `project_id` column to `skills` in a new migration: a real redesign that needs the per-project-or-global question answered first, not a mechanical edit.
 
 **Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `src/mlms/storage/skills.py`, `alembic/versions/005_create_skills.py`, `docs/known-issues.md`
+
+---
+
+## Decision 25: Migration 013 rebuilds only `facts_embedding_idx` concurrently
+
+**Decided:** 2026-09-16
+
+**Decision:** migration `013` drops and recreates `facts_embedding_idx` with `CREATE INDEX CONCURRENTLY`, inside `autocommit_block()` because `CONCURRENTLY` cannot run in a transaction. `session_log_embedding_idx` is not touched: it stays as migration `006` built it, with a plain `CREATE INDEX` that blocks writes while it builds.
+
+**Rationale:** `006` builds both indexes with a plain `CREATE INDEX`, which is harmless on the empty tables of a fresh deploy and blocks writes on a populated one; `013` exists to rebuild the `facts` index without that. `session_log` is a TimescaleDB hypertable (migration `004`), and TimescaleDB does not support `CREATE INDEX CONCURRENTLY` on hypertables ([docs](https://docs.tigerdata.com/api/latest/hypertable/create_index/)). On `timescale/timescaledb-ha:pg16` the statement fails with `FeatureNotSupported`, "hypertables do not support concurrent index creation", whether or not the hypertable has chunks. `facts` is a plain table and rebuilds fine. The limit comes from TimescaleDB, not from pgvector or HNSW.
+
+**Consequence:** statements inside `autocommit_block()` commit one by one, so the migration is not atomic. A `DROP INDEX CONCURRENTLY` followed by a failing `CREATE INDEX CONCURRENTLY` leaves the index dropped; on the hypertable the index was gone after the failed create. The container entrypoint runs the migrations on every start (Decision 20), so a failing migration also keeps the server from starting. If the `session_log` index ever has to be rebuilt while writes continue, TimescaleDB offers `CREATE INDEX ... WITH (timescaledb.transaction_per_chunk)`, which locks one chunk at a time; in a manual check it accepted an HNSW index on the image above. No migration uses it.
+
+**Alternatives:** `CREATE INDEX CONCURRENTLY` on `session_log` as well: rejected by TimescaleDB, as above.
+
+**Affected files:** `alembic/versions/006_change_embedding_dim.py`, `alembic/versions/013_hnsw_indexes_concurrently.py`
+
+**See also:** Decision 2, Decision 20.
+
+---
+
+## Decision 26: `upsert_fact` skips the SERIALIZABLE `SET` on a connection already in a transaction
+
+**Decided:** 2026-09-16
+
+**Decision:** before its retry loop, `upsert_fact` checks `conn.info.transaction_status == IDLE`. Only then does the transaction start with `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` (Decision 6). On a connection that is already inside a transaction the statement is skipped, silently, and the write runs at the isolation level of that transaction: `READ COMMITTED` by default, `SERIALIZABLE` only if the caller set it before its first statement.
+
+**Rationale:** PostgreSQL allows changing the isolation level only before the first query of a transaction ([docs](https://www.postgresql.org/docs/16/sql-set-transaction.html)). On a connection already in a transaction, `conn.transaction()` opens a savepoint, and the `SET` inside it fails with `ActiveSqlTransaction` (SQLSTATE 25001). Skipping it lets such callers work instead of crashing.
+
+**Consequence:** the conflict-detection guarantee of Decision 6 holds only on an idle connection. That is every call through the server: the pool runs with `autocommit=True` (`server.py`), so its connections are idle between statements. The skip path is reached by callers that hold a connection without autocommit and have already run a statement on it, such as the integration-test fixture; two integration tests fail with `ActiveSqlTransaction` without it. No unit test covers the skip path (the mocked connections report `IDLE`).
+
+**Affected files:** `src/mlms/storage/facts.py`, `tests/unit/test_facts.py`, `tests/unit/test_conflict_detection.py`
+
+**See also:** Decision 6.
 
 ---
