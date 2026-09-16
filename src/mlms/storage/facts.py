@@ -61,8 +61,20 @@ async def upsert_fact(
     lets two concurrent upserts for near-duplicate embeddings both miss each other's
     uncommitted insert and both land is_current=TRUE, violating the single-current-row
     invariant get_facts()/search_memory() rely on.
+
+    SET TRANSACTION ISOLATION LEVEL is only legal as the first statement of a
+    transaction. When `conn` arrives already mid-transaction (a caller sharing one
+    connection across several storage calls, e.g. Session-Augmented RAG doing
+    get_session_log() then memorize() on the same conn), conn.transaction() opens a
+    SAVEPOINT rather than a real transaction, and issuing the SET here would raise
+    psycopg.errors.ActiveSqlTransaction (confirmed live against test_session_rag.py).
+    In that case we skip it and inherit the caller's already-established isolation
+    level — best-effort SERIALIZABLE, not a hard guarantee, for shared-connection
+    callers. A caller that needs the guarantee should set SERIALIZABLE on its own
+    transaction before making any calls on a connection it intends to share.
     """
     vec_lit = vec_literal(embedding_vec)
+    conn_was_idle = conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
 
     for attempt in range(_MAX_SERIALIZATION_RETRIES):
         new_id = uuid.uuid4()
@@ -73,7 +85,8 @@ async def upsert_fact(
         try:
             async with conn.transaction():
                 cur = conn.cursor(row_factory=psycopg.rows.dict_row)
-                await cur.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+                if conn_was_idle:
+                    await cur.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
 
                 await cur.execute(_SELECT_NEAREST, (vec_lit, project_id, vec_lit))
                 row = await cur.fetchone()

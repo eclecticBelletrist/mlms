@@ -6,6 +6,8 @@ import uuid
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import psycopg.pq
+
 from mlms.config import COSINE_CONFLICT_THRESHOLD
 from mlms.storage._vec import vec_literal
 from mlms.storage.facts import FactResult, upsert_fact
@@ -43,6 +45,7 @@ def _make_conn(fetchone_result: dict[str, Any] | None) -> tuple[Any, MagicMock]:
     conn: Any = MagicMock()
     conn.cursor.return_value = cur
     conn.transaction.return_value = tx
+    conn.info.transaction_status = psycopg.pq.TransactionStatus.IDLE
 
     return conn, cur
 
