@@ -23,14 +23,14 @@ import redis.asyncio as aioredis
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mlms.config import LATENCY_P99_TARGET_MS, LATENCY_SESSION_CTX_MS, settings
+from mlms.config import LATENCY_P99_TARGET_MS, LATENCY_SESSION_CTX_MS, pg_dsn, settings
 from mlms.embedding import embed
 from mlms.storage.facts import upsert_fact
 from mlms.storage.session_ctx import SessionContext, set_session_context
 from mlms.tools.get_facts import get_facts
 from mlms.tools.get_session_ctx import get_session_context
 
-_PG_DSN = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+_PG_DSN = pg_dsn(settings.database_url)
 _N = 100
 
 

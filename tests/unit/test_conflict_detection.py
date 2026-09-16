@@ -37,20 +37,20 @@ class TestConflictAtomicity:
         conn, cur = _make_conn({"id": uuid.uuid4(), "version": 1, "dist": 0.01})
         await upsert_fact(content="x", project_id=_PROJECT, embedding_vec=_VEC, conn=conn)
         conn.transaction.assert_called_once()
-        assert cur.execute.call_count == 3  # SELECT + UPDATE + INSERT
+        assert cur.execute.call_count == 4  # SET ISOLATION + SELECT + UPDATE + INSERT
 
     async def test_transaction_wraps_insert_only_path(self) -> None:
         conn, cur = _make_conn(None)
         await upsert_fact(content="x", project_id=_PROJECT, embedding_vec=_VEC, conn=conn)
         conn.transaction.assert_called_once()
-        assert cur.execute.call_count == 2  # SELECT + INSERT
+        assert cur.execute.call_count == 3  # SET ISOLATION + SELECT + INSERT
 
     async def test_update_precedes_insert_in_conflict_path(self) -> None:
         conn, cur = _make_conn({"id": uuid.uuid4(), "version": 1, "dist": 0.01})
         await upsert_fact(content="x", project_id=_PROJECT, embedding_vec=_VEC, conn=conn)
         calls = [c.args[0] for c in cur.execute.call_args_list]
-        assert "UPDATE" in calls[1]
-        assert "INSERT" in calls[2]
+        assert "UPDATE" in calls[2]
+        assert "INSERT" in calls[3]
 
     async def test_threshold_boundary_dist_exactly_1_minus_threshold(self) -> None:
         dist = round(1.0 - COSINE_CONFLICT_THRESHOLD, 10)  # 0.04 → still conflict (<=)
@@ -62,10 +62,13 @@ class TestConflictAtomicity:
 
 
 class TestRaceCondition:
-    async def test_concurrent_writes_both_complete_no_deadlock(self) -> None:
-        """Two simultaneous calls on separate connections complete without Python-level deadlock.
+    async def test_concurrent_writes_both_complete(self) -> None:
+        """Two simultaneous calls on separate (mocked) connections both return valid results.
 
-        DB-level serialization via transaction isolation is not covered by a test; see Decision 6.
+        Connections here are AsyncMock-backed with no real I/O, so this does not exercise
+        deadlock-safety under genuine interleaving — only that gather() over two upsert_fact()
+        coroutines resolves cleanly. DB-level serialization via transaction isolation is
+        verified in integration tests.
         """
         conn_a, _ = _make_conn(None)
         conn_b, _ = _make_conn(None)
@@ -109,7 +112,7 @@ class TestRaceCondition:
         assert result.version == 2
         assert result.is_conflict
         assert result.replaced_id == first_id
-        update_params = cur_b.execute.call_args_list[1].args[1]
+        update_params = cur_b.execute.call_args_list[2].args[1]
         assert first_id in update_params
 
     async def test_version_chain_increments_correctly(self) -> None:

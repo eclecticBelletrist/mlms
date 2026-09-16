@@ -30,4 +30,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TABLE IF EXISTS projects CASCADE")
+    # Plain sequential downgrade (007 -> ... -> 001) already drops facts/timeline_events/
+    # session_log — the FK-holding tables — in their own migrations first, so projects has
+    # no dependents left by the time this runs. No CASCADE: a footgun here would silently
+    # drop whatever still references projects instead of failing loudly on a bad downgrade order.
+    op.execute("DROP TABLE IF EXISTS projects")
+    op.execute("DROP EXTENSION IF EXISTS vector")
+    op.execute("DROP EXTENSION IF EXISTS timescaledb")

@@ -52,6 +52,11 @@ _GET_LATEST_BY_NAME = (
     f"SELECT {_SELECT_COLS} FROM skills WHERE name = %s ORDER BY version DESC LIMIT 1"
 )
 
+_GET_ALL_LATEST_BY_SEARCH = (
+    f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills"
+    " WHERE content ILIKE %s OR name ILIKE %s ORDER BY name, version DESC LIMIT %s"
+)
+
 
 def _row_to_skill(r: dict[str, Any]) -> Skill:
     return Skill(
@@ -93,6 +98,7 @@ async def get_skills(
     *,
     name: str | None = None,
     domain: str | None = None,
+    search: str | None = None,
     limit: int = 20,
     conn: psycopg.AsyncConnection[Any],
 ) -> list[Skill]:
@@ -101,6 +107,9 @@ async def get_skills(
         await cur.execute(_GET_LATEST_BY_NAME, (name,))
     elif domain is not None:
         await cur.execute(_GET_ALL_LATEST_BY_DOMAIN, (domain, limit))
+    elif search is not None:
+        pattern = f"%{search}%"
+        await cur.execute(_GET_ALL_LATEST_BY_SEARCH, (pattern, pattern, limit))
     else:
         await cur.execute(_GET_ALL_LATEST, (limit,))
     rows: list[dict[str, Any]] = await cur.fetchall()

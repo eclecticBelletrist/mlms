@@ -20,7 +20,7 @@ from mcp.types import ToolAnnotations
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from pydantic import BeforeValidator, Field
 
-from mlms.config import MEMORY_CONTENT_MAX_LENGTH, settings
+from mlms.config import MEMORY_CONTENT_MAX_LENGTH, pg_dsn, settings
 from mlms.tools.export_project import export_project as _export_project
 from mlms.tools.get_facts import get_facts as _get_facts
 from mlms.tools.get_session_ctx import get_session_context as _get_session_ctx
@@ -36,10 +36,6 @@ from mlms.tools.search_memory import search_memory as _search_memory
 class _AppCtx:
     pool: AsyncConnectionPool[Any]
     redis: Any
-
-
-def _pg_dsn(url: str) -> str:
-    return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
 def _check_content_length(v: str) -> str:
@@ -61,7 +57,7 @@ _MemoryContent = Annotated[
 @asynccontextmanager
 async def _lifespan(_server: FastMCP) -> AsyncIterator[_AppCtx]:
     pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
-        _pg_dsn(settings.database_url),
+        pg_dsn(settings.database_url),
         min_size=1,
         max_size=5,
         open=False,
@@ -385,11 +381,11 @@ async def get_skills(
         # default get_facts()/search_memory() listing, which reads like a deletion
         # even though the row is still physically present.
         destructiveHint=False,
-        # Calling revert_fact(fact_id) twice in a row with no concurrent memorize()
-        # in between is a no-op the second time (the fetch has no is_current filter).
-        # False anyway — it's a guard against a concurrent memorize() interleaving
-        # and mutating the replaces_id chain between the two calls, not a claim that
-        # a single-caller retry is unsafe.
+        # Calling revert_fact(fact_id) twice in a row raises on the second call
+        # (fact_id is no longer is_current after the first revert). False anyway —
+        # it's a guard against a concurrent memorize() interleaving and mutating the
+        # replaces_id chain between the two calls, not a claim that a single-caller
+        # retry is unsafe.
         idempotentHint=False,
         openWorldHint=False,
     )

@@ -1,9 +1,9 @@
-# DEPRECATED: delta=0 на synthetic_100 (тривиальный результат, 5 фактов при k=5). Используй run_hard_ab.py.
-# DEPRECATED: delta=0 на synthetic_100 — Qwen3-8B устраняет semantic drift наивно, SAR не нужен
-# Используй: scripts/run_hard_ab.py (synthetic_hard.json, 400 фактов, delta=+0.303)
-
 #!/usr/bin/env python
 """A/B benchmark: naive Recall@5 vs SAR Recall@5 for semantic_drift category.
+
+Superseded by run_hard_ab.py. In synthetic_100 nearly every scenario has at most five facts,
+so with k=5 both runs return all of them and the delta is 0
+(docs/mlms_benchmark_design.md, section 2.4).
 
 Usage:
     MLMS_INTEGRATION=1 python scripts/run_ab_benchmark.py
@@ -26,7 +26,7 @@ import redis.asyncio as aioredis
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mlms.config import settings
+from mlms.config import pg_dsn, settings
 from mlms.embedding import embed
 from mlms.storage.facts import upsert_fact
 from mlms.storage.session_log import insert_session_entry
@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 _FIXTURE = Path(__file__).parent.parent / "tests" / "fixtures" / "synthetic_100.json"
-_PG_DSN = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+_PG_DSN = pg_dsn(settings.database_url)
 
 
 async def _seed_facts(
@@ -91,7 +91,6 @@ async def _run_ab_scenario(
 
         relevant_db_ids = {str(id_map[fid]) for fid in relevant_ids_fixture if fid in id_map}
 
-        # Naive: raw query
         naive_facts = await get_facts(
             about=query, project_id=str(pid), limit=5, conn=conn, redis=rd
         )
@@ -99,7 +98,6 @@ async def _run_ab_scenario(
             len(relevant_db_ids), 1
         )
 
-        # SAR: session log labels + query
         session_entries = await get_session_log(chat_id=chat_id, limit=50, conn=conn, redis=rd)
         enriched = " ".join(e.label for e in session_entries) + " " + query
         sar_facts = await get_facts(
@@ -160,7 +158,7 @@ async def main() -> None:
     sar_avg = sum(r["sar_recall"] for r in results) / n
     delta = sar_avg - naive_avg
 
-    naive_wins = sum(1 for r in results if r["sar_recall"] > r["naive_recall"])
+    sar_wins = sum(1 for r in results if r["sar_recall"] > r["naive_recall"])
     ties = sum(1 for r in results if r["sar_recall"] == r["naive_recall"])
     naive_better = sum(1 for r in results if r["naive_recall"] > r["sar_recall"])
 
@@ -174,7 +172,7 @@ async def main() -> None:
     print(f"  {'SAR (session-enriched)':<28} {sar_avg:>8.3f}")
     print(f"  {'Delta (SAR - naive)':<28} {delta:>+8.3f}")
     print()
-    print(f"  SAR better: {naive_wins}/{n}  tie: {ties}/{n}  naive better: {naive_better}/{n}")
+    print(f"  SAR better: {sar_wins}/{n}  tie: {ties}/{n}  naive better: {naive_better}/{n}")
     sar_status = "PASS (SAR > naive)" if delta > 0 else "FAIL (no improvement)"
     print(f"  SAR proof: {sar_status}")
     print("=" * 55)
@@ -187,7 +185,7 @@ async def main() -> None:
                 "naive_avg": round(naive_avg, 4),
                 "sar_avg": round(sar_avg, 4),
                 "delta": round(delta, 4),
-                "sar_better": naive_wins,
+                "sar_better": sar_wins,
                 "tie": ties,
                 "naive_better": naive_better,
                 "scenarios": results,

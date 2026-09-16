@@ -123,7 +123,8 @@ class TestSessionAugmentedRAGFlow:
     async def test_session_rag_filters_irrelevant_domain(
         self, pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID, rd: Any
     ) -> None:
-        """Facts in a different embedding cluster score lower than session-aligned ones."""
+        """Under limit=1, a fact aligned with the query embedding wins over one from
+        an orthogonal cluster."""
         # Seed Python fact (VEC_PY cluster)
         with patch("mlms.tools.memorize.embed", new=AsyncMock(return_value=_VEC_PY)):
             await memorize(

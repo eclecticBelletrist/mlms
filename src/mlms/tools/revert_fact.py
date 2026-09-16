@@ -6,7 +6,7 @@ from uuid import UUID
 import psycopg
 import psycopg.rows
 
-_FETCH = "SELECT project_id, replaces_id FROM facts WHERE id = %s"
+_FETCH = "SELECT project_id, replaces_id, is_current FROM facts WHERE id = %s"
 _RETIRE = "UPDATE facts SET is_current = FALSE WHERE id = %s"
 _RESTORE = "UPDATE facts SET is_current = TRUE WHERE id = %s"
 
@@ -22,6 +22,8 @@ async def revert_fact(
     fact = await cur.fetchone()
     if fact is None:
         raise ValueError(f"fact {fact_id} not found")
+    if not fact["is_current"]:
+        raise ValueError(f"fact {fact_id} is not the current version")
 
     restored_id: UUID | None = fact["replaces_id"]
     if restored_id is None:

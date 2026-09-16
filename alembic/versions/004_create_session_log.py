@@ -28,7 +28,7 @@ _VALID_TYPES = (
 
 
 def upgrade() -> None:
-    valid_list = ", ".join(f"'{t}'" for t in _VALID_TYPES)
+    valid_list = ", ".join("'{}'".format(t.replace("'", "''")) for t in _VALID_TYPES)
     op.execute(f"""
         CREATE TABLE session_log (
             time        TIMESTAMPTZ NOT NULL,

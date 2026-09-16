@@ -37,7 +37,7 @@ def _make_conn(
 
 class TestRevertFact:
     async def test_happy_path_returns_ok_and_reverted_to(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": True}
         restored_row = {"project_id": _PROJECT_A, "replaces_id": None}
         conn = _make_conn(fact_row, restored_row)
 
@@ -47,7 +47,7 @@ class TestRevertFact:
         assert result["reverted_to"] == str(_PREV_ID)
 
     async def test_happy_path_executes_retire_then_restore(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": True}
         restored_row = {"project_id": _PROJECT_A, "replaces_id": None}
         conn = _make_conn(fact_row, restored_row)
 
@@ -61,7 +61,7 @@ class TestRevertFact:
         assert "TRUE" in restore_sql
 
     async def test_happy_path_uses_transaction(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": True}
         restored_row = {"project_id": _PROJECT_A, "replaces_id": None}
         conn = _make_conn(fact_row, restored_row)
 
@@ -75,20 +75,26 @@ class TestRevertFact:
             await revert_fact(fact_id=_FACT_ID, conn=conn)
 
     async def test_no_replaces_id_raises(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": None}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": None, "is_current": True}
         conn = _make_conn(fact_row, None)
         with pytest.raises(ValueError, match="no prior version"):
             await revert_fact(fact_id=_FACT_ID, conn=conn)
 
     async def test_restored_fact_not_found_raises(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": True}
         conn = _make_conn(fact_row, None)
         with pytest.raises(ValueError, match=str(_PREV_ID)):
             await revert_fact(fact_id=_FACT_ID, conn=conn)
 
     async def test_cross_project_revert_blocked(self) -> None:
-        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID}
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": True}
         restored_row = {"project_id": _PROJECT_B, "replaces_id": None}
         conn = _make_conn(fact_row, restored_row)
         with pytest.raises(ValueError, match="cross-project revert blocked"):
+            await revert_fact(fact_id=_FACT_ID, conn=conn)
+
+    async def test_stale_fact_revert_blocked(self) -> None:
+        fact_row = {"project_id": _PROJECT_A, "replaces_id": _PREV_ID, "is_current": False}
+        conn = _make_conn(fact_row, None)
+        with pytest.raises(ValueError, match="not the current version"):
             await revert_fact(fact_id=_FACT_ID, conn=conn)

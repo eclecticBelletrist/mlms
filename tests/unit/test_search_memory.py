@@ -100,15 +100,20 @@ class TestSearchMemoryRouting:
 
 
 class TestSearchMemoryResults:
-    async def test_results_sorted_by_score_descending(self) -> None:
+    async def test_facts_block_sorted_and_precedes_events_and_skills(self) -> None:
+        # facts carry a real cosine-derived score and are sorted among themselves;
+        # events/skills are both a hardcoded 0.5, so they follow as an unranked
+        # block after all facts, regardless of the fake score (event=0.9 here
+        # would outrank fact=0.3 under a naive global sort, but must not).
         with (
             patch(_P_EMBED, new=AsyncMock(return_value=_VEC)),
-            patch(_P_FACTS, new=AsyncMock(return_value=[_fact(0.3)])),
+            patch(_P_FACTS, new=AsyncMock(return_value=[_fact(0.3), _fact(0.7)])),
             patch(_P_EVENTS, new=AsyncMock(return_value=[_event(0.9)])),
             patch(_P_SKILLS, new=AsyncMock(return_value=[])),
         ):
             result = await search_memory(query="q", conn=MagicMock(), redis=MagicMock())
-        assert result[0].score == 0.9
+        assert [r.layer for r in result] == ["fact", "fact", "event"]
+        assert result[0].score == 0.7
         assert result[1].score == 0.3
 
     async def test_returns_memory_result_pydantic(self) -> None:

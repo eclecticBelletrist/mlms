@@ -10,6 +10,8 @@ import psycopg.rows
 from pydantic import BaseModel
 
 from mlms.embedding import embed
+from mlms.storage._vec import vec_literal
+from mlms.storage.skills import get_skills
 
 
 class MemoryResult(BaseModel):
@@ -20,17 +22,13 @@ class MemoryResult(BaseModel):
     metadata: dict[str, Any] = {}
 
 
-def _vec_literal(vec: list[float]) -> str:
-    return "[" + ",".join(str(x) for x in vec) + "]"
-
-
 async def _search_facts(
     vec: list[float],
     project_id: str | None,
     conn: psycopg.AsyncConnection[Any],
     limit: int,
 ) -> list[MemoryResult]:
-    vec_lit = _vec_literal(vec)
+    vec_lit = vec_literal(vec)
     clauses = ["is_current = TRUE", "embedding IS NOT NULL"]
     params: list[Any] = [vec_lit]
 
@@ -112,24 +110,16 @@ async def _search_skills(
     conn: psycopg.AsyncConnection[Any],
     limit: int,
 ) -> list[MemoryResult]:
-    pattern = f"%{query}%"
-    cur = conn.cursor(row_factory=psycopg.rows.dict_row)
-    await cur.execute(
-        "SELECT DISTINCT ON (name) id, name, content FROM skills"
-        " WHERE content ILIKE %s OR name ILIKE %s"
-        " ORDER BY name, version DESC LIMIT %s",
-        (pattern, pattern, limit),
-    )
-    rows: list[dict[str, Any]] = await cur.fetchall()
+    skills = await get_skills(search=query, limit=limit, conn=conn)
     return [
         MemoryResult(
             layer="skill",
-            id=str(r["id"]),
-            content=r["content"],
+            id=str(s.id),
+            content=s.content,
             score=0.5,
-            metadata={"name": r["name"]},
+            metadata={"name": s.name},
         )
-        for r in rows
+        for s in skills
     ]
 
 
@@ -164,6 +154,8 @@ async def search_memory(
     elif memory_type == "skill":
         skill_results = await _search_skills(query, conn, 10)
 
-    combined = fact_results + event_results + skill_results
-    combined.sort(key=lambda r: r.score, reverse=True)
-    return combined
+    # only facts carry a real cosine-derived score — events/skills are both a
+    # hardcoded 0.5, so sorting them together against facts by score is meaningless.
+    # facts come first as a real-ranked block, events/skills follow as a separate block.
+    fact_results.sort(key=lambda r: r.score, reverse=True)
+    return fact_results + event_results + skill_results

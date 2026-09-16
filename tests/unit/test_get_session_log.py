@@ -35,9 +35,9 @@ class TestGetSessionLogModes:
                 chat_id="c", semantic_query="q", conn=MagicMock(), redis=MagicMock()
             )
 
-    async def test_returns_empty_if_neither_provided(self) -> None:
-        result = await get_session_log(conn=MagicMock(), redis=MagicMock())
-        assert result == []
+    async def test_raises_if_neither_provided(self) -> None:
+        with pytest.raises(ValueError, match="provide chat_id"):
+            await get_session_log(conn=MagicMock(), redis=MagicMock())
 
     async def test_in_session_mode_no_embed(self) -> None:
         with (

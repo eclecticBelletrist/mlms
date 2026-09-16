@@ -13,7 +13,7 @@ import psycopg
 import pytest
 from psycopg_pool import AsyncConnectionPool
 
-from mlms.config import settings
+from mlms.config import pg_dsn, settings
 from mlms.server import PoolUnavailable, _acquire, _AppCtx
 
 pytestmark = pytest.mark.skipif(
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
     reason="Set MLMS_INTEGRATION=1 to run (requires docker compose up)",
 )
 
-_PG_DSN = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+_PG_DSN = pg_dsn(settings.database_url)
 
 
 async def test_pool_unavailable_fails_clean_and_bounded() -> None:

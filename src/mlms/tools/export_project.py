@@ -48,7 +48,7 @@ async def export_project(
             "exported_at": datetime.now(UTC).isoformat(),
             "facts": facts,
             "timeline": timeline,
-            "skills": skills,
+            "skills_global": skills,
         },
         default=_default,
     )

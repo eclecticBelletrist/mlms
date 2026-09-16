@@ -22,7 +22,7 @@ import redis.asyncio as aioredis
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mlms.config import PRECISION_AT_5_TARGET, settings
+from mlms.config import PRECISION_AT_5_TARGET, pg_dsn, settings
 from mlms.embedding import embed
 from mlms.storage.facts import upsert_fact
 from mlms.storage.session_log import insert_session_entry
@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 _FIXTURE = Path(__file__).parent.parent / "tests" / "fixtures" / "synthetic_100.json"
-_PG_DSN = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+_PG_DSN = pg_dsn(settings.database_url)
 
 
 async def _seed_facts(
@@ -113,10 +113,8 @@ async def _run_scenario(
 
         await conn.commit()
 
-        # Map fixture relevant IDs → DB UUIDs
         relevant_db_ids = {str(id_map[fid]) for fid in relevant_ids_fixture if fid in id_map}
 
-        # Naive query
         naive_facts = await get_facts(
             about=query, project_id=str(pid), limit=5, conn=conn, redis=rd
         )

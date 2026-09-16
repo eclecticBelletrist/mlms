@@ -10,6 +10,7 @@ import psycopg.rows
 from pydantic import BaseModel
 
 from mlms.embedding import embed
+from mlms.storage._vec import vec_literal
 
 
 class Fact(BaseModel):
@@ -27,10 +28,6 @@ class Fact(BaseModel):
 _EXACT_ID_RE = re.compile(r"\.\w{1,6}\b|\bv\d+[\._]\d|\b\d+\.\d+\.\d+")
 
 _COLS = "id, content, tags, category, project_id, version, is_current, created_at, updated_at"
-
-
-def _vec_literal(vec: list[float]) -> str:
-    return "[" + ",".join(str(x) for x in vec) + "]"
 
 
 def _where(project_id: str | None, tags: list[str] | None) -> tuple[str, list[Any]]:
@@ -64,7 +61,7 @@ async def get_facts(
         return [Fact.model_validate(r) for r in rows]
 
     vec = await embed(about, redis)
-    vec_lit = _vec_literal(vec)
+    vec_lit = vec_literal(vec)
 
     await cur.execute(
         f"SELECT {_COLS} FROM facts WHERE {cond} ORDER BY embedding <=> %s::vector LIMIT %s",

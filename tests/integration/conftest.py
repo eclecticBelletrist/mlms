@@ -15,9 +15,9 @@ import psycopg.rows
 import pytest
 import redis.asyncio as aioredis
 
-from mlms.config import settings
+from mlms.config import pg_dsn, settings
 
-_PG_DSN = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+_PG_DSN = pg_dsn(settings.database_url)
 
 pytestmark = pytest.mark.skipif(
     os.getenv("MLMS_INTEGRATION") != "1",

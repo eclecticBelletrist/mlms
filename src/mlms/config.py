@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EMBEDDING_DIM: Final[int] = 1536  # Matryoshka truncation of Qwen3-8B; < 2000 HNSW limit
@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://mlms:mlms@localhost:5432/mlms"
     redis_url: str = "redis://localhost:6379/0"
 
+    @field_validator("database_url")
+    @classmethod
+    def _check_database_url_scheme(cls, v: str) -> str:
+        if not v.startswith("postgresql+psycopg://"):
+            raise ValueError(
+                f"DATABASE_URL must start with 'postgresql+psycopg://', got: {v!r}"
+            )
+        return v
+
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
     embedding_api_base: str = Field(
         default="https://openrouter.ai/api/v1",
@@ -56,6 +65,10 @@ class Settings(BaseSettings):
     # HTTP behavior; None on a non-loopback host is a startup fail-fast, not a silent
     # pass-through. See Decision 23.
     mcp_shared_secret: str | None = Field(default=None, alias="MCP_SHARED_SECRET")
+
+
+def pg_dsn(url: str) -> str:
+    return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
 settings = Settings()

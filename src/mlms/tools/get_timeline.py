@@ -52,7 +52,7 @@ async def get_timeline(
 
     cur = conn.cursor(row_factory=psycopg.rows.dict_row)
     await cur.execute(
-        f"SELECT {_COLS} FROM timeline_events {where} ORDER BY time DESC LIMIT %s",
+        f"SELECT {_COLS} FROM timeline_events {where} ORDER BY time DESC, id DESC LIMIT %s",
         params,
     )
     rows: list[dict[str, Any]] = await cur.fetchall()

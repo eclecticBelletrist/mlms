@@ -94,7 +94,7 @@ async def memorize(
             await _refresh_redis(chat_id, pid_str or "", redis=redis)
         return {"ok": True, "memory_id": str(skill_result.id)}
 
-    else:  # type == "session_log"
+    elif type == "session_log":
         chat_id = metadata["chat_id"]
         label: str = metadata["label"][:100]
         pid_str = metadata.get("project_id")
@@ -110,3 +110,6 @@ async def memorize(
         )
         await _refresh_redis(chat_id, pid_str or "", redis=redis)
         return {"ok": True, "memory_id": f"{chat_id}:{label}"}
+
+    else:
+        raise ValueError(f"unknown memorize type: {type!r}")

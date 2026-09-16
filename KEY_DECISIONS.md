@@ -10,6 +10,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-09
 
+**Last updated:** 2026-09-16
+
 **Decision:** `EMBEDDING_DIM = 1536` instead of the native 4096 of Qwen3-Embedding-8B.
 
 **Rationale:** pgvector 0.8.2 limits HNSW and IVFFlat indexes on `vector` to 2000 dimensions, and `halfvec` to 4000 ([pgvector README](https://github.com/pgvector/pgvector)). Neither fits 4096. Qwen3-Embedding-8B supports Matryoshka Representation Learning with output dimensions from 32 to 4096 ([model card](https://huggingface.co/Qwen/Qwen3-Embedding-8B); technique: [Kusupati et al., 2022](https://arxiv.org/abs/2205.13147)), so its vectors can be truncated to a prefix with a limited loss of quality. Truncating to 1536 brings the column under the 2000-dimension limit and makes an HNSW index possible (see Decision 2). The recall loss from truncation has not been measured in this project.
@@ -19,7 +21,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `halfvec(4096)`: the 4000-dimension limit is below 4096.
 - Expression index on a 1536-dimension prefix (`subvector(embedding, 1, 1536)`, documented in the pgvector README for models that support it): a valid option, not chosen. It keeps the full 4096 dimensions in storage (16392 bytes per row versus 6152 at 1536, from the README formula `4 * dimensions + 8`), and every query has to use the same expression to hit the index.
 
-**Affected files:** `alembic/versions/006_change_embedding_dim.py`
+**Affected files:** `alembic/versions/002_create_facts.py` and `alembic/versions/004_create_session_log.py` (the `vector(1536)` column type), `alembic/versions/006_change_embedding_dim.py` (creates the HNSW indexes; its `ALTER COLUMN TYPE` is a no-op on a fresh database)
 
 **See also:** Decision 2.
 
@@ -51,7 +53,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-24
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-16
 
 **Decision:** the server uses a `psycopg_pool.AsyncConnectionPool` instead of one `AsyncConnection` held for the whole lifespan. Each tool call checks out a connection with `async with pool.connection()`.
 
@@ -68,6 +70,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. Within one session, the single connection used to serialize the database part of tool calls, which made this race unlikely. The pool removes that serialization, so two overlapping `memorize()` calls with the same `chat_id` in one session can now overwrite each other's session-context write. Calls from different sessions never shared a connection, so for devices on separate sessions the race existed before the pool. Currently `_refresh_redis()` is the only code that writes the hash and the only field it changes is `last_activity`, so the practical loss is a slightly older timestamp; the race would start losing real data if another code path began writing `open_todos`, `active_entities` or `recent_decisions`. The cause is the read-modify-write on one Redis hash, not a mismatch between Postgres and Redis. Redis working memory is treated as a best-effort cache, not a source of truth, so this is left unfixed; recorded in `docs/known-issues.md` (#9).
 
 **Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py` (new).
+
+**See also:** Decision 6.
 
 ---
 
@@ -109,23 +113,25 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 ---
 
-## Decision 6: Conflict detection by cosine distance, inside a transaction
+## Decision 6: Conflict detection by cosine distance, inside a SERIALIZABLE transaction
 
 **Decided:** 2026-05-10
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-16 (isolation level raised to SERIALIZABLE)
 
-**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction.
+**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates.
 
-**Known limitation:** the check and the insert are separate statements at the default `READ COMMITTED` isolation. Two concurrent `memorize()` calls with near-identical content can both see no conflict and both insert an `is_current=TRUE` row. The transaction does not close that window.
+**Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement. The isolation level is raised because at the default `READ COMMITTED` the check and the insert are separate statements, so two concurrent `memorize()` calls with near-identical content both pass the check and both insert an `is_current=TRUE` row. `get_facts` and `search_memory` filter on `is_current=TRUE`, so they would return both versions.
 
-**Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement.
+**Verification:** checked by hand, in improvised conditions, not by a repeatable test. A throwaway script (not in the repository) ran two concurrent `upsert_fact` calls with the same embedding, 60 times per case (with and without an existing fact), against `timescale/timescaledb-ha:pg16`, on a `facts` table and HNSW index shaped like migrations 002, 006 and 007. At `READ COMMITTED` both rows stayed `is_current=TRUE` in every trial; at `SERIALIZABLE` exactly one did, and neither writer got an error. No test in the repository covers this: the unit tests mock the connection and check only the order of statements, and the integration tests call `upsert_fact` sequentially.
+
+**Known limitation:** the retries are bounded. In the same improvised check, four concurrent writers on an existing fact produced 60 `SerializationFailure` errors over 60 trials (one per trial on average), and every trial still ended with exactly one current row. That is beyond the intended use of one person with a few clients (Decision 3), so there is no backoff and no larger bound. `SerializationFailure` is a subclass of psycopg's `OperationalError`, so `_acquire()` (Decision 3) reports it as the generic "database temporarily unavailable, try again shortly" and logs it as a pool problem.
 
 **Threshold:** `COSINE_CONFLICT_THRESHOLD = 0.96` is a starting point that has not been calibrated against real data.
 
 **Affected files:** `src/mlms/storage/facts.py` (`upsert_fact`), `src/mlms/config.py`
 
-**See also:** Decision 10.
+**See also:** Decision 3, Decision 10.
 
 ---
 
@@ -149,11 +155,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-20
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-16 (`is_current` check added)
 
-**Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column added in migration `007`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that both versions have the same `project_id` and refuses otherwise.
+**Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column added in migration `007`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that the given fact is the current version and that both versions have the same `project_id`, and refuses otherwise.
 
-**Rationale:** chains are built inside one project, so a mismatch can only come from inconsistent data (a manual edit or a bug). The check stops a revert from reactivating a fact in another project in that case. The tool takes only `fact_id`, so it does not check that the caller owns the fact.
+**Rationale:** chains are built inside one project, so a mismatch can only come from inconsistent data (a manual edit or a bug). The project check stops a revert from reactivating a fact in another project in that case. The `is_current` check refuses to revert a version that is no longer current: reverting an already replaced version would restore its predecessor while the newer version stays current. Both checks run before the transaction starts, so a concurrent `memorize()` can still change the chain between check and write. The tool takes only `fact_id`, so it does not check that the caller owns the fact.
 
 **Affected files:** `alembic/versions/007_add_project_id_session_log_replaces_id_facts.py`, `src/mlms/tools/revert_fact.py`
 
@@ -400,18 +406,17 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-16
 
-**Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`005_create_skills.py`) created `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`.
+**Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`005_create_skills.py`) created `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`. `export_project` names its section `skills_global`.
 
 **Rationale:** without a column there is nothing to filter on, and adding one would also decide whether skills are per-project or deliberately shared across projects, an open design question. It is left for a deliberate redesign, not a patch.
 
-**Consequence:** with several `project_id`s in one database, `export_project(project_id="X")` returns a `skills` section with every skill in the system, under the same top-level `project_id` as the rest of the export, which misleads a reader. `get_skills` has no `project_id` parameter, and the skill layer of `search_memory` searches all skills. The `export_project`/`get_skills` symptom is recorded in `docs/known-issues.md` (#15).
+**Consequence:** with several `project_id`s in one database, `export_project(project_id="X")` returns every skill in the system in its `skills_global` section, although the top-level `project_id` of the JSON is still X. `get_skills` has no `project_id` parameter, and the skill layer of `search_memory` searches all skills through the same storage function. The `export_project`/`get_skills` symptom is recorded in `docs/known-issues.md` (#15).
 
 **Alternatives:**
-- Drop the top-level `project_id` from the `export_project` JSON or label the `skills` section as global: changes the tool's response contract to fix a documentation problem.
 - Add a `project_id` column to `skills` in a new migration: a real redesign that needs the per-project-or-global question answered first, not a mechanical edit.
 
-**Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `alembic/versions/005_create_skills.py`, `docs/known-issues.md`
+**Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `src/mlms/storage/skills.py`, `alembic/versions/005_create_skills.py`, `docs/known-issues.md`
 
 ---

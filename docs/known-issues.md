@@ -16,9 +16,9 @@ The only failing scenario in synthetic_100. Two facts with cosine < 0.96 — bot
 **Needed:** independent threshold calibration for Qwen3-Embedding-8B.
 **Additional data (measured on a separate branch that is not included in this repository):** on an independent labeled dataset of 76 pairs, the 0.96 threshold gives precision/recall/F1 = 0.000 — the detector never fired. The best threshold found there is 0.65-0.66 (F1=0.835). This diverges noticeably from the "only failing scenario out of 100" above — either `synthetic_100` is not sensitive enough to this problem, or the two datasets cover different conflict patterns. `main` has the same formula and the same 0.96 value, but there is neither its own run on the 76-pair dataset nor an analysis of this discrepancy — an open question, a fact neither confirmed nor refuted.
 
-### 3. Tools = 9, not 7
+### 3. (FIXED 2026-09-16) Tool count in the docs
 
-CLAUDE.md says "7 tools", but there are actually 9: `revert_fact` and `export_project` were added. Hard-coded counts in the documentation are stale.
+CLAUDE.md said "7 tools", but there were actually 9: `revert_fact` and `export_project` had been added. Fixed: the counts in the documentation are updated.
 
 ## Architectural limitations
 
@@ -79,7 +79,7 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 ### 16. `get_timeline` cannot return more than `limit` events — the cursor is not wired up
 
-`get_events()` in `storage/timeline.py` implements full keyset pagination `(time, id)`, covered by tests. But the MCP tool `tools/get_timeline.py` does not use it — it bypasses it with its own inline SQL (`ORDER BY time DESC LIMIT %s`), without a cursor and without `has_next`. In practice: if `timeline_events` has accumulated more events than `limit`, only the first `limit` by descending time are reachable through the MCP tool, and the rest cannot be reached by any call. Deliberately not wired up for now — it requires changing the tool's response model (`next_cursor` exposed), a risk under publication haste.
+`get_events()` in `storage/timeline.py` implements full keyset pagination `(time, id)`, covered by tests. But the MCP tool `tools/get_timeline.py` does not use it — it bypasses it with its own inline SQL (`ORDER BY time DESC, id DESC LIMIT %s`), without a cursor and without `has_next`. In practice: if `timeline_events` has accumulated more events than `limit`, only the first `limit` by descending time are reachable through the MCP tool, and the rest cannot be reached by any call. Deliberately not wired up for now — it requires changing the tool's response model (`next_cursor` exposed), a risk under publication haste.
 
 ## CI
 

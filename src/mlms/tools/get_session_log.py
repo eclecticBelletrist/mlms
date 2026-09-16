@@ -33,8 +33,6 @@ async def get_session_log(
 ) -> list[SessionLogEntry]:
     if chat_id is not None and semantic_query is not None:
         raise ValueError("chat_id and semantic_query are mutually exclusive")
-    if chat_id is None and semantic_query is None:
-        return []
 
     vec: list[float] | None = None
     if semantic_query is not None:

@@ -11,9 +11,7 @@ import psycopg
 import psycopg.rows
 from psycopg.types.json import Jsonb
 
-
-def _vec_literal(vec: list[float]) -> str:
-    return "[" + ",".join(str(x) for x in vec) + "]"
+from mlms.storage._vec import vec_literal
 
 
 @dataclass(frozen=True)
@@ -61,7 +59,7 @@ async def insert_session_entry(
     conn: psycopg.AsyncConnection[Any],
 ) -> SessionInsertResult:
     ts = time if time is not None else datetime.now(UTC)
-    vec_lit = _vec_literal(embedding_vec) if embedding_vec is not None else None
+    vec_lit = vec_literal(embedding_vec) if embedding_vec is not None else None
     meta_val: Jsonb | None = Jsonb(meta) if meta is not None else None
 
     await conn.execute(
@@ -106,7 +104,7 @@ async def get_session_log(
         if entry_type is not None:
             where.append("type = %s")
             params.append(entry_type)
-        params.append(_vec_literal(semantic_query))
+        params.append(vec_literal(semantic_query))
         params.append(limit)
         query = (
             f"{_SELECT_COLS} WHERE {' AND '.join(where)} ORDER BY embedding <=> %s::vector LIMIT %s"

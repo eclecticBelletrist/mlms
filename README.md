@@ -185,9 +185,9 @@ If `MCP_HOST` is anything else (`0.0.0.0`, a LAN/VPN IP) — exactly the case th
 about — the server refuses to start at all without `MCP_SHARED_SECRET` set, rather than
 listening unauthenticated.
 
-This is deliberately not a full multi-user auth system: one static token, no rotation, no
-per-user scoping, no rate limiting. It's a gate against "anyone who can reach the port gets
-full read/write access to every memory," not a replacement for Layers 1–3 above.
+This is a single static token: no rotation, no per-user scoping, no rate limiting. It closes the
+gap where anyone who can reach the port gets full read/write access to every memory. Layers 1–3
+above still do the real perimeter work; this only adds a check on top of them.
 
 Two things it does **not** protect against, worth knowing rather than assuming away:
 
@@ -196,10 +196,10 @@ Two things it does **not** protect against, worth knowing rather than assuming a
   loopback.** The fail-fast above only looks at the `MCP_HOST` value the process itself sees —
   it can't see the port mapping or proxy in front of it. Same blind spot as the `Host`/`Origin`
   check two paragraphs below, just for the new gate instead of the old one.
-- **The shared secret gives every holder equal access — it doesn't stop one holder from
-  reading/replaying another holder's session.** All clients use the same token, so this is a
-  wall around the server, not a wall between clients on the inside of it. If that boundary
-  ever matters to you, this feature isn't it.
+- **The shared secret gives every holder equal access.** All clients use the same token, so any
+  holder can read or replay another holder's session; the secret only walls off the server from
+  outsiders, and does nothing to separate clients from each other on the inside. Look elsewhere
+  if you need that boundary.
 - **`sse` + a browser's built-in `EventSource` API don't mix with this.** `EventSource` has no
   way to set custom request headers, so it can't send `Authorization: Bearer`. Every connection
   attempt from such a client gets `401`. This isn't fixable by moving the token into the URL —
@@ -207,13 +207,14 @@ Two things it does **not** protect against, worth knowing rather than assuming a
   a browser tab making a raw `EventSource` connection (not an MCP client library that controls
   its own headers), this gate isn't compatible with it.
 
-Important caveat, not a guarantee out of the box: `allowed_hosts`/`allowed_origins` validate
-the `Host`/`Origin` **headers** of the incoming request, not which interface the connection
-came in on. Whether a tunnel or mesh tool forwards the original public `Host`/`Origin` through
-to your local server depends on its own config (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`).
-This was not verified end-to-end against a live Cloudflare Tunnel or Tailscale Serve setup —
-check your tool's docs and test it yourself (see verification step below) before trusting it;
-don't assume the public hostname is silently rewritten to `localhost` on the way in.
+`allowed_hosts`/`allowed_origins` validate the `Host`/`Origin` **headers** of the incoming
+request, not which interface the connection came in on. This does not work out of the box with
+a tunnel or mesh tool unless it forwards the original public `Host`/`Origin` through to your
+local server, which depends entirely on its own config (e.g. Cloudflare Tunnel's
+`originRequest.httpHostHeader`). This was not verified end-to-end against a live Cloudflare
+Tunnel or Tailscale Serve setup. Check your tool's docs and test it yourself (see verification
+step below) before trusting it; don't assume the public hostname is silently rewritten to
+`localhost` on the way in.
 
 **Layer 3 — reverse proxy with a real domain and TLS**, if you need one instead of a tunnel:
 put nginx or caddy in front, have it terminate TLS and proxy to the MCP server listening on
@@ -248,8 +249,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" -H "Origin: https:
 The allowlist match is exact and case-sensitive, with no host normalization — only the literal
 forms above (`127.0.0.1`/`localhost`, lowercase, no trailing dot) are covered. A client that
 happens to resolve `localhost` to the IPv6 loopback (`::1`), or sends `LOCALHOST`/`localhost.`,
-will fail-safe reject with a legitimate request. Not a security hole — the wrong direction of
-failure — but worth knowing if a "why is my local client getting 421" mystery ever comes up.
+will get rejected even though the request is legitimate. That's a fail-safe rejection, harmless
+on its own, but worth knowing if a "why is my local client getting 421" mystery ever comes up.
 
 ## Tools
 

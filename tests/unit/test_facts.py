@@ -7,22 +7,23 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from mlms.config import COSINE_CONFLICT_THRESHOLD
-from mlms.storage.facts import FactResult, _vec_literal, upsert_fact
+from mlms.storage._vec import vec_literal
+from mlms.storage.facts import FactResult, upsert_fact
 
 _PROJECT = uuid.uuid4()
 _EMBEDDING = [0.1] * 1536
 
 
-# ── _vec_literal ─────────────────────────────────────────────────────────────
+# ── vec_literal ─────────────────────────────────────────────────────────────
 
 
 class TestVecLiteral:
     def test_format(self) -> None:
-        assert _vec_literal([0.1, 0.2, 0.3]) == "[0.1,0.2,0.3]"
+        assert vec_literal([0.1, 0.2, 0.3]) == "[0.1,0.2,0.3]"
 
     def test_round_trips(self) -> None:
         vec = [float(i) for i in range(10)]
-        parts = _vec_literal(vec).strip("[]").split(",")
+        parts = vec_literal(vec).strip("[]").split(",")
         assert [float(p) for p in parts] == vec
 
 
@@ -112,7 +113,7 @@ class TestUpsertFact:
         assert result.replaced_id == old_id
 
     async def test_conflict_calls_update_then_insert(self) -> None:
-        """On conflict: SELECT → UPDATE → INSERT (order matters)."""
+        """On conflict: SET ISOLATION → SELECT → UPDATE → INSERT (order matters)."""
         conn, cur = _make_conn({"id": uuid.uuid4(), "version": 1, "dist": 0.01})
 
         await upsert_fact(
@@ -122,11 +123,12 @@ class TestUpsertFact:
             conn=conn,
         )
 
-        assert cur.execute.call_count == 3
+        assert cur.execute.call_count == 4
         sql_calls = [c.args[0] for c in cur.execute.call_args_list]
-        assert "SELECT" in sql_calls[0]
-        assert "UPDATE" in sql_calls[1]
-        assert "INSERT" in sql_calls[2]
+        assert "SERIALIZABLE" in sql_calls[0]
+        assert "SELECT" in sql_calls[1]
+        assert "UPDATE" in sql_calls[2]
+        assert "INSERT" in sql_calls[3]
 
     async def test_no_conflict_skips_update(self) -> None:
         conn, cur = _make_conn(None)
@@ -138,7 +140,7 @@ class TestUpsertFact:
             conn=conn,
         )
 
-        assert cur.execute.call_count == 2
+        assert cur.execute.call_count == 3
         sql_calls = [c.args[0] for c in cur.execute.call_args_list]
         assert not any("UPDATE" in s for s in sql_calls)
 

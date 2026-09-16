@@ -1,8 +1,13 @@
-"""change embedding dim to 1536 (Matryoshka truncation)
+"""create HNSW ANN indexes on facts/session_log embeddings
 
 Revision ID: 006
 Revises: 005
 Create Date: 2026-05-09
+
+002/004 already declare embedding as vector(1536) directly, so the ALTER COLUMN TYPE
+and DROP INDEX IF EXISTS statements below are no-ops on a fresh deploy — kept only for
+idempotency/compatibility with any hypothetical pre-1536 database state. The real, live
+effect of this migration is creating the two HNSW indexes.
 """
 
 from collections.abc import Sequence
@@ -16,8 +21,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Drop ANN indexes if they somehow exist, then retype both embedding columns.
-    # session_log is a TimescaleDB hypertable; ALTER propagates to all chunks.
+    # ALTER COLUMN TYPE + DROP INDEX IF EXISTS here are defensive no-ops on a fresh deploy
+    # (002/004 already create embedding as vector(1536)); kept for compatibility with any
+    # hypothetical pre-1536 database. session_log is a TimescaleDB hypertable; ALTER propagates
+    # to all chunks. The indexes created below are this migration's real effect.
     op.execute("DROP INDEX IF EXISTS facts_embedding_idx")
     op.execute("ALTER TABLE facts ALTER COLUMN embedding TYPE vector(1536)")
     op.execute(

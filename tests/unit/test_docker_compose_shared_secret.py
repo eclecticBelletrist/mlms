@@ -12,7 +12,7 @@ def _mlms_service_environment_block() -> str:
     start = next(i for i, line in enumerate(lines) if line.strip() == "mlms:")
     # Next top-level (2-space-indented) service key, or end of file, ends the block.
     end = next(
-        (i for i in range(start + 1, len(lines)) if lines[i] and not lines[i].startswith(" ")),
+        (i for i in range(start + 1, len(lines)) if lines[i] and not lines[i].startswith("   ")),
         len(lines),
     )
     return "\n".join(lines[start:end])

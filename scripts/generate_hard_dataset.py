@@ -24,8 +24,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
+from dotenv import load_dotenv
 
-# ── paths ──────────────────────────────────────────────────────────────────
+# Paths
 REPO = Path(__file__).parent.parent
 FIXTURES = REPO / "tests" / "fixtures"
 FIXTURES.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ CKPT_CORPUS = FIXTURES / "checkpoint_corpus.json"
 CKPT_SCENARIOS = FIXTURES / "checkpoint_scenarios.json"
 COST_LOG_FILE = FIXTURES / "cost_log.json"
 
-# ── config ─────────────────────────────────────────────────────────────────
+# Config
 DOMAINS = [
     "kubernetes",
     "postgresql",
@@ -143,19 +144,7 @@ _STOPS = {
 API_BASE = "https://openrouter.ai/api/v1"
 
 
-# ── env loading ─────────────────────────────────────────────────────────────
-def _load_dotenv() -> None:
-    env_path = REPO / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, _, v = line.partition("=")
-            os.environ.setdefault(k.strip(), v.strip())
-
-
-_load_dotenv()
+load_dotenv()
 
 try:
     API_KEY = os.environ["OPENROUTER_API_KEY"]
@@ -165,7 +154,7 @@ try:
 except KeyError as e:
     sys.exit(f"Missing env var: {e}. Set it in .env or environment.")
 
-# ── cost tracking ───────────────────────────────────────────────────────────
+# Cost tracking
 _cost_log: list[dict] = []
 
 
@@ -186,7 +175,7 @@ def _total_cost() -> float:
     return sum(float(e.get("cost_usd", 0)) for e in _cost_log)
 
 
-# ── API call with exponential backoff ───────────────────────────────────────
+# API call with exponential backoff
 async def _chat(
     client: httpx.AsyncClient,
     model: str,
@@ -217,7 +206,7 @@ async def _chat(
     raise RuntimeError("unreachable")
 
 
-# ── JSON extraction ─────────────────────────────────────────────────────────
+# JSON extraction
 def _extract_json(text: str) -> dict | list:
     for pat in (
         r"```json\s*([\s\S]+?)\s*```",
@@ -226,11 +215,10 @@ def _extract_json(text: str) -> dict | list:
         m = re.search(pat, text)
         if m:
             return json.loads(m.group(1))
-    # Try raw JSON block (first { or [)
+    # No fenced block: try the longest parseable span from the first { or [
     for start in (text.find("{"), text.find("[")):
         if start == -1:
             continue
-        # Find matching close
         for end in range(len(text), start, -1):
             try:
                 return json.loads(text[start:end])
@@ -239,7 +227,7 @@ def _extract_json(text: str) -> dict | list:
     raise ValueError(f"No JSON in response (first 300 chars): {text[:300]}")
 
 
-# ── lexical gap score ───────────────────────────────────────────────────────
+# Lexical gap score
 def _words(text: str) -> set[str]:
     return {w for w in re.split(r"[\W_]+", text.lower()) if len(w) > 2 and w not in _STOPS}
 
@@ -249,9 +237,7 @@ def lexical_gap_score(query: str, corpus: list[dict], relevant_ids: list[str]) -
     return len(_words(query) & _words(relevant_text))
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# STAGE 1 — Corpus generation
-# ═══════════════════════════════════════════════════════════════════════════
+# Stage 1: corpus generation
 
 _CORPUS_PROMPT = """\
 Сгенерируй ровно {n} технических фактов о {domain} для бенчмарка поиска по памяти.
@@ -297,9 +283,7 @@ async def generate_corpus(client: httpx.AsyncClient) -> list[dict]:
         )
         facts: list[dict] = _extract_json(raw)  # type: ignore[assignment]
         if len(facts) != FACTS_PER_DOMAIN:
-            print(
-                f"    WARNING: expected {FACTS_PER_DOMAIN}, got {len(facts)} — padding/truncating"
-            )
+            print(f"    WARNING: expected {FACTS_PER_DOMAIN}, got {len(facts)} — truncating")
             facts = facts[:FACTS_PER_DOMAIN]
         for j, fact in enumerate(facts):
             fact["id"] = f"f{start_id + j:03d}"
@@ -313,9 +297,7 @@ async def generate_corpus(client: httpx.AsyncClient) -> list[dict]:
     return existing
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# STAGE 2 — Scenario generation
-# ═══════════════════════════════════════════════════════════════════════════
+# Stage 2: scenario generation
 
 _TYPE_GUIDANCE = {
     "lexical_drift": (
@@ -615,7 +597,6 @@ async def generate_scenarios(client: httpx.AsyncClient, corpus: list[dict]) -> l
     used_domains: list[str] = [s["domain"].split("/")[0] for s in existing[-10:]]
     last_mechanism = existing[-1]["meta"]["drift_mechanism"] if existing else ""
 
-    # Build target list
     targets: list[tuple[str, str]] = []
     for stype, count in SCENARIO_PLAN:
         for i in range(1, count + 1):
@@ -652,9 +633,7 @@ async def generate_scenarios(client: httpx.AsyncClient, corpus: list[dict]) -> l
     return existing
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# STAGE 3 — BM25 validation
-# ═══════════════════════════════════════════════════════════════════════════
+# Stage 3: BM25 validation
 
 
 def bm25_validate(corpus: list[dict], scenarios: list[dict]) -> float:
@@ -674,11 +653,6 @@ def bm25_validate(corpus: list[dict], scenarios: list[dict]) -> float:
     return hits / len(scenarios) if scenarios else 0.0
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# MAIN
-# ═══════════════════════════════════════════════════════════════════════════
-
-
 async def main() -> None:
     print(f"Using: GENERATOR={GENERATOR} VERIFIER_1={VERIFIER_1} VERIFIER_2={VERIFIER_2}")
     print(f"Output: {OUT_FILE}")
@@ -695,16 +669,16 @@ async def main() -> None:
 
     print("=== STAGE 3 --- BM25 Validation ===")
     recall = bm25_validate(corpus, scenarios)
-    print(f"BM25 naive Recall@5 (full 400-fact corpus) = {recall:.3f}")
+    print(f"BM25 naive Hit@5 (scenarios with a relevant fact in the top 5) = {recall:.3f}")
     if recall > 0.55:
-        print(f"WARNING: dataset too easy — BM25 Recall@5={recall:.3f} exceeds 0.55 ceiling")
+        print(f"WARNING: dataset too easy — BM25 Hit@5={recall:.3f} exceeds 0.55 ceiling")
         print(
             "         Consider tightening lexical_gap_score thresholds or regenerating easy scenarios."
         )
     elif recall < 0.20:
-        print(f"WARNING: dataset may be too hard — BM25 Recall@5={recall:.3f} below 0.20 floor")
+        print(f"WARNING: dataset may be too hard — BM25 Hit@5={recall:.3f} below 0.20 floor")
     else:
-        print(f"OK: BM25 Recall@5={recall:.3f} in target range [0.20–0.55]")
+        print(f"OK: BM25 Hit@5={recall:.3f} in target range [0.20–0.55]")
     print()
 
     now = datetime.now(UTC).isoformat()
@@ -735,8 +709,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    import sys
-
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(main())
