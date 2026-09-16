@@ -83,6 +83,24 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 ## CI
 
+### 18. (FIXED 2026-09-16) `pytest -m "not integration"` filtered nothing in CI
+
+Until this date no test file set the `unit`/`integration`/`benchmark` markers
+declared in `pyproject.toml`. This meant the CI step `pytest -m "not integration"`
+(`.github/workflows/ci.yml`) did not exclude `tests/integration/*` at all — `testpaths =
+["tests"]` includes both folders, and without markers the condition "not integration" is true for
+any test. In practice CI tried to run all 31 integration tests (which
+need a live Postgres+Redis) without a running `docker compose` — a scenario aggravated by
+a separate finding (Decision 27 in KEY_DECISIONS.md): one of the transport tests
+hangs forever without a database at hand, which with the 10-minute `timeout-minutes` in the workflow
+meant a real risk that CI, on reaching that test, would just hang until the runner
+timeout instead of failing honestly within seconds.
+
+Fixed: added `pytest_collection_modifyitems` in `tests/conftest.py`,
+which sets `unit`/`integration` automatically from the test path. `pytest -m
+"not integration"` now really selects 244/275 (31 deselected) — verified with a live
+collect-only run with exactly the same call that CI uses.
+
 ### 17. CI does not run the integration tests
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) runs only `pytest -m "not integration"` — lint (ruff), types (mypy), unit tests with an 80% coverage gate. `tests/integration/*` require `docker compose up` (Postgres with pgvector+TimescaleDB, Redis) — a non-standard image, not covered by the default GitHub Actions `services:` without a separate custom image. Deliberately not wired up for now — the integration tests are still run manually (`MLMS_INTEGRATION=1 pytest tests/integration -v` with a locally started `docker compose up`).

@@ -29,6 +29,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
     "pytest-benchmark>=4.0",
+    "pytest-timeout>=2.3",
     "mypy>=1.10",
     "ruff>=0.5",
     "rank-bm25>=0.2",
@@ -85,6 +86,14 @@ addopts = [
     "--strict-markers",
     "-v",
 ]
+# signal method: SIGALRM does interrupt threading.Thread.join()'s underlying
+# lock.acquire(timeout=...) — confirmed live. anyio's blocking-portal thread is
+# daemon=True, so an orphaned hung thread from a failed test doesn't block process
+# exit either. thread method would instead os._exit() the whole run on one hung
+# test — worse. See KEY_DECISIONS.md Decision 27 for the hang this guards against
+# (test_legitimate_loopback_origin_is_not_rejected used to hang the suite forever).
+timeout = 30
+timeout_method = "signal"
 markers = [
     "unit: fast, no DB/Redis required",
     "integration: requires docker compose up",

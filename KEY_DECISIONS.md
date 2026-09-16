@@ -71,7 +71,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py` (new).
 
-**See also:** Decision 6.
+**See also:** Decision 6, Decision 27.
 
 ---
 
@@ -261,11 +261,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-16
 
 **Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src` and the unit tests with the coverage gate (`fail_under = 80` in `pyproject.toml`). The integration tests are not run in CI.
 
-**Rationale:** the integration tests need PostgreSQL with pgvector and TimescaleDB plus Redis, and this first CI version does not start them. Without `MLMS_INTEGRATION=1` the tests skip themselves. The workflow also passes `-m "not integration"`, but no test carries that marker yet, so the skip guard is the only thing that excludes them.
+**Rationale:** the integration tests need PostgreSQL with pgvector and TimescaleDB plus Redis, and this first CI version does not start them. Without `MLMS_INTEGRATION=1` the tests skip themselves. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the workflow's `-m "not integration"` deselects the integration tests; the `MLMS_INTEGRATION` guard is a second barrier.
 
 **Consequence:** what only the integration tests cover (pool behavior, conflict flow, filtered session-log search with the HNSW iterative scan from Decision 17) is checked only when someone runs `MLMS_INTEGRATION=1 pytest tests/integration` against `docker compose up`. A green CI run says nothing about those tests. Recorded in `docs/known-issues.md` ("CI does not run integration tests").
 
@@ -275,12 +275,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
 - Actions are pinned to exact tags (`actions/checkout@v7.0.1`, `astral-sh/setup-uv@v10.0.1`), not moving major tags. From v8.0.0 `setup-uv` no longer publishes major or minor tags ([release notes](https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0)); `checkout` is pinned the same way for consistency. A commit SHA would be stricter (the same release notes recommend it) and was not used.
 - `permissions: contents: read` limits the workflow token, `timeout-minutes: 10` stops a hung job, and `ubuntu-24.04` replaces the floating `ubuntu-latest`.
+- A per-test limit of 30 seconds is set in the pytest configuration (Decision 27).
 - A new push to the same pull request cancels its previous run. Runs on push to `main` are grouped per commit and never cancelled.
 - One job on Python 3.11, the lowest version allowed by `requires-python`.
 
-**Affected files:** `.github/workflows/ci.yml`, `docs/known-issues.md`
+**Affected files:** `.github/workflows/ci.yml`, `tests/conftest.py`, `docs/known-issues.md`
 
-**See also:** Decision 17, Decision 20.
+**See also:** Decision 17, Decision 20, Decision 27.
 
 ---
 
@@ -354,7 +355,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-07
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-16
 
 **Bug:** `_LOOPBACK_HOSTS` (`"127.0.0.1"`, `"localhost"`, no scheme) was reused for both `allowed_hosts` and `allowed_origins` in the DNS rebinding protection settings from Decision 4. A `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Comparing a real `Origin` header against the scheme-less list meant no `Origin` header could ever match, including a legitimate loopback one — every request carrying one was rejected with `403`. This went unnoticed because the check only matters for a client that actually sends an `Origin` header — a browser-based web client. A CLI/agent client that omits the header passes anyway, since the SDK treats a missing `Origin` as same-origin (`stdio`, the default transport, never runs this code at all — Decision 4). Found by testing the README hardening checklist below against a live `docker compose` stack, not by reading the SDK source.
 
@@ -372,7 +373,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `README.md`
 
-**See also:** Decision 4, and Decision 23.
+**See also:** Decision 4, Decision 23, and Decision 27.
 
 ---
 
@@ -452,5 +453,28 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `src/mlms/storage/facts.py`, `tests/unit/test_facts.py`, `tests/unit/test_conflict_detection.py`
 
 **See also:** Decision 6.
+
+---
+
+## Decision 27: Global `pytest-timeout` (signal method, 30 s) as a guard against a shutdown hang
+
+**Decided:** 2026-09-16
+
+**Decision:** `pyproject.toml` sets `timeout = 30` and `timeout_method = "signal"` for pytest, and `pytest-timeout` is a dev dependency. A test that hangs now fails after 30 seconds with a traceback instead of blocking the whole run. The hang itself is not fixed.
+
+**The hang:** a test that drives the real ASGI app through `TestClient(mcp.streamable_http_app())` can block forever when its `with` block exits; `test_legitimate_loopback_origin_is_not_rejected` (`tests/unit/test_server_transport_security.py`) does this. Checked with a stack dump of the stuck process and with the library sources (mcp 1.27.2, psycopg_pool 3.3.1, the locked versions):
+- Every MCP session runs `_lifespan()` (`server.py`), and in streamable-http a request without an `mcp-session-id` header starts a new session, so each such request opens its own `AsyncConnectionPool` (`pool-1`, `pool-2`, ... in the logs).
+- On exit `TestClient` stops the anyio portal thread, whose `asyncio.Runner` cancels all remaining tasks once and then waits for them. A pool worker task (`pool-N-worker-0`) that is cancelled while it runs a connection attempt does not end: psycopg_pool catches `asyncio.CancelledError` together with `Exception` (`CLIENT_EXCEPTIONS` in `pool_async.py`), and the worker goes back to waiting on its queue. That one task never finishes, so the wait never returns and the main thread stays in `Thread.join()`.
+- It depends on timing. With Postgres reachable the test hung in 10 of 10 runs (Python 3.11 and 3.12). With nothing listening on the port it hung in 6 of 20 runs (2 of 10 on 3.12, 4 of 10 on 3.11) and passed in about a second otherwise.
+
+**Why `signal`:** per the [pytest-timeout documentation](https://github.com/pytest-dev/pytest-timeout#readme), the `thread` method ends the whole process with `os._exit()` and no teardown, so the first hung test would abort the entire run; `signal` (SIGALRM) interrupts only that test. With Postgres reachable the test failed with `Failed: Timeout (>30.0s)` after about 31 seconds. The anyio portal thread is a daemon thread, so the thread left behind does not keep the interpreter from exiting.
+
+**Consequence:** the limit is global, so any test that runs longer than 30 seconds fails. The unit and integration suites finish in seconds. While the hang exists, `test_legitimate_loopback_origin_is_not_rejected` fails after 30 seconds whenever it hits it. Neither the test nor the shutdown behavior is changed here.
+
+**Alternatives:** patching psycopg_pool or the SDK's lifespan handling: not done, the cause is in library code outside this project.
+
+**Affected files:** `pyproject.toml`, `uv.lock`
+
+**See also:** Decision 3, Decision 19, Decision 22.
 
 ---
