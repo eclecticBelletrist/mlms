@@ -98,7 +98,17 @@ async def upsert_fact(
 
                 await cur.execute(
                     _INSERT_FACT,
-                    (new_id, content, vec_lit, tags, category, project_id, version, now, replaced_id),
+                    (
+                        new_id,
+                        content,
+                        vec_lit,
+                        tags,
+                        category,
+                        project_id,
+                        version,
+                        now,
+                        replaced_id,
+                    ),
                 )
             break
         except psycopg.errors.SerializationFailure:

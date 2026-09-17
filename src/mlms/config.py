@@ -43,9 +43,7 @@ class Settings(BaseSettings):
     @classmethod
     def _check_database_url_scheme(cls, v: str) -> str:
         if not v.startswith("postgresql+psycopg://"):
-            raise ValueError(
-                f"DATABASE_URL must start with 'postgresql+psycopg://', got: {v!r}"
-            )
+            raise ValueError(f"DATABASE_URL must start with 'postgresql+psycopg://', got: {v!r}")
         return v
 
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
