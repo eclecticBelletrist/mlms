@@ -1,6 +1,8 @@
 # MLMS Benchmark — Design Document
 **Purpose:** an internal reference for implementing the module that generates the synthetic dataset `synthetic_100.json` and runs the Recall@5 + latency p99 benchmark.
 
+**Scope of SAR.** Session-Augmented RAG (enriching the query with terms from the session_log before embedding) is implemented and measured only in the A/B runners in `scripts/` (`run_ab_benchmark.py`, `run_hard_ab.py`) — it is a researched technique, not part of the served MCP API. The real tools (`get_facts`, `search_memory` and the rest in `src/mlms/`) embed the bare query, without session augmentation. Everywhere below where SAR is mentioned as part of the system under test, it refers to the experimental runner, not to what an agent gets through `memorize`/`get_facts`/`search_memory` today.
+
 ---
 
 ## 1. Context: what we measure and why
@@ -179,7 +181,7 @@ Contains no role setting. Contains only the task context:
 
 Контекст системы:
 - MLMS хранит факты агента в pgvector (cosine similarity, Qwen3 embeddings)
-- Перед поиском запрос обогащается терминами из session_log (Session-Augmented RAG)
+- In the experimental A/B mode (see `scripts/`) the query is enriched with terms from the session_log (Session-Augmented RAG) before search — the served API does not do this
 - Факты описывают технические решения, конфигурации, предпочтения IT-агента
 - Домены: любой IT-контекст — DevOps, ML, networking, databases, web и т.д.
 
