@@ -254,10 +254,11 @@ on its own, but worth knowing if a "why is my local client getting 421" mystery 
 
 ## Tools
 
-9 tools, registered over MCP `tools/list`:
+10 tools, registered over MCP `tools/list`:
 
 | Tool | Kind | What it does |
 |---|---|---|
+| `create_project` | write | Get or create a project by name — call this first, once per project |
 | `memorize` | write | Store a fact, event, skill, or session_log entry |
 | `get_facts` | read (embeds on `about`) | Retrieve current facts, optional semantic query |
 | `get_timeline` | read | Query timeline events (phases, actions, decisions) |

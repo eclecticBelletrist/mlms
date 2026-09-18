@@ -71,7 +71,7 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 ### 14. No MCP smoke test
 
-9 tools were not checked through a real MCP client (Claude, MCPJam). Only directly from Python.
+10 tools were not checked through a real MCP client (Claude, MCPJam). Only directly from Python.
 
 ### 15. export_project and get_skills are not scoped by project_id
 

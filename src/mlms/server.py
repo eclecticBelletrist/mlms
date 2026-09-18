@@ -21,6 +21,7 @@ from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from pydantic import BeforeValidator, Field
 
 from mlms.config import MEMORY_CONTENT_MAX_LENGTH, pg_dsn, settings
+from mlms.tools.create_project import create_project as _create_project
 from mlms.tools.export_project import export_project as _export_project
 from mlms.tools.get_facts import get_facts as _get_facts
 from mlms.tools.get_session_ctx import get_session_context as _get_session_ctx
@@ -186,6 +187,43 @@ _READ_ONLY_LOCAL = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
 # same as search_memory's fact branch — openWorldHint has to be True on all three or it lies
 # about the two that were missed on the first pass.
 _READ_ONLY_EXTERNAL = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        # get-or-create by name: calling this again with the same name returns the
+        # same project, doesn't create a duplicate.
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
+async def create_project(
+    name: str,
+    ctx: Context[Any, Any, Any],
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Get or create a project by name. Call this first, once per project, before
+    using project_id anywhere else.
+
+    name: stable human-chosen identifier, e.g. "acme-website-redesign". Calling this
+    again later (new chat, same project) with the same name returns the same
+    project_id — you don't need to remember the UUID across sessions, only the name.
+    description: optional, only used on first creation.
+
+    Returns: {"project_id": "<uuid>", "name": "...", "description": "...", "created_at": "..."}
+    Use the returned project_id in every other tool's project_id argument.
+    """
+    app: _AppCtx = ctx.request_context.lifespan_context
+    async with _acquire(app) as conn:
+        p = await _create_project(name=name, description=description, conn=conn)
+    return {
+        "project_id": str(p.id),
+        "name": p.name,
+        "description": p.description,
+        "created_at": p.created_at.isoformat(),
+    }
 
 
 @mcp.tool(

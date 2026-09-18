@@ -100,7 +100,7 @@ Step 8 — `storage/skills.py` (versioning: increment version, never DELETE)
 Step 9 — `tools/memorize.py` (routes to correct storage layer per type)
 Step 10 — `tools/get_*.py` (6 read tools)
 Step 11 — `tools/search_memory.py` (cross-layer search — needs all layers ready)
-Step 12 — `server.py` (register all 9 tools, start MCP server)
+Step 12 — `server.py` (register all 10 tools, start MCP server)
 Step 13 — `tests/` (unit + integration + 100-scenario benchmark)
 
 ---
@@ -111,7 +111,7 @@ Step 13 — `tests/` (unit + integration + 100-scenario benchmark)
 - Physical DELETE on facts — use `is_current=FALSE` (soft delete preserves version history)
 - Conflict detection outside a transaction — race condition, must be atomic
 - Treating `COSINE_CONFLICT_THRESHOLD = 0.96` as immutable — always note it needs calibration
-- Hard-coding tool count, FR count, NFR count — anchors: 9 tools, 8 FR, 5 NFR
+- Hard-coding tool count, FR count, NFR count — anchors: 10 tools, 8 FR, 5 NFR
 - Writing `ALTER TABLE` for new event metadata — use the existing `metadata JSONB` column
 - Comparing vectors from different embedding model outputs — meaningless cosine values
 - Over-commenting — write self-documenting code. Comments only for non-obvious WHY, never for WHAT. No docstrings on obvious functions. No "# Initialize the connection" above connection = connect(). Code should read like written by a developer, not explained to one.
@@ -147,15 +147,15 @@ mlms/
 ├── CLAUDE.md
 ├── docker-compose.yml
 ├── pyproject.toml
-├── alembic/versions/          001–007 migrations
+├── alembic/versions/          001–014 migrations
 ├── src/mlms/
-│   ├── server.py              MCP entry point, 9 tools registered
+│   ├── server.py              MCP entry point, 10 tools registered
 │   ├── config.py              all constants above
 │   ├── embedding.py           API + fallback + cache
-│   ├── storage/               facts, timeline, session_log, session_ctx, skills
+│   ├── storage/               facts, timeline, session_log, session_ctx, skills, projects
 │   └── tools/                 memorize, get_facts, get_timeline, get_session_log,
 │                              get_session_context, get_skills, revert_fact,
-│                              search_memory, export_project
+│                              search_memory, export_project, create_project
 ├── tests/unit/ integration/ fixtures/synthetic_100.json
 └── scripts/seed_test_data.py
 ```
