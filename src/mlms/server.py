@@ -257,11 +257,11 @@ async def memorize(
     metadata by type — copy these templates exactly:
 
     fact:
-      {"project_id": "a1b2c3d4-0000-0000-0000-000000000001"}
+      {"project_id": "<uuid from create_project>"}
       optional: "tags": ["list","of","strings"], "category": "string", "chat_id": "any-string-you-choose"
 
     event:
-      {"project_id": "a1b2c3d4-0000-0000-0000-000000000001",
+      {"project_id": "<uuid from create_project>",
        "title": "Short title under 100 chars",
        "event_type": "phase"}
       event_type values: "phase" | "action" | "decision"
@@ -270,16 +270,16 @@ async def memorize(
     skill:
       {"name": "skill name"}
       optional: "domain": "string", "trigger_conditions": "string",
-                "chat_id": "any-string", "project_id": "a1b2c3d4-0000-0000-0000-000000000001"
+                "chat_id": "any-string", "project_id": "<uuid from create_project>"
 
     session_log:
       {"chat_id": "any-string-you-choose",
        "label": "Short label under 100 chars",
        "type": "topic"}
       type values: "topic"|"decision"|"problem"|"solution"|"insight"|"action"|"source"|"context"|"result"
-      optional: "project_id": "a1b2c3d4-0000-0000-0000-000000000001"
+      optional: "project_id": "<uuid from create_project>"
 
-    NOTE: Never invent project_id UUIDs — always use the one above for demo.
+    NOTE: Never invent project_id UUIDs — call create_project first and use the returned id.
     NOTE: memory_id in the response is server-generated — do not pass it back anywhere.
     Returns: {"ok": true, "memory_id": "<server-generated-id>"}
     """
@@ -305,7 +305,7 @@ async def get_facts(
     """Retrieve current facts from semantic memory.
 
     about: natural-language query for vector search, e.g. "what is the project deadline"
-    project_id: "a1b2c3d4-0000-0000-0000-000000000001" for demo. Omit to search all projects.
+    project_id: uuid from create_project. Omit to search all projects.
     tags: optional list to filter, e.g. ["backend", "auth"]
     limit: max results, default 10
 
@@ -335,7 +335,7 @@ async def get_timeline(
 ) -> list[dict[str, Any]]:
     """Query timeline events (phases, actions, decisions).
 
-    project_id: "a1b2c3d4-0000-0000-0000-000000000001" for demo
+    project_id: uuid from create_project
     time_range: {"start": "2025-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"} — both optional
     event_type: "phase" | "action" | "decision" — optional filter
     limit: default 20
@@ -369,7 +369,7 @@ async def get_session_log(
 
     Mode 2 — cross-session search: provide semantic_query, omit chat_id
       semantic_query: natural-language search, e.g. "authentication decisions"
-      project_id: optional scope — "a1b2c3d4-0000-0000-0000-000000000001"
+      project_id: optional scope — uuid from create_project
       limit: default 50
     """
     app: _AppCtx = ctx.request_context.lifespan_context
@@ -450,7 +450,7 @@ async def search_memory(
 
     query: natural-language search, e.g. "what did we decide about the database"
     filters (optional dict):
-      "project_id": "a1b2c3d4-0000-0000-0000-000000000001"
+      "project_id": uuid from create_project
       "memory_type": "fact" | "event" | "skill"
       "time_range": {"start": "ISO8601", "end": "ISO8601"}
 
