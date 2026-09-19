@@ -272,8 +272,8 @@ on its own, but worth knowing if a "why is my local client getting 421" mystery 
 ## Testing
 
 ```bash
-pytest -m unit                 # fast, no external services
-docker compose up -d && pytest -m integration   # needs Postgres + Redis
+pytest -m unit                                                    # fast, no external services
+docker compose up -d && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
 ```
 
 274 test functions across 26 files, unit + integration + benchmark suites. Coverage gate
