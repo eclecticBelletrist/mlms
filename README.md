@@ -232,21 +232,30 @@ not assumed from reading the SDK source. The Host/Origin check runs before anyth
 the request, on the transport's own route — `/mcp` for `streamable-http`, `/sse` for `sse` —
 not on `/`, so a plain `GET /` won't exercise it. You're only checking the status code, not a
 full MCP handshake, so a non-`421`/`403` code on a "good" request (`406` in local testing) is
-expected and fine — Host and Origin fail with *different* codes:
+expected and fine — Host and Origin fail with *different* codes.
+
+The `docker-compose.yml` `mlms` service binds `0.0.0.0`, which makes `MCP_SHARED_SECRET`
+mandatory (Decision 23) — the shared-secret middleware runs *before* the Host/Origin check
+below it, so every command here needs `Authorization: Bearer <your-secret>` or you'll get a
+blanket `401` regardless of Host/Origin and conclude nothing about the check you're actually
+testing. Testing a bare `MCP_HOST=127.0.0.1` run instead (no secret required there) — drop
+that header:
 
 ```bash
+TOKEN=your-mcp-shared-secret   # only needed if MCP_HOST is non-loopback (e.g. the compose deploy)
+
 # 421 — Host not on the allowlist
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: evil.example.com" http://<your-host>:<mcp-port>/mcp
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: evil.example.com" http://<your-host>:<mcp-port>/mcp
 
 # not 421 (406 in local testing) — Host passed the check
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" http://<your-host>:<mcp-port>/mcp
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" http://<your-host>:<mcp-port>/mcp
 
 # not 403 — a legitimate loopback Origin (with scheme — Origin headers always carry one)
 # should pass, same as sending no Origin at all
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" -H "Origin: http://127.0.0.1" http://<your-host>:<mcp-port>/mcp
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" -H "Origin: http://127.0.0.1" http://<your-host>:<mcp-port>/mcp
 
 # 403 — Origin present and not allowlisted (a different failure code from Host, not 421)
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: 127.0.0.1" -H "Origin: https://evil.example.com" http://<your-host>:<mcp-port>/mcp
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" -H "Origin: https://evil.example.com" http://<your-host>:<mcp-port>/mcp
 ```
 
 The allowlist match is exact and case-sensitive, with no host normalization — only the literal
@@ -269,7 +278,7 @@ on its own, but worth knowing if a "why is my local client getting 421" mystery 
 | `get_session_context` | read | Working memory for a chat session, from Redis |
 | `get_skills` | read | Procedural skills, optional domain filter |
 | `revert_fact` | write | Revert a fact to its previous version (soft, `is_current` flip) |
-| `search_memory` | read (embeds) | Cross-layer search over facts + timeline + skills |
+| `search_memory` | read (embeds unless `memory_type` scopes to event/skill) | Cross-layer search over facts + timeline + skills |
 | `export_project` | read | Export all current facts, timeline events, and skills for a project as JSON |
 
 ## Testing
