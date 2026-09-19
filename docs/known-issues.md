@@ -92,9 +92,9 @@ declared in `pyproject.toml`. This meant the CI step `pytest -m "not integration
 any test. In practice CI tried to run all 31 integration tests (which
 need a live Postgres+Redis) without a running `docker compose` — a scenario aggravated by
 a separate finding (Decision 27 in KEY_DECISIONS.md): one of the transport tests
-hangs forever without a database at hand, which with the 10-minute `timeout-minutes` in the workflow
-meant a real risk that CI, on reaching that test, would just hang until the runner
-timeout instead of failing honestly within seconds.
+may hang on leaving `TestClient` (10 of 10 runs with Postgres reachable, 6 of 20 with nothing
+listening), which with the 10-minute `timeout-minutes` in the workflow meant a real risk that CI,
+on reaching that test, would hang until the runner timeout instead of failing within seconds.
 
 Fixed: added `pytest_collection_modifyitems` in `tests/conftest.py`,
 which sets `unit`/`integration` automatically from the test path. `pytest -m

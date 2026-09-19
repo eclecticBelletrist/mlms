@@ -205,9 +205,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-01
 
-**Decision:** every tool carries `ToolAnnotations`. Read-only tools set only `readOnlyHint=True` and `openWorldHint`, because `destructiveHint` and `idempotentHint` are meaningful only when `readOnlyHint` is false ([MCP schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-06-18/schema.ts)). `memorize` and `revert_fact` set all four fields explicitly: a missing `destructiveHint` defaults to `true` for a tool that is not read-only, and neither tool deletes rows.
+**Last updated:** 2026-09-19 (`create_project` annotations added)
 
-**`openWorldHint`** follows whether a tool can reach the external embedding API, not the tool type. It is `True` for `get_facts` (with `about`), `get_session_log` (with `semantic_query`), `memorize` and `search_memory`, and `False` for `get_timeline`, `get_session_context`, `get_skills`, `revert_fact` and `export_project`. The hint is static per tool, so a tool that calls the API only for some arguments is marked `True`. The schema default is `true`, so the `False` values are the ones that matter.
+**Decision:** every tool carries `ToolAnnotations`. Read-only tools set only `readOnlyHint=True` and `openWorldHint`, because `destructiveHint` and `idempotentHint` are meaningful only when `readOnlyHint` is false ([MCP schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-06-18/schema.ts)). `memorize`, `revert_fact` and `create_project` set all four fields explicitly: a missing `destructiveHint` defaults to `true` for a tool that is not read-only, and none of the three deletes rows. Only `create_project` sets `idempotentHint=True`, because it is get-or-create by name.
+
+**`openWorldHint`** follows whether a tool can reach the external embedding API, not the tool type. It is `True` for `get_facts` (with `about`), `get_session_log` (with `semantic_query`), `memorize` and `search_memory`, and `False` for `get_timeline`, `get_session_context`, `get_skills`, `revert_fact`, `create_project` and `export_project`. The hint is static per tool, so a tool that calls the API only for some arguments is marked `True`. The schema default is `true`, so the `False` values are the ones that matter.
 
 **`revert_fact` hints:**
 - `destructiveHint=False` is a judgment call. No row is deleted (`is_current` is flipped), but for the calling agent a reverted fact disappears from the default `get_facts` and `search_memory` results, which both filter on `is_current=TRUE`.
@@ -355,11 +357,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-07
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-19
 
 **Bug:** `_LOOPBACK_HOSTS` (`"127.0.0.1"`, `"localhost"`, no scheme) was reused for both `allowed_hosts` and `allowed_origins` in the DNS rebinding protection settings from Decision 4. A `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Comparing a real `Origin` header against the scheme-less list meant no `Origin` header could ever match, including a legitimate loopback one — every request carrying one was rejected with `403`. This went unnoticed because the check only matters for a client that actually sends an `Origin` header — a browser-based web client. A CLI/agent client that omits the header passes anyway, since the SDK treats a missing `Origin` as same-origin (`stdio`, the default transport, never runs this code at all — Decision 4). Found by testing the README hardening checklist below against a live `docker compose` stack, not by reading the SDK source.
 
-**Fix:** a separate `_LOOPBACK_ORIGINS` list (`_LOOPBACK_HOSTS` × `http`/`https`) feeds `allowed_origins`; `allowed_hosts` is unchanged. The regression test drives a real HTTP request through `TestClient(mcp.streamable_http_app())` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method.
+**Fix:** a separate `_LOOPBACK_ORIGINS` list (`_LOOPBACK_HOSTS` × `http`/`https`) feeds `allowed_origins`; `allowed_hosts` is unchanged. The regression test drives a real HTTP request through `TestClient` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method. The app under test is a `FastMCP` instance that carries the real server's `transport_security` settings and a no-op lifespan, so the test does not open a database pool (Decision 27).
 
 **README "Homelab/VPS hardening" section** (applies only when `MCP_TRANSPORT` is `sse`/`streamable-http`; `stdio` opens no port):
 - Firewall baseline: set `MCP_HOST=127.0.0.1` explicitly and deny inbound traffic on `MCP_PORT` at the firewall — the allowlist from Decision 4 rejects at the application layer, but the TCP port stays open underneath it.
@@ -460,20 +462,27 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-16
 
-**Decision:** `pyproject.toml` sets `timeout = 30` and `timeout_method = "signal"` for pytest, and `pytest-timeout` is a dev dependency. A test that hangs now fails after 30 seconds with a traceback instead of blocking the whole run. The hang itself is not fixed.
+**Last updated:** 2026-09-19 (test changed)
 
-**The hang:** a test that drives the real ASGI app through `TestClient(mcp.streamable_http_app())` can block forever when its `with` block exits; `test_legitimate_loopback_origin_is_not_rejected` (`tests/unit/test_server_transport_security.py`) does this. Checked with a stack dump of the stuck process and with the library sources (mcp 1.27.2, psycopg_pool 3.3.1, the locked versions):
+**Decision:** `pyproject.toml` sets `timeout = 30` and `timeout_method = "signal"` for pytest, and `pytest-timeout` is a dev dependency. A test that hangs now fails after 30 seconds with a traceback instead of blocking the whole run. The test that hit the hang, `test_legitimate_loopback_origin_is_not_rejected` (`tests/unit/test_server_transport_security.py`), now builds its own `FastMCP` instance with the real server's `transport_security` settings and a no-op lifespan, so it never opens a database pool; the Host and Origin checks it asserts on do not use the database. It passed in 10 of 10 runs with nothing listening. The hang itself, in the pool's shutdown, is not fixed, and `_lifespan()` is unchanged.
+
+**The hang:** a test that drives the real ASGI app through `TestClient(mcp.streamable_http_app())` can block forever when its `with` block exits. No other test does this: the shared-secret tests skip the `with` block, and no integration test uses `TestClient`. Checked with a stack dump of the stuck process and with the library sources (mcp 1.27.2, psycopg_pool 3.3.1, the locked versions):
 - Every MCP session runs `_lifespan()` (`server.py`), and in streamable-http a request without an `mcp-session-id` header starts a new session, so each such request opens its own `AsyncConnectionPool` (`pool-1`, `pool-2`, ... in the logs).
 - On exit `TestClient` stops the anyio portal thread, whose `asyncio.Runner` cancels all remaining tasks once and then waits for them. A pool worker task (`pool-N-worker-0`) that is cancelled while it runs a connection attempt does not end: psycopg_pool catches `asyncio.CancelledError` together with `Exception` (`CLIENT_EXCEPTIONS` in `pool_async.py`), and the worker goes back to waiting on its queue. That one task never finishes, so the wait never returns and the main thread stays in `Thread.join()`.
-- It depends on timing. With Postgres reachable the test hung in 10 of 10 runs (Python 3.11 and 3.12). With nothing listening on the port it hung in 6 of 20 runs (2 of 10 on 3.12, 4 of 10 on 3.11) and passed in about a second otherwise.
+- It depends on timing. With Postgres reachable the old version of the test hung in 10 of 10 runs (Python 3.11 and 3.12). With nothing listening on the port it hung in 6 of 20 runs (2 of 10 on 3.12, 4 of 10 on 3.11) and passed in about a second otherwise. So the hang is not an outage case: it needs only a pool task cancelled in the middle of a connection attempt.
 
-**Why `signal`:** per the [pytest-timeout documentation](https://github.com/pytest-dev/pytest-timeout#readme), the `thread` method ends the whole process with `os._exit()` and no teardown, so the first hung test would abort the entire run; `signal` (SIGALRM) interrupts only that test. With Postgres reachable the test failed with `Failed: Timeout (>30.0s)` after about 31 seconds. The anyio portal thread is a daemon thread, so the thread left behind does not keep the interpreter from exiting.
+**Why `signal`:** per the [pytest-timeout documentation](https://github.com/pytest-dev/pytest-timeout#readme), the `thread` method ends the whole process with `os._exit()` and no teardown, so the first hung test would abort the entire run; `signal` (SIGALRM) interrupts only that test. With Postgres reachable the old version of the test failed with `Failed: Timeout (>30.0s)` after about 31 seconds. The anyio portal thread is a daemon thread, so the thread left behind does not keep the interpreter from exiting.
 
-**Consequence:** the limit is global, so any test that runs longer than 30 seconds fails. The unit and integration suites finish in seconds. While the hang exists, `test_legitimate_loopback_origin_is_not_rejected` fails after 30 seconds whenever it hits it. Neither the test nor the shutdown behavior is changed here.
+**On the running server:** checked on the real app served by uvicorn over streamable-http (mcp 1.27.2, Postgres and Redis in containers), by counting backend connections in `pg_stat_activity` and tasks from `asyncio.all_tasks()` in the server process:
+- Sessions are stateful and have no idle timeout (`session_idle_timeout` is left at the SDK default of none). 20 `initialize` calls without a session header gave 20 sessions, 20 backend connections and about 8 more tasks per session (164 tasks against a baseline of 4), unchanged 30 seconds later. A session that is never ended with `DELETE` keeps its pool and connection; nothing closes it.
+- `DELETE` closes a session's pool cleanly: after ending all 20, connections were back to 0 and tasks to the baseline.
+- A session ended while its pool is in the middle of a connection attempt leaves the worker task behind. With 5 sessions, their connections terminated and Postgres paused, `DELETE` left 5 `pool-N-worker-0` tasks alive for the 58 seconds observed, and they were gone 40 seconds after Postgres was resumed. So on the server an orphan lasts as long as the connection attempt it was in. Whether many orphans pile up under long real traffic was not measured.
+
+**Consequence:** the limit is global, so any test that runs longer than 30 seconds fails. The unit and integration suites finish in seconds. A new test that opens the real lifespan through `TestClient` can hit the hang again; the timeout turns that into a failure after 30 seconds.
 
 **Alternatives:** patching psycopg_pool or the SDK's lifespan handling: not done, the cause is in library code outside this project.
 
-**Affected files:** `pyproject.toml`, `uv.lock`
+**Affected files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
 **See also:** Decision 3, Decision 19, Decision 22.
 
