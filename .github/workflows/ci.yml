@@ -18,6 +18,30 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Images and credentials mirror docker-compose.yml — keep the two in sync.
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_DB: mlms
+          POSTGRES_USER: mlms
+          POSTGRES_PASSWORD: mlms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mlms -d mlms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -40,8 +64,13 @@ jobs:
       - name: mypy
         run: uv run mypy src
 
-      # integration/ requires `docker compose up` (Postgres pgvector+TimescaleDB, Redis) —
-      # not covered by default GitHub Actions `services:` without a custom image, so it's
-      # excluded here and run manually instead. See docs/known-issues.md.
+      - name: alembic upgrade head
+        run: uv run alembic upgrade head
+
       - name: pytest (unit)
-        run: uv run pytest -m "not integration" --cov=src/mlms --cov-report=term-missing
+        run: uv run pytest -m unit --cov=src/mlms --cov-report=term-missing
+
+      - name: pytest (integration)
+        run: uv run pytest -m integration
+        env:
+          MLMS_INTEGRATION: "1"

@@ -97,9 +97,9 @@ listening), which with the 10-minute `timeout-minutes` in the workflow meant a r
 on reaching that test, would hang until the runner timeout instead of failing within seconds.
 
 Fixed: added `pytest_collection_modifyitems` in `tests/conftest.py`,
-which sets `unit`/`integration` automatically from the test path. `pytest -m
-"not integration"` now really selects 244/275 (31 deselected) — verified with a live
-collect-only run with exactly the same call that CI uses.
+which sets `unit`/`integration` automatically from the test path. `pytest -m unit`
+(the call CI uses) now really selects 244/275 (31 deselected) — verified with a live
+collect-only run.
 
 ### 17. CI does not run the integration tests
 
