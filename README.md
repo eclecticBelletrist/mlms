@@ -23,9 +23,12 @@ Storage is Postgres (pgvector + TimescaleDB) for everything durable, Redis for
 session-scoped working memory.
 
 This is built for **self-hosted, single-/few-user use** — one person or a small team
-running their own instance, not a multi-tenant SaaS. There's no auth layer on the HTTP
-transport (see [`KEY_DECISIONS.md`](KEY_DECISIONS.md)) and no per-user isolation; if that
-positioning ever changes, that's a real redesign, not a toggle.
+running their own instance, not a multi-tenant SaaS. The default `stdio` transport has no
+network port and no auth at all. `sse`/`streamable-http` have an optional single
+shared-secret gate (`MCP_SHARED_SECRET`, see "Homelab/VPS hardening" below) — every holder
+gets equal, full read/write access, so this is not per-user auth or isolation in any real
+sense (see [`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 23). If that positioning ever
+changes, that's a real redesign, not a toggle.
 
 It's early-stage. Cosine-similarity conflict detection exists but its threshold isn't
 independently calibrated yet, and there's no forgetting/decay mechanism. Known limitations
