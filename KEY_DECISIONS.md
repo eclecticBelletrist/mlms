@@ -99,7 +99,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-19
 
 **Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha:pg16`, instead of `postgres` plus separately installed extensions.
 
@@ -109,7 +109,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `docker-compose.yml`
 
-**See also:** Decision 20.5 and Decision 21.
+**See also:** Decision 19, Decision 20.5, and Decision 21.
 
 ---
 
@@ -225,7 +225,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-01
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-19
 
 **Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
 
@@ -237,7 +237,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Alternatives:** exact (non-indexed) search on `session_log` avoids approximate-recall loss but gives up the HNSW index chosen in Decision 2. It was not pursued and not measured; it remains an option if approximate misses become visible.
 
-**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1` against the Compose stack)
+**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1`, against the Compose stack or the CI service containers)
 
 **See also:** Decision 2, Decision 19.
 
@@ -259,19 +259,17 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 ---
 
-## Decision 19: CI covers lint, types and unit tests; integration tests stay manual
+## Decision 19: CI covers lint, types, unit tests and integration tests
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-19 (integration tests added to CI)
 
-**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src` and the unit tests with the coverage gate (`fail_under = 80` in `pyproject.toml`). The integration tests are not run in CI.
+**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`) and the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`). Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16`, Decision 5, and `redis:7-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
 
-**Rationale:** the integration tests need PostgreSQL with pgvector and TimescaleDB plus Redis, and this first CI version does not start them. Without `MLMS_INTEGRATION=1` the tests skip themselves. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the workflow's `-m "not integration"` deselects the integration tests; the `MLMS_INTEGRATION` guard is a second barrier.
+**Rationale:** the integration tests cover what unit tests with mocked connections cannot: pool behavior, the conflict flow, and filtered session-log search with the HNSW iterative scan (Decision 17). Run only by hand against `docker compose up`, they left a green CI run saying nothing about those paths. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the two `-m` selections do not overlap. Without `MLMS_INTEGRATION=1` the integration tests skip themselves, which keeps a plain `pytest` run from reaching for a database that is not there.
 
-**Consequence:** what only the integration tests cover (pool behavior, conflict flow, filtered session-log search with the HNSW iterative scan from Decision 17) is checked only when someone runs `MLMS_INTEGRATION=1 pytest tests/integration` against `docker compose up`. A green CI run says nothing about those tests. Recorded in `docs/known-issues.md` ("CI does not run integration tests").
-
-**Alternatives:** starting the `timescaledb-ha` image from Decision 5 and Redis as `services:` containers. It looks feasible and was left for a later step.
+**Consequence:** the coverage gate applies to the unit run only; the integration run passes no `--cov`. The images and credentials exist in both `docker-compose.yml` and `ci.yml`, and no test checks that they agree. The two pytest steps were reproduced locally against the same two images with the workflow's commands: the unit run passed with the coverage gate (244 passed, 31 deselected) and the integration run passed (31 passed, 244 deselected). A run on GitHub Actions itself was not checked.
 
 **Reproducibility and hardening:**
 - `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
@@ -281,9 +279,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - A new push to the same pull request cancels its previous run. Runs on push to `main` are grouped per commit and never cancelled.
 - One job on Python 3.11, the lowest version allowed by `requires-python`.
 
-**Affected files:** `.github/workflows/ci.yml`, `tests/conftest.py`, `docs/known-issues.md`
+**Affected files:** `.github/workflows/ci.yml`, `tests/conftest.py`, `docs/known-issues.md` (the earlier entry about CI not running the integration tests is marked fixed), `README.md` (test commands and CI description)
 
-**See also:** Decision 17, Decision 20, Decision 27.
+**See also:** Decision 5, Decision 17, Decision 20, Decision 27.
 
 ---
 

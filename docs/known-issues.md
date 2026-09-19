@@ -101,9 +101,14 @@ which sets `unit`/`integration` automatically from the test path. `pytest -m uni
 (the call CI uses) now really selects 244/275 (31 deselected) — verified with a live
 collect-only run.
 
-### 17. CI does not run the integration tests
+### 17. (FIXED 2026-09-19) CI does not run the integration tests
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs only `pytest -m "not integration"` — lint (ruff), types (mypy), unit tests with an 80% coverage gate. `tests/integration/*` require `docker compose up` (Postgres with pgvector+TimescaleDB, Redis) — a non-standard image, not covered by the default GitHub Actions `services:` without a separate custom image. Deliberately not wired up for now — the integration tests are still run manually (`MLMS_INTEGRATION=1 pytest tests/integration -v` with a locally started `docker compose up`).
+It was based on a wrong premise: `timescale/timescaledb-ha:pg16` and `redis:7-alpine` are
+ordinary Docker images, `services:` in GitHub Actions accepts any image from a registry, no
+custom image was needed. Fixed: `ci.yml` starts Postgres+Redis as
+`services:` (credentials and images mirror `docker-compose.yml`), runs `alembic upgrade head`,
+then `pytest -m unit` and `MLMS_INTEGRATION=1 pytest -m integration` — all 31 integration
+tests now really run in CI on every push/PR to `main`, not only manually.
 
 ## TODO/FIXME in code
 
