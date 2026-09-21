@@ -288,7 +288,7 @@ pytest -m unit                                                    # fast, no ext
 docker compose up -d && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
 ```
 
-275 test functions across 26 files, unit + integration + benchmark suites. CI
+273 test functions across 26 files, unit + integration + benchmark suites. CI
 (`.github/workflows/ci.yml`) runs lint (ruff), types (mypy), and both the unit and
 integration suites against real Postgres + Redis `services:` containers on every push and
 PR to `main`. Coverage gate (`fail_under = 80`) and strict mypy are enforced there too.
