@@ -1,10 +1,11 @@
 #!/bin/sh
 set -e
 
-# depends_on: condition: service_healthy narrows the race but doesn't close it —
-# pg_isready can report healthy a beat before the server actually accepts every
-# connection. Bounded retry here means we don't lean on the container's restart
-# policy (noisy crash-loop traceback, no cap) to paper over that gap.
+# depends_on: condition: service_healthy doesn't close the race with Postgres: the
+# first `alembic upgrade head` can fail with connection refused although postgres is
+# already marked healthy (cause not established). A bounded retry here means we
+# don't lean on the container's restart policy (noisy crash-loop traceback, no cap)
+# to paper over that gap.
 attempt=0
 max_attempts=10
 until alembic upgrade head; do
