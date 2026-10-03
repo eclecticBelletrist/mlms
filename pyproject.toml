@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "mcp>=1.27.2",  # CVE-2025-66416 (DNS rebinding) + CVE-2026-52869 (session_id hijack on stateful sse/streamable-http) fixes
+    "mcp>=1.27.2,<2",  # CVE-2025-66416 (DNS rebinding) + CVE-2026-52869 (session_id hijack on stateful sse/streamable-http) fixes
     "psycopg[async,binary]>=3.1",  # binary: bundled libpq, no system libpq required
     "psycopg_pool>=3.2",
     "pgvector>=0.3",
