@@ -691,7 +691,7 @@ Additionally: a mandatory self-check (in the rationale field) was added to the g
 
 **Problem.** The original design assumed EMBEDDING_DIM = 4096 (full Qwen3-Embedding-8B) with an HNSW index. pgvector 0.8.2 limits HNSW and IVFFlat to a maximum of 2000 dim for the `vector` type. `halfvec` supports up to 4000 — also less than 4096.
 
-**Decision.** EMBEDDING_DIM = **1536** (Matryoshka truncation of Qwen3-Embedding-8B: 4096 → 1536). Recall loss < 1%. At 1536 dim HNSW is technically possible (2000 > 1536) and is wired into the production migrations (details in `KEY_DECISIONS.md` Decision 2). The latency benchmark (n=10–100 facts) fits within the SLA.
+**Decision.** EMBEDDING_DIM = **1536** (Matryoshka truncation of Qwen3-Embedding-8B: 4096 → 1536). The recall loss from truncation was not measured (`KEY_DECISIONS.md`, Decision 1). At 1536 dim HNSW is technically possible (2000 > 1536) and is wired into the production migrations (details in `KEY_DECISIONS.md` Decision 2). The latency benchmark (n=10–100 facts) fits within the SLA.
 
 ---
 

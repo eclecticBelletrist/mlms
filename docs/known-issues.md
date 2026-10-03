@@ -26,9 +26,9 @@ CLAUDE.md said "7 tools", but there were actually 9: `revert_fact` and `export_p
 
 Two parallel `insert_skill` calls with the same name → two rows with the same `version`. Deliberate: the agent writes one at a time. Fix: advisory lock (FW).
 
-### 5. No HNSW on session_log.embedding
+### 5. (FIXED 2026-05-09) No HNSW on session_log.embedding
 
-Migration 006 added HNSW on `facts.embedding` and `session_log.embedding`. But `KEY_DECISIONS.md` records that IVFFlat was planned first, then a sequential scan. Current state: HNSW exists on both tables.
+With `vector(4096)` neither HNSW nor IVFFlat could be built (pgvector limit of 2000 dim), so there were no indexes. Migration 006, after truncation to 1536, added HNSW on `facts.embedding` and `session_log.embedding`; details in `KEY_DECISIONS.md`, Decision 2.
 
 ### 6. session_log has no UNIQUE constraint
 
@@ -75,31 +75,13 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 ### 15. export_project and get_skills are not scoped by project_id
 
-`export_project`: `SELECT id, name, content, domain, version, created_at FROM skills` — no `WHERE`. An export for a specific `project_id` returns all skills in the system, labelled with the same `project_id` in the top-level JSON — misleading. `get_skills` (`src/mlms/tools/get_skills.py`) does not accept a `project_id` parameter at all — there is no way to select the skills of a specific project through the MCP interface. The root cause and the full architectural rationale are in `KEY_DECISIONS.md`, Decision 24 (`skills` has no `project_id` column in the schema, scoping does not exist architecturally).
+`export_project`: `SELECT id, name, content, domain, version, created_at FROM skills` — no `WHERE`. An export for a specific `project_id` returns all skills in the system, labelled with the same `project_id` in the top-level JSON — misleading. `get_skills` (`src/mlms/tools/get_skills.py`) does not accept a `project_id` parameter at all — there is no way to select the skills of a specific project through the MCP interface. The root cause and the full architectural rationale are in `KEY_DECISIONS.md`, Decision 24 (`skills` has no `project_id` column in the schema, scoping does not exist architecturally). The `skill` layer in `search_memory` (`src/mlms/tools/search_memory.py`) also searches across all skills: `_search_skills` calls `get_skills(search=..., limit=...)` without a project.
 
 ### 16. `get_timeline` cannot return more than `limit` events — the cursor is not wired up
 
 `get_events()` in `storage/timeline.py` implements full keyset pagination `(time, id)`, covered by tests. But the MCP tool `tools/get_timeline.py` does not use it — it bypasses it with its own inline SQL (`ORDER BY time DESC, id DESC LIMIT %s`), without a cursor and without `has_next`. In practice: if `timeline_events` has accumulated more events than `limit`, only the first `limit` by descending time are reachable through the MCP tool, and the rest cannot be reached by any call. Deliberately not wired up for now — it requires changing the tool's response model (`next_cursor` exposed), a risk under publication haste.
 
 ## CI
-
-### 18. (FIXED 2026-09-16) `pytest -m "not integration"` filtered nothing in CI
-
-Until this date no test file set the `unit`/`integration`/`benchmark` markers
-declared in `pyproject.toml`. This meant the CI step `pytest -m "not integration"`
-(`.github/workflows/ci.yml`) did not exclude `tests/integration/*` at all — `testpaths =
-["tests"]` includes both folders, and without markers the condition "not integration" is true for
-any test. In practice CI tried to run all 31 integration tests (which
-need a live Postgres+Redis) without a running `docker compose` — a scenario aggravated by
-a separate finding (Decision 27 in KEY_DECISIONS.md): one of the transport tests
-may hang on leaving `TestClient` (10 of 10 runs with Postgres reachable, 6 of 20 with nothing
-listening), which with the 10-minute `timeout-minutes` in the workflow meant a real risk that CI,
-on reaching that test, would hang until the runner timeout instead of failing within seconds.
-
-Fixed: added `pytest_collection_modifyitems` in `tests/conftest.py`,
-which sets `unit`/`integration` automatically from the test path. `pytest -m unit`
-(the call CI uses) now really selects 244/275 (31 deselected) — verified with a live
-collect-only run.
 
 ### 17. (FIXED 2026-09-19) CI does not run the integration tests
 
@@ -108,7 +90,26 @@ ordinary Docker images, `services:` in GitHub Actions accepts any image from a r
 custom image was needed. Fixed: `ci.yml` starts Postgres+Redis as
 `services:` (credentials and images mirror `docker-compose.yml`), runs `alembic upgrade head`,
 then `pytest -m unit` and `MLMS_INTEGRATION=1 pytest -m integration` — all 31 integration
-tests now really run in CI on every push/PR to `main`, not only manually.
+tests are set up to run in CI on every push/PR to `main`, not only manually. The steps were reproduced
+locally; the run on GitHub Actions itself was not checked (Decision 19).
+
+### 18. (FIXED 2026-09-16) `pytest -m "not integration"` filtered nothing in CI
+
+Until this date no test file set the `unit`/`integration`/`benchmark` markers
+declared in `pyproject.toml`. This meant the CI step `pytest -m "not integration"`
+(`.github/workflows/ci.yml`) did not exclude `tests/integration/*` at all — `testpaths =
+["tests"]` includes both folders, and without markers the condition "not integration" is true for
+any test. In practice CI collected all 31 integration tests together with the unit tests
+(without `MLMS_INTEGRATION=1` they skip themselves, `tests/integration/conftest.py`), and the filter
+by marker excluded nothing. This was aggravated by a separate finding (Decision 27 in KEY_DECISIONS.md): one of the transport tests
+may hang on leaving `TestClient` (10 of 10 runs with Postgres reachable, 6 of 20 with nothing
+listening), which with the 10-minute `timeout-minutes` in the workflow meant a real risk that CI,
+on reaching that test, would hang until the runner timeout instead of failing within seconds.
+
+Fixed: added `pytest_collection_modifyitems` in `tests/conftest.py`,
+which sets `unit`/`integration` automatically from the test path. `pytest -m unit`
+(the call CI uses) now really selects 244/275 (31 deselected) — verified with a live
+collect-only run.
 
 ## TODO/FIXME in code
 
