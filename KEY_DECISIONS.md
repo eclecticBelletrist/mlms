@@ -53,11 +53,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-08-24
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-10-03
 
 **Decision:** the server uses a `psycopg_pool.AsyncConnectionPool` instead of one `AsyncConnection` held for the whole lifespan. Each tool call checks out a connection with `async with pool.connection()`.
 
-**Consequence:** the pool is created per MCP session, not per process. The SDK enters the lifespan in `Server.run` ([`lowlevel/server.py#L657`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L657)), and the streamable-HTTP session manager runs `Server.run` once for every new session ([`streamable_http_manager.py#L299`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/streamable_http_manager.py#L299)); the links are pinned to python-sdk `v1.27.2`, the version in `uv.lock`. Each client session therefore opens its own pool and holds at least one Postgres connection, up to `max_size`. stdio is a single session.
+**Consequence:** the pool is created per MCP session, not per process. The SDK enters the lifespan in `Server.run` ([`lowlevel/server.py#L657`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L657)), and the streamable-HTTP session manager runs `Server.run` once for every new session ([`streamable_http_manager.py#L299`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/streamable_http_manager.py#L299)); the links are pinned to python-sdk `v1.27.2`, the version in `uv.lock`. The `sse` transport works the same way: its handler calls `Server.run` once per SSE connection ([`fastmcp/server.py#L845`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/fastmcp/server.py#L845)). Each client session therefore opens its own pool and holds at least one Postgres connection, up to `max_size`. stdio is a single session.
 
 **Rationale:** psycopg runs queries on one connection one at a time ([psycopg docs, "Concurrent operations"](https://www.psycopg.org/psycopg3/docs/advanced/async.html#concurrent-operations)), and the SDK handles each incoming message in its own task ([`lowlevel/server.py#L678`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L678)). Several tool calls sent at once by one client therefore queue on a single connection. The pool lets them run in parallel. Concurrency is small (one person, a few clients) but real.
 
