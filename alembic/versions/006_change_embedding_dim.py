@@ -42,7 +42,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     raise NotImplementedError(
-        "006 is irreversible: vector(4096) -> vector(1536) is a lossy Matryoshka "
-        "truncation, original dimensions cannot be reconstructed. Restore from a "
-        "pre-006 backup instead of downgrading."
+        "006 has no automatic downgrade: on a database that still had a wider embedding "
+        "column, ALTER COLUMN TYPE vector(1536) fails with 'expected 1536 dimensions, not N' "
+        "unless the vectors are re-embedded first, and the original dimensions cannot be "
+        "reconstructed. On a fresh deploy it only creates the two "
+        "HNSW indexes (facts_embedding_idx, session_log_embedding_idx), which can be "
+        "dropped by hand. Otherwise restore from a pre-006 backup."
     )
