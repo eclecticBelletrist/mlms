@@ -9,12 +9,10 @@ description = "Multi-Layer Memory System — MCP server for persistent LLM agent
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "mcp>=1.27.2,<2",  # CVE-2025-66416 (DNS rebinding) + CVE-2026-52869 (session_id hijack on stateful sse/streamable-http) fixes
-    "psycopg[async,binary]>=3.1",  # binary: bundled libpq, no system libpq required
+    "psycopg[binary]>=3.1",  # binary: bundled libpq, no system libpq required
     "psycopg_pool>=3.2",
-    "pgvector>=0.3",
     "redis[asyncio]>=5.0",
     "alembic>=1.13",
     "sqlalchemy[asyncio]>=2.0",
@@ -28,7 +26,6 @@ dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
-    "pytest-benchmark>=4.0",
     "pytest-timeout>=2.3",
     "mypy>=1.10",
     "ruff>=0.5",
@@ -55,7 +52,6 @@ select = [
 ]
 ignore = [
     "E501",  # line length — handled by formatter
-    "B008",  # FastAPI Depends() in function defaults
 ]
 
 [tool.ruff.lint.isort]
@@ -74,7 +70,7 @@ ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["alembic.*", "pgvector.*"]
+module = ["alembic.*"]
 ignore_errors = true
 
 # ─── Pytest ──────────────────────────────────────────────────────────────────
