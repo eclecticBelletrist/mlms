@@ -12,7 +12,9 @@ services:
     healthcheck:
       # $$ (not ${...}) reads the container's own POSTGRES_USER/POSTGRES_DB set above —
       # a second inline default here would duplicate the "mlms" fallback in two places.
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      # -h 127.0.0.1: on a new volume the image first starts a temporary server that listens
+      # only on the unix socket, then restarts; without -h the check passes against that one.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
