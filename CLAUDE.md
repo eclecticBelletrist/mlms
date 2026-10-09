@@ -147,7 +147,7 @@ mlms/
 ├── CLAUDE.md
 ├── docker-compose.yml
 ├── pyproject.toml
-├── alembic/versions/          001–014 migrations
+├── alembic/versions/          001_initial_schema.py
 ├── src/mlms/
 │   ├── server.py              MCP entry point, 10 tools registered
 │   ├── config.py              all constants above

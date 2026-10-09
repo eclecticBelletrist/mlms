@@ -36,7 +36,7 @@ Hypertable + UNIQUE is a complicated construction in TimescaleDB. The current ve
 
 ### 7. project_id in session_log is nullable
 
-Added in migration 007. Rows that existed before the migration have NULL. The code handles this correctly.
+The column is nullable. The code handles NULL correctly.
 
 ### 8. Benchmarks only on Windows + Docker Desktop
 

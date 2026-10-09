@@ -403,7 +403,7 @@ The script `scripts/measure_latency.py` (`asyncio`, n=100 iterations per operati
 
 p50/p95/p99 metrics via linear interpolation. Results are saved to `scripts/latency_results.json`.
 
-**Note on indexes:** HNSW and IVFFlat are limited to 2000 dim in pgvector 0.8.2; dim=1536 fits within the HNSW limit, and an HNSW index was added on `facts.embedding`/`session_log.embedding` in migration 006 (see `KEY_DECISIONS.md` Decision 2). With n=10 seed facts in the latency benchmark the choice of index does not affect p99.
+**Note on indexes:** HNSW and IVFFlat are limited to 2000 dim in pgvector 0.8.2; dim=1536 fits within the HNSW limit, and an HNSW index was added on `facts.embedding`/`session_log.embedding` in the initial migration (see `KEY_DECISIONS.md` Decision 2). With n=10 seed facts in the latency benchmark the choice of index does not affect p99.
 
 ### 7.3 Cold path (for reference)
 

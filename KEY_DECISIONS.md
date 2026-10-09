@@ -10,7 +10,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-09
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
 
 **Decision:** `EMBEDDING_DIM = 1536` instead of the native 4096 of Qwen3-Embedding-8B.
 
@@ -21,7 +21,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `halfvec(4096)`: the 4000-dimension limit is below 4096.
 - Expression index on a 1536-dimension prefix (`subvector(embedding, 1, 1536)`, documented in the pgvector README for models that support it): a valid option, not chosen. It keeps the full 4096 dimensions in storage (16392 bytes per row versus 6152 at 1536, from the README formula `4 * dimensions + 8`), and every query has to use the same expression to hit the index.
 
-**Affected files:** `alembic/versions/002_create_facts.py` and `alembic/versions/004_create_session_log.py` (the `vector(1536)` column type), `alembic/versions/006_change_embedding_dim.py` (creates the HNSW indexes; its `ALTER COLUMN TYPE` is a no-op on a fresh database)
+**Affected files:** `alembic/versions/001_initial_schema.py` (the `vector(1536)` column type and the HNSW indexes)
 
 **See also:** Decision 2.
 
@@ -31,11 +31,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-09
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
 
 **Decision:** HNSW index on `facts.embedding` and `session_log.embedding`.
 
-**Rationale:** without an ANN index, similarity search is a sequential scan, so its cost grows linearly with table size. The schema initially used `VECTOR(4096)` with no index (the first versions of `002_create_facts.py` and `004_create_session_log.py`). IVFFlat was tried first and hit the same 2000-dimension limit as HNSW, so no ANN index was possible at 4096 dimensions. Truncating to 1536 (Decision 1) removed the limit and allowed the HNSW index.
+**Rationale:** without an ANN index, similarity search is a sequential scan, so its cost grows linearly with table size. The schema initially used `VECTOR(4096)` with no index (the first versions of the `facts` and `session_log` migrations). IVFFlat was tried first and hit the same 2000-dimension limit as HNSW, so no ANN index was possible at 4096 dimensions. Truncating to 1536 (Decision 1) removed the limit and allowed the HNSW index.
 
 **Alternatives:**
 - Sequential scan: exact, but linear cost.
@@ -43,7 +43,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Trade-offs:** HNSW search is approximately logarithmic in table size, at the price of higher memory use and a slower index build. At the expected volume (up to about 100K rows, an estimate rather than a measurement) this is acceptable.
 
-**Affected files:** `alembic/versions/002_create_facts.py`, `alembic/versions/004_create_session_log.py`, `alembic/versions/006_change_embedding_dim.py`, `alembic/versions/013_hnsw_indexes_concurrently.py`
+**Affected files:** `alembic/versions/001_initial_schema.py`
 
 **See also:** Decision 1, Decision 17, Decision 25.
 
@@ -117,13 +117,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-10
 
-**Last updated:** 2026-09-16 (isolation level raised to SERIALIZABLE)
+**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
 
 **Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates. If the connection is already inside a transaction, the `SET` is skipped and the write runs at that transaction's isolation level (Decision 26).
 
 **Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement. The isolation level is raised because at the default `READ COMMITTED` the check and the insert are separate statements, so two concurrent `memorize()` calls with near-identical content both pass the check and both insert an `is_current=TRUE` row. `get_facts` and `search_memory` filter on `is_current=TRUE`, so they would return both versions.
 
-**Verification:** checked by hand, in improvised conditions, not by a repeatable test. A throwaway script (not in the repository) ran two concurrent `upsert_fact` calls with the same embedding, 60 times per case (with and without an existing fact), against `timescale/timescaledb-ha:pg16`, on a `facts` table and HNSW index shaped like migrations 002, 006 and 007. At `READ COMMITTED` both rows stayed `is_current=TRUE` in every trial; at `SERIALIZABLE` exactly one did, and neither writer got an error. No test in the repository covers this: the unit tests mock the connection and check only the order of statements, and the integration tests call `upsert_fact` sequentially.
+**Verification:** checked by hand, in improvised conditions, not by a repeatable test. A throwaway script (not in the repository) ran two concurrent `upsert_fact` calls with the same embedding, 60 times per case (with and without an existing fact), against `timescale/timescaledb-ha:pg16`, on a `facts` table and HNSW index shaped like the ones in the initial migration. At `READ COMMITTED` both rows stayed `is_current=TRUE` in every trial; at `SERIALIZABLE` exactly one did, and neither writer got an error. No test in the repository covers this: the unit tests mock the connection and check only the order of statements, and the integration tests call `upsert_fact` sequentially.
 
 **Known limitation:** the retries are bounded. In the same improvised check, four concurrent writers on an existing fact produced 60 `SerializationFailure` errors over 60 trials (one per trial on average), and every trial still ended with exactly one current row. That is beyond the intended use of one person with a few clients (Decision 3), so there is no backoff and no larger bound. `SerializationFailure` is a subclass of psycopg's `OperationalError`, so `_acquire()` (Decision 3) reports it as the generic "database temporarily unavailable, try again shortly" and logs it as a pool problem.
 
@@ -155,13 +155,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-20
 
-**Last updated:** 2026-09-16 (`is_current` check added)
+**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
 
-**Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column added in migration `007`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that the given fact is the current version and that both versions have the same `project_id`, and refuses otherwise.
+**Decision:** each fact version stores `replaces_id`, a reference to the version it replaced (column `facts.replaces_id`, set on conflict as in Decision 6). `revert_fact()` retires the given fact and restores its predecessor in one transaction, one step back. It first checks that the given fact is the current version and that both versions have the same `project_id`, and refuses otherwise.
 
 **Rationale:** chains are built inside one project, so a mismatch can only come from inconsistent data (a manual edit or a bug). The project check stops a revert from reactivating a fact in another project in that case. The `is_current` check refuses to revert a version that is no longer current: reverting an already replaced version would restore its predecessor while the newer version stays current. Both checks run before the transaction starts, so a concurrent `memorize()` can still change the chain between check and write. The tool takes only `fact_id`, so it does not check that the caller owns the fact.
 
-**Affected files:** `alembic/versions/007_add_project_id_session_log_replaces_id_facts.py`, `src/mlms/tools/revert_fact.py`
+**Affected files:** `alembic/versions/001_initial_schema.py`, `src/mlms/tools/revert_fact.py`
 
 **See also:** Decision 6, Decision 16.
 
@@ -407,9 +407,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
 
-**Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`005_create_skills.py`) created `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`. `export_project` names its section `skills_global`.
+**Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`alembic/versions/001_initial_schema.py`) creates `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`. `export_project` names its section `skills_global`.
 
 **Rationale:** without a column there is nothing to filter on, and adding one would also decide whether skills are per-project or deliberately shared across projects, an open design question. It is left for a deliberate redesign, not a patch.
 
@@ -418,25 +418,27 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Alternatives:**
 - Add a `project_id` column to `skills` in a new migration: a real redesign that needs the per-project-or-global question answered first, not a mechanical edit.
 
-**Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `src/mlms/storage/skills.py`, `alembic/versions/005_create_skills.py`, `docs/known-issues.md`
+**Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `src/mlms/storage/skills.py`, `alembic/versions/001_initial_schema.py`, `docs/known-issues.md`
 
 ---
 
-## Decision 25: Migration 013 rebuilds only `facts_embedding_idx` concurrently
+## Decision 25: HNSW indexes are created with a plain `CREATE INDEX`, `CONCURRENTLY` is not available on `session_log`
 
 **Decided:** 2026-09-16
 
-**Decision:** migration `013` drops and recreates `facts_embedding_idx` with `CREATE INDEX CONCURRENTLY`, inside `autocommit_block()` because `CONCURRENTLY` cannot run in a transaction. `session_log_embedding_idx` is not touched: it stays as migration `006` built it, with a plain `CREATE INDEX` that blocks writes while it builds.
+**Last updated:** 2026-10-09 (rewritten after the migrations were squashed, Decision 28)
 
-**Rationale:** `006` builds both indexes with a plain `CREATE INDEX`, which is harmless on the empty tables of a fresh deploy and blocks writes on a populated one; `013` exists to rebuild the `facts` index without that. `session_log` is a TimescaleDB hypertable (migration `004`), and TimescaleDB does not support `CREATE INDEX CONCURRENTLY` on hypertables ([docs](https://docs.tigerdata.com/api/latest/hypertable/create_index/)). On `timescale/timescaledb-ha:pg16` the statement fails with `FeatureNotSupported`, "hypertables do not support concurrent index creation", whether or not the hypertable has chunks. `facts` is a plain table and rebuilds fine. The limit comes from TimescaleDB, not from pgvector or HNSW.
+**Decision:** the initial migration creates `facts_embedding_idx` and `session_log_embedding_idx` with a plain `CREATE INDEX`. Before the squash, a separate migration rebuilt `facts_embedding_idx` with `CREATE INDEX CONCURRENTLY` inside `autocommit_block()`; it was removed because it had nothing to rebuild on a new database.
 
-**Consequence:** statements inside `autocommit_block()` commit one by one, so the migration is not atomic. A `DROP INDEX CONCURRENTLY` followed by a failing `CREATE INDEX CONCURRENTLY` leaves the index dropped; on the hypertable the index was gone after the failed create. The container entrypoint runs the migrations on every start (Decision 20), so a failing migration also keeps the server from starting. If the `session_log` index ever has to be rebuilt while writes continue, TimescaleDB offers `CREATE INDEX ... WITH (timescaledb.transaction_per_chunk)`, which locks one chunk at a time; in a manual check it accepted an HNSW index on the image above. No migration uses it.
+**Rationale:** the tables are empty when the migration runs, so a build that blocks writes costs nothing. `session_log` is a TimescaleDB hypertable, and TimescaleDB does not support `CREATE INDEX CONCURRENTLY` on hypertables ([docs](https://docs.tigerdata.com/api/latest/hypertable/create_index/)). On `timescale/timescaledb-ha:pg16` the statement fails with `FeatureNotSupported`, "hypertables do not support concurrent index creation", whether or not the hypertable has chunks. `facts` is a plain table and can be rebuilt concurrently. The limit comes from TimescaleDB, not from pgvector or HNSW.
 
-**Alternatives:** `CREATE INDEX CONCURRENTLY` on `session_log` as well: rejected by TimescaleDB, as above.
+**Consequence:** rebuilding either index on a populated database blocks writes while it builds, except for `facts`, where `CREATE INDEX CONCURRENTLY` works outside a migration transaction. If the `session_log` index ever has to be rebuilt while writes continue, TimescaleDB offers `CREATE INDEX ... WITH (timescaledb.transaction_per_chunk)`, which locks one chunk at a time; in a manual check it accepted an HNSW index on the image above. No migration uses it.
 
-**Affected files:** `alembic/versions/006_change_embedding_dim.py`, `alembic/versions/013_hnsw_indexes_concurrently.py`
+**Alternatives:** `CREATE INDEX CONCURRENTLY` on `session_log`: rejected by TimescaleDB, as above.
 
-**See also:** Decision 2, Decision 20.
+**Affected files:** `alembic/versions/001_initial_schema.py`
+
+**See also:** Decision 2, Decision 28.
 
 ---
 
@@ -483,5 +485,25 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Affected files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
 **See also:** Decision 3, Decision 19, Decision 22.
+
+---
+
+## Decision 28: Migrations 001-014 squashed into one initial schema
+
+**Decided:** 2026-10-09
+
+**Decision:** `alembic/versions/` holds a single `001_initial_schema.py` that creates the final schema directly. It replaces the fourteen incremental migrations written during development. Later schema changes are new migrations numbered from `002`.
+
+**Rationale:** nothing had been released, so no database existed that needed an upgrade path, and the incremental chain mostly recorded the development order: a `vector(4096)` first version, an `ALTER COLUMN TYPE` that did nothing on a new database, a concurrent rebuild of an index on an empty table, constraints added one at a time. Keeping it would make every new deployment replay those steps for no benefit, and make the schema harder to read.
+
+**Verification:** the schema built by the old chain and the one built by `001_initial_schema.py` were compared with `pg_dump --schema-only` on `timescale/timescaledb-ha:pg16`. Tables, constraints, indexes and their names are identical. The only difference is column order in `session_log`: `id` is now the first column and `project_id` follows `chat_id`. The code names columns explicitly, so the order does not matter. `alembic downgrade base` followed by `upgrade head` and the integration tests also pass on the new schema.
+
+**Consequence:** a database created by the old chain records one of the revisions `001`-`014`, which no longer match the files, so `alembic upgrade head` fails there. Its schema is the same, so it can keep its data: set `version_num` in the `alembic_version` table to `001`. Recreating the database also works.
+
+**Alternatives:** keeping the fourteen migrations: rejected, there is no upgrade path to protect. Keeping them and adding a squashed baseline next to them: Alembic would still have to replay or skip the old files, which defeats the point.
+
+**Affected files:** `alembic/versions/001_initial_schema.py`
+
+**See also:** Decision 1, Decision 2, Decision 25.
 
 ---
