@@ -64,6 +64,9 @@ jobs:
       - name: mypy
         run: uv run mypy src
 
+      - name: docs consistency
+        run: uv run python scripts/check_docs.py
+
       - name: alembic upgrade head
         run: uv run alembic upgrade head
 
