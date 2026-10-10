@@ -485,7 +485,16 @@ def _require_secret_on_non_loopback_bind(host: str, secret: str | None, transpor
     )
 
 
+def _warn_if_no_embedding_key() -> None:
+    if not settings.embedding_api_key:
+        _log.warning(
+            "EMBEDDING_API_KEY is empty: memorize(), get_facts(about=...) and search_memory() "
+            "will fail with 401 until it is set"
+        )
+
+
 if __name__ == "__main__":
+    _warn_if_no_embedding_key()
     transport = settings.mcp_transport
     if transport in ("sse", "streamable-http"):
         mcp.settings.host = settings.mcp_host
