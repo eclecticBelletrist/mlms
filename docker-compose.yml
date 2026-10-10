@@ -36,6 +36,9 @@ services:
 
   mlms:
     build: .
+    # Not started by a plain `docker compose up`: the stdio setup in the README needs only
+    # postgres and redis. Start it with `docker compose --profile app up -d --build`.
+    profiles: ["app"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,9 +57,11 @@ services:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
       # 0.0.0.0 above is a non-loopback bind — the server refuses to start without this
-      # (Decision 23). No default here on purpose: unlike POSTGRES_PASSWORD above, there
-      # is no safe fallback value for an auth secret.
-      MCP_SHARED_SECRET: ${MCP_SHARED_SECRET:?set MCP_SHARED_SECRET in .env — see README}
+      # (Decision 23) and says so in its log. Empty default on purpose: unlike
+      # POSTGRES_PASSWORD above there is no safe fallback value for an auth secret, and
+      # a required `${...:?}` here would also block `docker compose up` for postgres and
+      # redis alone, because Compose substitutes variables before it applies profiles.
+      MCP_SHARED_SECRET: ${MCP_SHARED_SECRET:-}
     ports:
       - "8000:8000"
     restart: unless-stopped

@@ -96,8 +96,11 @@ auth layer — see the positioning note above before exposing one off `localhost
 
 ## Deployment status
 
-`docker compose up -d --build` now brings up the full stack — Postgres, Redis, and the MLMS
-server itself (`mlms` service), talking to each other over the compose network. The server
+`docker compose --profile app up -d --build` brings up the full stack — Postgres, Redis, and the
+MLMS server itself (`mlms` service), talking to each other over the compose network. A plain
+`docker compose up -d` starts only Postgres and Redis, which is all the `stdio` setup in Quick
+start needs. The `mlms` service refuses to start until `MCP_SHARED_SECRET` is set in `.env` (see
+[`.env.example`](.env.example)); `docker compose logs mlms` shows why. The server
 container runs `alembic upgrade head` before starting, and speaks `streamable-http` on
 `:8000` (a detached container has no stdin to serve `stdio` on — see
 [`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 20). You build the image yourself

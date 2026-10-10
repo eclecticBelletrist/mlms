@@ -289,7 +289,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-04
 
-**Last updated:** 2026-10-09 (healthcheck over TCP, cause of the startup race identified)
+**Last updated:** 2026-10-09 (healthcheck over TCP, cause of the startup race identified; `mlms` service behind the `app` profile)
 
 **Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
 
@@ -301,7 +301,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **`HEALTHCHECK`:** a TCP connect to `MCP_PORT` in Python. The `python:slim` image does not ship `curl`, and the check needs no MCP-specific request. It shows that the port accepts connections, not that the MCP endpoint works. Under Docker Compose the container reaches `healthy`.
 
-**Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `alembic/`, `src/` and `entrypoint.sh` and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose up -d --build`.
+**Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `alembic/`, `src/` and `entrypoint.sh` and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose --profile app up -d --build`.
 
 **Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
 
@@ -381,7 +381,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-08
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-10-09 (compose: `app` profile, empty default for the secret)
 
 **Decision:** the HTTP transport originally had no authentication layer at all — a deliberate choice for single-/few-user, local-by-default use, not an oversight. That posture is unchanged for `stdio` (no network port, so no risk to authenticate against), but does not hold once `sse`/`streamable-http` bind to a non-loopback host (homelab/VPS). A bare ASGI middleware (`_SharedSecretMiddleware`) wraps `sse_app()`/`streamable_http_app()` — rather than replacing `mcp.run()`'s own transport-security wiring, so the loopback allowlist from Decision 4 (built inside those same app factories) stays in effect underneath this new layer — and rejects any `http`-scope request with `401` unless its `Authorization: Bearer <token>` matches `MCP_SHARED_SECRET` via `secrets.compare_digest`. A non-loopback `MCP_HOST` without `MCP_SHARED_SECRET` set now refuses to start (`_require_secret_on_non_loopback_bind`) instead of listening unauthenticated; loopback binds (`127.0.0.1`/`localhost`/`::1`) keep the secret optional.
 
@@ -391,7 +391,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - CVE-2026-52869 ([GHSA-jpw9-pfvf-9f58](https://github.com/advisories/GHSA-jpw9-pfvf-9f58), fixed in `mcp` 1.27.2, raising the floor set by Decision 4) closes a session-hijack gap by tracking each session's owning principal and rejecting a mismatched requester — but only for the SDK's own `BearerAuthBackend`, which sets `scope["user"]`. This project's middleware never sets it, so the SDK's ownership check compares `None != None` and never rejects; the advisory itself says as much ("Deployments using a custom authentication backend other than the built-in `BearerAuthBackend` should enforce an equivalent check themselves"). Accepted rather than fixed: the data model has no per-user isolation to protect regardless (`project_id`/`chat_id` are plain tool arguments, not an identity scope), so a hijacked session exposes nothing a valid secret holder couldn't already reach directly. Multi-user auth, token rotation, per-user scoping and rate limiting are out of scope for the same reason.
 - Confused-deputy/token-passthrough (community discussion [modelcontextprotocol/modelcontextprotocol#1247](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1247)) is out of scope by architecture, not omission: the server holds its own state and never proxies a client's token to a downstream service.
 
-**Consequence:** `docker-compose.yml`'s `mlms` service binds `MCP_HOST=0.0.0.0` (Decision 20) with no default `MCP_SHARED_SECRET` — unlike `POSTGRES_PASSWORD`, there is no safe default for an auth secret — so `docker compose up` now refuses to start until one is set in `.env`. Chosen deliberately over a warning-only migration: no real external user of this path yet. A cross-file test (`tests/unit/test_docker_compose_shared_secret.py`) parses the `mlms` block of `docker-compose.yml` directly (no `pyyaml`, not a declared dependency) and fails if a non-loopback `MCP_HOST` ever ships again without `MCP_SHARED_SECRET` wired through — a drift neither file's own unit tests can see on their own.
+**Consequence:** `docker-compose.yml`'s `mlms` service binds `MCP_HOST=0.0.0.0` (Decision 20) with an empty default for `MCP_SHARED_SECRET` — unlike `POSTGRES_PASSWORD`, there is no safe default for an auth secret — so the container refuses to start until one is set in `.env`. The `mlms` service sits behind the `app` profile, so a plain `docker compose up` (Postgres and Redis for the `stdio` setup) needs no secret. A required `${MCP_SHARED_SECRET:?...}` was tried first and dropped: Compose substitutes variables in the whole file before it applies profiles, so it blocked the infrastructure-only start as well. Chosen deliberately over a warning-only migration: no real external user of this path yet. A cross-file test (`tests/unit/test_docker_compose_shared_secret.py`) parses the `mlms` block of `docker-compose.yml` directly (no `pyyaml`, not a declared dependency) and fails if a non-loopback `MCP_HOST` ever ships again without `MCP_SHARED_SECRET` wired through — a drift neither file's own unit tests can see on their own.
 
 **Alternatives:**
 - SDK `token_verifier`/`AuthSettings`: rejected above.
