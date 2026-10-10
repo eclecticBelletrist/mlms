@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -7,11 +6,11 @@ from psycopg.conninfo import conninfo_to_dict
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mlms.config import pg_dsn
+from mlms.config import pg_dsn, settings
 
 
 def main() -> None:
-    url = pg_dsn(os.environ["DATABASE_URL"])
+    url = pg_dsn(settings.database_url)
     target = conninfo_to_dict(url)
     dbname = target.get("dbname", "")
     print(
