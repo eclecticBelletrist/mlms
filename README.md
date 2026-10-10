@@ -20,12 +20,14 @@ agent never touches the database directly. It stores four kinds of memory:
 - **skills** — procedural memory, versioned, never deleted
 
 Storage is Postgres (pgvector + TimescaleDB) for everything durable, Redis for
-session-scoped working memory.
+session-scoped working memory. Working memory currently stores only `last_activity`; the
+`open_todos`, `active_entities` and `recent_decisions` fields exist, but no tool writes them yet.
 
 This is built for **self-hosted, single-/few-user use** — one person or a small team
 running their own instance, not a multi-tenant SaaS. The default `stdio` transport has no
-network port and no auth at all. `sse`/`streamable-http` have an optional single
-shared-secret gate (`MCP_SHARED_SECRET`, see "Homelab/VPS hardening" below) — every holder
+network port and no auth at all. `sse`/`streamable-http` have a single shared-secret gate
+(`MCP_SHARED_SECRET`; optional on loopback, the server refuses to start without it on any other
+bind, see "Homelab/VPS hardening" below) — every holder
 gets equal, full read/write access, so this is not per-user auth or isolation in any real
 sense (see [`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 23). If that positioning ever
 changes, that's a real redesign, not a toggle.
@@ -60,7 +62,7 @@ git clone <this-repo>
 cd mlms
 
 # infrastructure
-docker compose up -d
+docker compose up -d --wait
 
 # app
 pip install -e ".[dev]"
@@ -91,8 +93,9 @@ connect from Claude Desktop, add to `claude_desktop_config.json`:
 }
 ```
 
-HTTP transports (`sse`, `streamable-http`) are supported via `MCP_TRANSPORT` but have no
-auth layer — see the positioning note above before exposing one off `localhost`.
+HTTP transports (`sse`, `streamable-http`) are supported via `MCP_TRANSPORT` and are protected by
+the optional shared-secret gate — see "Homelab/VPS hardening" below before exposing one off
+`localhost`.
 
 ## Deployment status
 
@@ -110,8 +113,8 @@ That said, this is still a desktop/local setup, not a hardened production one: `
 credentials are now `.env`-driven (`POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` in
 `.env.example`), but the shipped default is still `mlms`/`mlms` — nothing changes out of the
 box, only the ability to change it. `redis` has no authentication at all, hardcoded or
-otherwise. Ports are open on the host. Don't run this as anything but a local instance for
-now.
+otherwise. Ports are open on the host. The defaults are for a local setup; for a homelab or VPS
+follow "Homelab/VPS hardening" below.
 
 ## Backup and restore
 
@@ -136,8 +139,8 @@ docker compose exec -T postgres psql -U mlms -d mlms -c "SELECT timescaledb_post
 docker compose restart mlms
 ```
 
-Skip `-j` on `pg_restore` — parallel restore is known to corrupt TimescaleDB's internal
-catalogs.
+Skip `-j` on `pg_restore` — parallel restore is known to cause foreign-key errors when
+restoring TimescaleDB's catalog tables.
 
 **Redis.** `SAVE` blocks until the snapshot is written, so the file you copy out is always
 complete:
@@ -192,10 +195,10 @@ about — the server refuses to start at all without `MCP_SHARED_SECRET` set, ra
 listening unauthenticated.
 
 This is a single static token: no rotation, no per-user scoping, no rate limiting. It closes the
-gap where anyone who can reach the port gets full read/write access to every memory. Layers 1–3
-above still do the real perimeter work; this only adds a check on top of them.
+gap where anyone who can reach the port gets full read/write access to every memory. Layers 1, 2
+and 3 still do the real perimeter work; this only adds a check on top of them.
 
-Two things it does **not** protect against, worth knowing rather than assuming away:
+Three things it does **not** protect against, worth knowing rather than assuming away:
 
 - **`MCP_HOST=127.0.0.1` inside a container published as `-p 0.0.0.0:8000:8000` (or behind
   any reverse proxy terminating publicly) is network-reachable even though the process binds
@@ -230,8 +233,9 @@ through to `_LOOPBACK_HOSTS` in `src/mlms/server.py` (it feeds both `allowed_hos
 `allowed_origins`), or every request gets `421 Invalid Host Header` — see Decision 4 for why
 that list exists and Decision 22 for why it isn't wired up to an env var.
 
-**Verify it's actually working** — this was run against a real `docker compose up` instance,
-not assumed from reading the SDK source. The Host/Origin check runs before anything else in
+**Verify it's actually working** — this was run against the `mlms` service started with
+`docker compose --profile app up` (Docker 29, rootless and rootful), not assumed from reading
+the SDK source. The Host/Origin check runs before anything else in
 the request, on the transport's own route — `/mcp` for `streamable-http`, `/sse` for `sse` —
 not on `/`, so a plain `GET /` won't exercise it. You're only checking the status code, not a
 full MCP handshake, so a non-`421`/`403` code on a "good" request (`406` in local testing) is
@@ -288,10 +292,10 @@ on its own, but worth knowing if a "why is my local client getting 421" mystery 
 
 ```bash
 pytest -m unit                                                    # fast, no external services
-docker compose up -d && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
+docker compose up -d --wait && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
 ```
 
-273 test functions across 26 files, unit + integration + benchmark suites. CI
+275 test functions across 27 files, unit + integration suites. CI
 (`.github/workflows/ci.yml`) runs lint (ruff), types (mypy), and both the unit and
 integration suites against real Postgres + Redis `services:` containers on every push and
 PR to `main`. Coverage gate (`fail_under = 80`) and strict mypy are enforced there too.

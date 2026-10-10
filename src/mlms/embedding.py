@@ -1,4 +1,5 @@
-"""Qwen3 embedding API with Redis semantic cache and model fallback."""
+"""Qwen3 embedding API with a Redis embedding cache (exact match on text and model) and model
+fallback."""
 
 from __future__ import annotations
 

@@ -67,7 +67,7 @@ Delta=0 on synthetic_100. Qwen3-8B copes without enrichment. Solution: synthetic
 
 ### 13. No local inference for the fallback
 
-`EMBEDDING_FALLBACK = "qwen3-embedding-0.6b"` — 404 on OpenRouter. Meant for Ollama/vLLM. Not implemented.
+`EMBEDDING_FALLBACK = "qwen3-embedding-0.6b"` — 404 on OpenRouter. Meant for Ollama/vLLM. Not implemented. Its native dimension is 1024, below `EMBEDDING_DIM = 1536`, so it cannot be used with the current column (inserts fail with "expected 1536 dimensions") or mixed with 8B vectors until local serving and a dimension strategy exist.
 
 ### 14. No MCP smoke test
 
@@ -117,4 +117,4 @@ There are no direct `TODO`/`FIXME` comments in the code — the project follows 
 
 - `COSINE_CONFLICT_THRESHOLD = 0.96` — calibration starting point, needs independent calibration
 - `_EXACT_ID_RE` in `get_facts.py` — regex that activates FTS, may need extending
-- `search_memory.py` coverage 53% — covered by integration tests
+- `search_memory.py` coverage 56% — covered by integration tests

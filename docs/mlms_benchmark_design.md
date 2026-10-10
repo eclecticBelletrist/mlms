@@ -504,6 +504,8 @@ Recall@5(cross_session) < Recall@5(semantic_drift SAR) — **not a system error*
 | cross_session | 1.000 | 25 |
 | **OVERALL** | **0.990** | **100** |
 
+The result file was not stored; reproduce with `scripts/run_benchmark.py`.
+
 FR-1 target: ≥ 0.80 → **PASS**.
 
 The single miss (`conflict_019`): both conflicting facts stay `is_current=TRUE` because the cosine distance is below the 0.96 threshold — a threshold calibration edge case.
@@ -717,7 +719,7 @@ Additionally: a mandatory self-check (in the rationale field) was added to the g
 
 ### 12.1 Purpose
 
-`tests/fixtures/synthetic_hard.json` was created to prove the SAR effect under conditions where naive retrieval degrades. BM25 naive Recall@5 = 0.118 (the target range [0.20, 0.55] was not reached — the dataset is harder than expected).
+`tests/fixtures/synthetic_hard.json` was created to prove the SAR effect under conditions where naive retrieval degrades. BM25 naive Recall@5 = 0.040 (N=93, see 12.7); the target range [0.20, 0.55] was not reached — the dataset is harder than expected.
 
 ### 12.2 Structure
 
