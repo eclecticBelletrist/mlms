@@ -99,9 +99,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-10-12 (image tags pinned)
 
-**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha:pg16`, instead of `postgres` plus separately installed extensions.
+**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha`, instead of `postgres` plus separately installed extensions. The tag is pinned to `pg16.15-ts2.30.2` (PostgreSQL 16.15, TimescaleDB 2.30.2, pgvector 0.8.7 as checked in that image) so that a new upstream image cannot change the database under an unchanged checkout. `redis` is pinned the same way (`7.4.11-alpine`). Dependabot proposes tag bumps.
 
 **Consequence:** the data directory in this image is `/home/postgres/pgdata/data`, not the stock `/var/lib/postgresql/data`. Switching to another Postgres image means changing the volume mapping too.
 
@@ -263,9 +263,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-09-19 (integration tests added to CI)
+**Last updated:** 2026-10-12 (integration tests added to CI; image tags pinned)
 
-**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`) and the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`). Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16`, Decision 5, and `redis:7-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
+**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`) and the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`). Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16.15-ts2.30.2`, Decision 5, and `redis:7.4.11-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
 
 **Rationale:** the integration tests cover what unit tests with mocked connections cannot: pool behavior, the conflict flow, and filtered session-log search with the HNSW iterative scan (Decision 17). Run only by hand against `docker compose up`, they left a green CI run saying nothing about those paths. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the two `-m` selections do not overlap. Without `MLMS_INTEGRATION=1` the integration tests skip themselves, which keeps a plain `pytest` run from reaching for a database that is not there.
 
@@ -333,7 +333,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-06
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-10-12 (image tags pinned)
 
 **Decision:** the backup/restore guide in README uses `pg_dump -Fc` (custom format) with `timescaledb_pre_restore()` / `pg_restore` / `timescaledb_post_restore()`, not a plain-text dump restored with `psql`. `pg_restore` runs without `-j` (parallel restore).
 
@@ -344,8 +344,8 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Redis:** `SAVE` (not `BGSAVE`) runs synchronously before the file is copied out — simpler to reason about in a manual runbook, at the cost of blocking the server for the duration. `dump.rdb` is safe to copy while Redis keeps running: Redis writes the new snapshot to a temporary file and renames it into place only once it's complete ([Redis persistence docs](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)), so a copy taken mid-write still reads a complete, previous snapshot. `dump.rdb`/`/data` (`dbfilename`/`dir`) were confirmed via `CONFIG GET` against the running container, not assumed from the image defaults. Restore was verified the same way: a deleted `session:{chat_id}` key reappeared with its original content after restoring the snapshot.
 
 **Alternatives:**
-- `redis-cli --rdb <file>` run from the host: rejected because the host's `redis-cli` version can drift from the `redis:7-alpine` version in the container, and the replication protocol used to stream the RDB is version-sensitive.
-- The same command from a matching container (`docker run --network <compose-net> redis:7-alpine redis-cli -h redis --rdb -`) avoids that mismatch and was confirmed to work, but needs the compose network's name; `SAVE` + `docker compose cp` was kept as the shorter default.
+- `redis-cli --rdb <file>` run from the host: rejected because the host's `redis-cli` version can drift from the `redis:7.4.11-alpine` version in the container, and the replication protocol used to stream the RDB is version-sensitive.
+- The same command from a matching container (`docker run --network <compose-net> redis:7.4.11-alpine redis-cli -h redis --rdb -`) avoids that mismatch and was confirmed to work, but needs the compose network's name; `SAVE` + `docker compose cp` was kept as the shorter default.
 
 **Affected files:** `README.md`
 

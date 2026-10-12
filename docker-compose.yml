@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: timescale/timescaledb-ha:pg16
+    image: timescale/timescaledb-ha:pg16.15-ts2.30.2
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mlms}
       POSTGRES_USER: ${POSTGRES_USER:-mlms}
@@ -21,7 +21,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine
     volumes:
       - redis_data:/data
     ports:

@@ -21,7 +21,7 @@ jobs:
     # Images and credentials mirror docker-compose.yml — keep the two in sync.
     services:
       postgres:
-        image: timescale/timescaledb-ha:pg16
+        image: timescale/timescaledb-ha:pg16.15-ts2.30.2
         env:
           POSTGRES_DB: mlms
           POSTGRES_USER: mlms
@@ -34,7 +34,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.11-alpine
         ports:
           - 6379:6379
         options: >-
