@@ -6,7 +6,19 @@ build-backend = "hatchling.build"
 name = "mlms"
 version = "0.1.0"
 description = "Multi-Layer Memory System — MCP server for persistent LLM agent memory"
-license = { text = "Apache-2.0" }
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "eclecticBelletrist" }]
+keywords = ["mcp", "llm", "agent-memory", "pgvector", "timescaledb", "coala"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 requires-python = ">=3.11"
 dependencies = [
     "uvicorn[standard]>=0.30",
