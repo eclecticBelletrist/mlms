@@ -111,6 +111,23 @@ which sets `unit`/`integration` automatically from the test path. `pytest -m uni
 (the call CI uses) now really selects 244/275 (31 deselected) — verified with a live
 collect-only run.
 
+## Search
+
+### 19. Full-text search is hardcoded to the `english` configuration
+
+Two queries use PostgreSQL full-text search with the `english` text search configuration fixed in the SQL: `get_facts` (`src/mlms/tools/get_facts.py`, `to_tsvector('english', content) @@ plainto_tsquery('english', %s)`) and the event layer of `search_memory` (`src/mlms/tools/search_memory.py`, the same pair over `title || ' ' || content`). The configuration decides how text is split into words, which stop words are dropped and how word forms are reduced to a stem. For text that is not English, only the splitting and lower-casing apply.
+
+Measured on PostgreSQL 16.15 (the image used by `docker-compose.yml`):
+
+- Russian word forms are not matched to each other: a document containing `запросы` is not found by the query `запрос`; the `russian` configuration finds it. A document with `файл файлы файла` produces three separate lexemes.
+- An exact Russian word, in any letter case, is found (`кофе` finds `Я люблю кофе`).
+- Russian stop words are not dropped (`я` and `и` stay in the index and in the query). English stop words are dropped, and a query made only of them (`the`) is ignored with a notice, so it matches nothing.
+- English stemming works (`run test` finds `running tests`), and identifiers such as `3f2a-9b1c` and mixed text such as `PostgreSQL` inside Russian prose are found.
+
+Reach: this is the secondary path. Vector search is the main retrieval path and does not depend on the language of the text. In `get_facts` the full-text query runs only when the `about` text looks like an identifier or a version, as decided by `_EXACT_ID_RE`, and its results are appended after the vector results. In `search_memory` it is the only way events are searched (events have no embedding), so for non-English events the keyword match is by exact word form. Skills are searched with `ILIKE` and are not affected.
+
+Not fixed: the fix is either a configurable language per project or a language-agnostic match, and both need a decision about the schema and the query. Until then, non-English content is reliably retrievable by vector search and by exact word form.
+
 ## TODO/FIXME in code
 
 There are no direct `TODO`/`FIXME` comments in the code — the project follows the "no over-commenting" principle. But:
