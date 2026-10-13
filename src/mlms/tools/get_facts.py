@@ -68,19 +68,26 @@ async def get_facts(
         (*cond_params, vec_lit, limit),
     )
     vec_rows: list[dict[str, Any]] = await cur.fetchall()
-    seen: set[Any] = {r["id"] for r in vec_rows}
-    all_rows: list[dict[str, Any]] = list(vec_rows)
 
-    if _EXACT_ID_RE.search(about):
-        await cur.execute(
-            f"SELECT {_COLS} FROM facts WHERE {cond}"
-            " AND to_tsvector('english', content) @@ plainto_tsquery('english', %s)"
-            " LIMIT %s",
-            (*cond_params, about, limit),
-        )
-        for r in await cur.fetchall():
-            if r["id"] not in seen:
-                all_rows.append(r)
-                seen.add(r["id"])
+    if not _EXACT_ID_RE.search(about):
+        return [Fact.model_validate(r) for r in vec_rows]
 
-    return [Fact.model_validate(r) for r in all_rows[:limit]]
+    await cur.execute(
+        f"SELECT {_COLS} FROM facts WHERE {cond}"
+        " AND to_tsvector('english', content) @@ plainto_tsquery('english', %s)"
+        " LIMIT %s",
+        (*cond_params, about, limit),
+    )
+    exact_rows: list[dict[str, Any]] = await cur.fetchall()
+    exact_ids = {r["id"] for r in exact_rows}
+    vec_ids = {r["id"] for r in vec_rows}
+    extra = [r for r in exact_rows if r["id"] not in vec_ids]
+
+    # An exact hit must make the page: it displaces the lowest-ranked vector rows
+    # that are not exact hits themselves.
+    overflow = len(vec_rows) + len(extra) - limit
+    if overflow > 0:
+        dropped = [r["id"] for r in reversed(vec_rows) if r["id"] not in exact_ids][:overflow]
+        vec_rows = [r for r in vec_rows if r["id"] not in dropped]
+
+    return [Fact.model_validate(r) for r in [*vec_rows, *extra]]

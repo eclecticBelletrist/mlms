@@ -38,10 +38,12 @@ async def get_timeline(
         params.append(UUID(project_id))
 
     if time_range is not None:
-        clauses.append("time >= %s")
-        params.append(datetime.fromisoformat(time_range["start"]))
-        clauses.append("time <= %s")
-        params.append(datetime.fromisoformat(time_range["end"]))
+        if "start" in time_range:
+            clauses.append("time >= %s")
+            params.append(datetime.fromisoformat(time_range["start"]))
+        if "end" in time_range:
+            clauses.append("time <= %s")
+            params.append(datetime.fromisoformat(time_range["end"]))
 
     if event_type is not None:
         clauses.append("event_type = %s")

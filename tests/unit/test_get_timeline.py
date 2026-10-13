@@ -71,6 +71,20 @@ class TestGetTimeline:
         datetimes = [p for p in params if isinstance(p, datetime)]
         assert len(datetimes) == 2
 
+    async def test_time_range_start_only(self) -> None:
+        conn, cur = _make_conn([])
+        await get_timeline(time_range={"start": "2024-01-01T00:00:00+00:00"}, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "time >= " in sql
+        assert "time <= " not in sql
+
+    async def test_time_range_end_only(self) -> None:
+        conn, cur = _make_conn([])
+        await get_timeline(time_range={"end": "2024-12-31T23:59:59+00:00"}, conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert "time <= " in sql
+        assert "time >= " not in sql
+
     async def test_limit_in_params(self) -> None:
         conn, cur = _make_conn([])
         await get_timeline(limit=5, conn=conn)

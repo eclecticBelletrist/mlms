@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from mlms.tools.search_memory import MemoryResult, search_memory
+from mlms.tools.search_memory import MemoryResult, _search_events, search_memory
 
 _VEC = [0.1] * 1536
 _P_EMBED = "mlms.tools.search_memory.embed"
@@ -162,3 +163,28 @@ class TestSearchMemoryResults:
                 query="q", filters=None, conn=MagicMock(), redis=MagicMock()
             )
         assert result == []
+
+
+class TestSearchEventsTimeRange:
+    @staticmethod
+    def _conn() -> tuple[Any, MagicMock]:
+        cur: MagicMock = MagicMock()
+        cur.execute = AsyncMock()
+        cur.fetchall = AsyncMock(return_value=[])
+        conn: Any = MagicMock()
+        conn.cursor.return_value = cur
+        return conn, cur
+
+    async def test_start_only(self) -> None:
+        conn, cur = self._conn()
+        await _search_events("q", None, {"start": "2024-01-01T00:00:00+00:00"}, conn, 5)
+        sql: str = cur.execute.call_args[0][0]
+        assert "time >= " in sql
+        assert "time <= " not in sql
+
+    async def test_end_only(self) -> None:
+        conn, cur = self._conn()
+        await _search_events("q", None, {"end": "2024-12-31T23:59:59+00:00"}, conn, 5)
+        sql: str = cur.execute.call_args[0][0]
+        assert "time <= " in sql
+        assert "time >= " not in sql

@@ -116,6 +116,25 @@ class TestGetFactsWithAbout:
             result = await get_facts(about="file.py", conn=conn, redis=MagicMock())
         assert len(result) == 2  # shared_id counted once + duplicate_extra
 
+    async def test_exact_hit_displaces_lowest_ranked_vector_row(self) -> None:
+        vec_rows = [_make_row(content=f"vec {i}") for i in range(3)]
+        exact_row = _make_row(content="release v1.2.3")
+        conn, cur = _make_conn([])
+        cur.fetchall = AsyncMock(side_effect=[vec_rows, [exact_row]])
+        with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)):
+            result = await get_facts(about="v1.2.3", limit=3, conn=conn, redis=MagicMock())
+        assert [f.id for f in result] == [vec_rows[0]["id"], vec_rows[1]["id"], exact_row["id"]]
+
+    async def test_exact_hit_already_in_vector_page_is_not_displaced(self) -> None:
+        vec_rows = [_make_row(content=f"vec {i}") for i in range(3)]
+        last_exact = _make_row(id=vec_rows[2]["id"])
+        other_exact = _make_row(content="other v1.2.3")
+        conn, cur = _make_conn([])
+        cur.fetchall = AsyncMock(side_effect=[vec_rows, [last_exact, other_exact]])
+        with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)):
+            result = await get_facts(about="v1.2.3", limit=3, conn=conn, redis=MagicMock())
+        assert [f.id for f in result] == [vec_rows[0]["id"], vec_rows[2]["id"], other_exact["id"]]
+
     async def test_returns_fact_pydantic_model(self) -> None:
         conn, _ = _make_conn([_make_row()])
         with patch(_P_EMBED, new=AsyncMock(return_value=_VEC)):
