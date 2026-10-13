@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+import pytest
+
 from mlms.storage.facts import FactResult
 from mlms.storage.session_ctx import SessionContext
 from mlms.storage.session_log import SessionInsertResult
@@ -320,6 +322,29 @@ class TestMemorizeSkill:
                 redis=_redis(),
             )
             mock_set.assert_not_called()
+
+    async def test_string_trigger_conditions_rejected(self) -> None:
+        with patch(_P_SKILL, new_callable=AsyncMock) as mock_skill:
+            with pytest.raises(ValueError, match="trigger_conditions must be a JSON object"):
+                await memorize(
+                    content="c",
+                    type="skill",
+                    metadata={"name": "s", "trigger_conditions": "on new session"},
+                    conn=_conn(),
+                    redis=_redis(),
+                )
+            mock_skill.assert_not_called()
+
+    async def test_dict_trigger_conditions_passed_through(self) -> None:
+        with patch(_P_SKILL, new_callable=AsyncMock, return_value=_skill_result()) as mock_skill:
+            await memorize(
+                content="c",
+                type="skill",
+                metadata={"name": "s", "trigger_conditions": {"when": "deploy"}},
+                conn=_conn(),
+                redis=_redis(),
+            )
+            assert mock_skill.call_args.kwargs["trigger_conditions"] == {"when": "deploy"}
 
     async def test_returns_ok_true_and_skill_id(self) -> None:
         with (

@@ -269,7 +269,7 @@ async def memorize(
 
     skill:
       {"name": "skill name"}
-      optional: "domain": "string", "trigger_conditions": "string",
+      optional: "domain": "string", "trigger_conditions": {"when": "short description"},
                 "chat_id": "any-string", "project_id": "<uuid from create_project>"
 
     session_log:

@@ -218,6 +218,18 @@ class TestGetSkills:
         params: tuple[Any, ...] = cur.execute.call_args[0][1]
         assert 3 in params
 
+    async def test_domain_filter_applied_after_latest_version_selection(self) -> None:
+        conn, cur = _make_get_conn([])
+        await get_skills(domain="sql", conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert sql.index("DISTINCT ON") < sql.index("WHERE domain = ")
+
+    async def test_search_filter_applied_after_latest_version_selection(self) -> None:
+        conn, cur = _make_get_conn([])
+        await get_skills(search="index", conn=conn)
+        sql: str = cur.execute.call_args[0][0]
+        assert sql.index("DISTINCT ON") < sql.index("ILIKE")
+
     async def test_no_domain_omits_domain_filter(self) -> None:
         conn, cur = _make_get_conn([])
         await get_skills(conn=conn)

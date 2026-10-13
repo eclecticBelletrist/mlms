@@ -74,11 +74,14 @@ async def memorize(
     elif type == "skill":
         name: str = metadata["name"]
         chat_id = metadata.get("chat_id")
+        trigger_conditions = metadata.get("trigger_conditions")
+        if trigger_conditions is not None and not isinstance(trigger_conditions, dict):
+            raise ValueError("trigger_conditions must be a JSON object")
         skill_result = await insert_skill(
             name=name,
             content=content,
             domain=metadata.get("domain"),
-            trigger_conditions=metadata.get("trigger_conditions"),
+            trigger_conditions=trigger_conditions,
             conn=conn,
         )
         if chat_id:

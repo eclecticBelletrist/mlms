@@ -38,14 +38,17 @@ _INSERT = """
 
 _SELECT_COLS = "id, name, domain, content, trigger_conditions, version, created_at"
 
-# DISTINCT ON + ORDER BY name, version DESC → first row per name = highest version
-_GET_ALL_LATEST = (
-    f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills ORDER BY name, version DESC LIMIT %s"
+# DISTINCT ON + ORDER BY name, version DESC → first row per name = highest version.
+# Domain and text filters run on this latest-per-name set, so an outdated version
+# that matched the filter is never returned in place of a newer one that does not.
+_LATEST_PER_NAME = (
+    f"(SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills ORDER BY name, version DESC) AS latest"
 )
 
+_GET_ALL_LATEST = f"SELECT {_SELECT_COLS} FROM {_LATEST_PER_NAME} ORDER BY name LIMIT %s"
+
 _GET_ALL_LATEST_BY_DOMAIN = (
-    f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills"
-    " WHERE domain = %s ORDER BY name, version DESC LIMIT %s"
+    f"SELECT {_SELECT_COLS} FROM {_LATEST_PER_NAME} WHERE domain = %s ORDER BY name LIMIT %s"
 )
 
 _GET_LATEST_BY_NAME = (
@@ -53,8 +56,8 @@ _GET_LATEST_BY_NAME = (
 )
 
 _GET_ALL_LATEST_BY_SEARCH = (
-    f"SELECT DISTINCT ON (name) {_SELECT_COLS} FROM skills"
-    " WHERE content ILIKE %s OR name ILIKE %s ORDER BY name, version DESC LIMIT %s"
+    f"SELECT {_SELECT_COLS} FROM {_LATEST_PER_NAME}"
+    " WHERE content ILIKE %s OR name ILIKE %s ORDER BY name LIMIT %s"
 )
 
 
