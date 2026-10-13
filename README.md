@@ -98,6 +98,78 @@ HTTP transports (`sse`, `streamable-http`) are supported via `MCP_TRANSPORT` and
 the optional shared-secret gate — see "Homelab/VPS hardening" below before exposing one off
 `localhost`.
 
+## Walkthrough
+
+Once the server is connected to your agent (Quick start above), these calls show what it does. Ask
+the agent to make each call with exactly these arguments. IDs and timestamps in your output will
+differ; outputs below are trimmed to the relevant fields. Steps 2, 3 and 5 embed text, so they need
+a working `EMBEDDING_API_KEY`; without one only events, skills and `get_timeline` work.
+
+**1. Create a project.** Everything else is scoped to the returned `project_id`.
+
+```json
+create_project  {"name": "billing-service", "description": "Billing backend"}
+→ {"project_id": "4b4af135-…", "name": "billing-service", …}
+```
+
+**2. Store a fact and an event** (use your `project_id`).
+
+```json
+memorize  {"content": "Failed webhook deliveries are retried 5 times with exponential backoff.",
+           "type": "fact", "metadata": {"project_id": "<project_id>", "chat_id": "session-1"}}
+→ {"ok": true, "memory_id": "953207f6-…"}
+
+memorize  {"content": "Billing moves from REST polling to webhooks", "type": "event",
+           "metadata": {"project_id": "<project_id>", "title": "Webhooks replace polling",
+                        "event_type": "decision", "chat_id": "session-1"}}
+→ {"ok": true, "memory_id": "2f9f2f14-…"}
+```
+
+**3. Find the fact by meaning, from a new session.** Start a fresh conversation (the agent has
+no memory of step 2) and ask in different words:
+
+```json
+get_facts  {"about": "how many times do we retry failed notifications?", "project_id": "<project_id>"}
+→ [{"content": "Failed webhook deliveries are retried 5 times with exponential backoff.",
+    "version": 1, "is_current": true, …}]
+```
+
+**4. Change the fact.** Store the same statement with a new value:
+
+```json
+memorize  {"content": "Failed webhook deliveries are retried 8 times with exponential backoff.",
+           "type": "fact", "metadata": {"project_id": "<project_id>", "chat_id": "session-2"}}
+→ {"ok": true, "memory_id": "360f7a80-…"}
+
+get_facts  {"about": "how many times do we retry failed notifications?", "project_id": "<project_id>"}
+→ [{"content": "Failed webhook deliveries are retried 8 times with exponential backoff.",
+    "version": 2, "is_current": true, …}]
+```
+
+Only the current version comes back. The old row is retired, not deleted; see it in the database:
+
+```bash
+docker compose exec postgres psql -U mlms -d mlms \
+  -c "select version, is_current, content from facts order by created_at"
+```
+
+Which new facts count as a change to an old one is decided by embedding similarity (at least
+0.96 to a current fact in the same project). That threshold is not calibrated, so two
+differently worded statements about the same thing can both stay current. The MCP tools return
+only the current version of a fact; they do not show history.
+
+**5. Search every layer at once.**
+
+```json
+search_memory  {"query": "webhooks", "filters": {"project_id": "<project_id>"}}
+→ [{"layer": "fact",  "content": "Failed webhook deliveries are retried 8 times with …", …},
+   {"layer": "event", "content": "Billing moves from REST polling to webhooks", …}]
+```
+
+Session-Augmented RAG (enriching a query with the session log before embedding) is a research
+experiment measured in [`docs/mlms_benchmark_design.md`](docs/mlms_benchmark_design.md); it is not
+part of the served tools.
+
 ## Deployment status
 
 `docker compose --profile app up -d --build` brings up the full stack — Postgres, Redis, and the
