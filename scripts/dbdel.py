@@ -13,6 +13,8 @@ def main() -> None:
     url = pg_dsn(settings.database_url)
     target = conninfo_to_dict(url)
     dbname = target.get("dbname", "")
+    if not dbname:
+        sys.exit("DATABASE_URL has no database name")
     print(
         "This deletes all rows from facts, timeline_events, session_log and skills "
         f"in {dbname!r} on {target.get('host', 'localhost')}."

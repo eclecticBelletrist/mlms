@@ -162,7 +162,9 @@ class _SharedSecretMiddleware:
         # valid, and some HTTP client libraries normalize to one or the other).
         scheme, _, rest = auth_header.partition(" ")
         token = rest if scheme.lower() == "bearer" else ""
-        if not token or not secrets.compare_digest(token, self._secret):
+        # bytes, not str: compare_digest raises TypeError on a non-ASCII str, which would
+        # turn a malformed header into a 500 instead of a 401.
+        if not token or not secrets.compare_digest(token.encode("latin-1"), self._secret.encode()):
             await send(
                 {
                     "type": "http.response.start",

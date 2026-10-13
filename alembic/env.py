@@ -10,7 +10,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
-config.set_main_option("sqlalchemy.url", url)
+# ConfigParser treats % as interpolation syntax; a percent-encoded password needs %%
+config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:

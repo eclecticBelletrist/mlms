@@ -33,6 +33,24 @@ def test_wrong_token_rejected() -> None:
     assert resp.status_code == 401
 
 
+def test_non_ascii_token_rejected_with_401_not_500() -> None:
+    sent: list[dict[str, object]] = []
+
+    async def run() -> None:
+        async def receive() -> dict[str, str]:
+            return {"type": "http.request"}
+
+        async def send(message: dict[str, object]) -> None:
+            sent.append(message)
+
+        app = _SharedSecretMiddleware(_ok_app, "s3cr3t")
+        scope = {"type": "http", "headers": [(b"authorization", b"Bearer \xff")]}
+        await app(scope, receive, send)
+
+    anyio.run(run)
+    assert sent[0]["status"] == 401
+
+
 def test_correct_token_passes_through_to_inner_app() -> None:
     client = TestClient(_SharedSecretMiddleware(_ok_app, "s3cr3t"))
     resp = client.get("/anything", headers={"Authorization": "Bearer s3cr3t"})

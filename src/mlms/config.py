@@ -25,9 +25,6 @@ PRECISION_AT_5_TARGET: Final[float] = 0.80
 # for English): 10000 chars is about 6700 tokens, within the max_length = 8192 of the
 # model cards' usage examples. See Decision 15.
 MEMORY_CONTENT_MAX_LENGTH: Final[int] = 10_000
-# Soft guidance only (not enforced) — atomic facts retrieve more precisely than
-# long composite ones; see memorize()'s docstring.
-MEMORY_CONTENT_RECOMMENDED_LENGTH: Final[int] = 500
 
 
 class Settings(BaseSettings):
@@ -35,6 +32,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     database_url: str = "postgresql+psycopg://mlms:mlms@localhost:5432/mlms"
@@ -44,7 +42,7 @@ class Settings(BaseSettings):
     @classmethod
     def _check_database_url_scheme(cls, v: str) -> str:
         if not v.startswith("postgresql+psycopg://"):
-            raise ValueError(f"DATABASE_URL must start with 'postgresql+psycopg://', got: {v!r}")
+            raise ValueError("DATABASE_URL must start with 'postgresql+psycopg://'")
         return v
 
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
