@@ -99,6 +99,9 @@ async def embed(text: str, redis: Redis) -> list[float]:
             logger.debug("embedding cache hit (%s)", label)
             return cast(list[float], json.loads(cached))
 
+        if not settings.embedding_api_key:
+            raise RuntimeError("EMBEDDING_API_KEY is not set")
+
         try:
             vec = _truncate_normalize(await _call_api(text, model))
             await redis.setex(key, _CACHE_TTL, json.dumps(vec))

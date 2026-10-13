@@ -490,8 +490,8 @@ def _require_secret_on_non_loopback_bind(host: str, secret: str | None, transpor
 def _warn_if_no_embedding_key() -> None:
     if not settings.embedding_api_key:
         _log.warning(
-            "EMBEDDING_API_KEY is empty: memorize(), get_facts(about=...) and search_memory() "
-            "will fail with 401 until it is set"
+            "EMBEDDING_API_KEY is empty: storing facts and session_log entries and searching "
+            "by meaning will fail until it is set"
         )
 
 

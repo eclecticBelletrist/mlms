@@ -9,8 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from mlms.config import EMBEDDING_DIM, EMBEDDING_FALLBACK, EMBEDDING_MODEL
+from mlms.config import EMBEDDING_DIM, EMBEDDING_FALLBACK, EMBEDDING_MODEL, settings
 from mlms.embedding import _cache_key, _call_api, _retry_wait, _truncate_normalize, embed
+
+
+@pytest.fixture(autouse=True)
+def _api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "embedding_api_key", "test-key")
 
 
 @pytest.fixture
@@ -86,6 +91,24 @@ class TestEmbed:
         redis.setex.assert_called_once()
         cache_key_used = redis.setex.call_args[0][0]
         assert cache_key_used == _cache_key("hello", EMBEDDING_MODEL)
+
+    async def test_empty_api_key_fails_fast_on_cache_miss(
+        self, redis: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "embedding_api_key", "")
+        with (
+            patch("mlms.embedding._call_api", new=AsyncMock()) as api,
+            pytest.raises(RuntimeError, match="EMBEDDING_API_KEY is not set"),
+        ):
+            await embed("hello", redis)
+        api.assert_not_called()
+
+    async def test_empty_api_key_still_serves_cache_hit(
+        self, redis: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "embedding_api_key", "")
+        redis.get = AsyncMock(return_value=json.dumps([0.5] * EMBEDDING_DIM))
+        assert await embed("hello", redis) == [0.5] * EMBEDDING_DIM
 
     async def test_fallback_called_on_primary_timeout(self, redis: AsyncMock) -> None:
         fallback_raw = [0.5] * EMBEDDING_DIM
