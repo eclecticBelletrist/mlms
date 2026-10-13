@@ -14,6 +14,7 @@ import psycopg
 import psycopg.rows
 import pytest
 
+from mlms.config import REDIS_KEY_PATTERN
 from mlms.storage.facts import upsert_fact
 from mlms.tools.get_facts import get_facts
 
@@ -30,11 +31,13 @@ _VEC_LIT = "[" + ",".join(str(x) for x in _VEC_A) + "]"
 async def test_facts_survive_redis_expire(
     pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID, rd: Any
 ) -> None:
-    """PostgreSQL is the durable store — Redis flush must not lose any facts."""
+    """PostgreSQL is the durable store — an expired session key must not lose any facts."""
     await upsert_fact(content="durable fact", project_id=project_id, embedding_vec=_VEC_A, conn=pg)
 
-    # Simulate all Redis keys expiring
-    await rd.flushdb()
+    # Only this test's own key: a flush would also wipe the sessions of a running app
+    session_key = REDIS_KEY_PATTERN.format(chat_id=f"liminal-{uuid.uuid4()}")
+    await rd.hset(session_key, "project_id", str(project_id))
+    await rd.delete(session_key)
 
     # Non-semantic query: bypasses embed() entirely, reads straight from PostgreSQL
     facts = await get_facts(project_id=str(project_id), conn=pg, redis=rd)
