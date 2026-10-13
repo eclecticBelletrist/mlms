@@ -1,8 +1,59 @@
-# Key Architectural Decisions — MLMS
+# Key architectural decisions
 
 Each entry records what was decided, why, and which alternatives were rejected.
 
-Dates are the days the decisions were made. Commit history before 2026-08 was reconstructed afterwards, so early dates are approximate. Entry numbers are stable identifiers, not chronological order; gaps are intentional.
+Dates are the days the decisions were made. Commit history before 2026-08 was reconstructed, so the early dates are approximate. Entry numbers are stable identifiers, not chronological order; numbers that are missing belong to entries that were merged into others or removed.
+
+| # | Decision |
+|---|---|
+| 29 | Postgres (pgvector, TimescaleDB) for durable memory, Redis for working memory |
+| 1 | Embeddings truncated to 1536 dimensions |
+| 2 | HNSW index on the embedding columns |
+| 3 | Connection pool instead of one shared connection |
+| 4 | DNS rebinding protection, loopback-only allowlist |
+| 5 | One `timescaledb-ha` image for Postgres |
+| 6 | Conflict detection by cosine distance in a SERIALIZABLE transaction |
+| 9 | `MCP_TRANSPORT` switch between stdio and HTTP |
+| 10 | `revert_fact` follows the `replaces_id` chain |
+| 14 | Keyset pagination on `(time, id)` |
+| 15 | `memorize` content limit: hard 10,000 characters, soft 500 |
+| 16 | MCP tool annotations |
+| 17 | Filters in SQL before `LIMIT`, HNSW iterative scan |
+| 18 | `psycopg[binary]`, no `types-redis` stub |
+| 19 | CI: lint, types, unit and integration tests, image build |
+| 20 | Container: install from `uv.lock`, HTTP transport, migrations on start |
+| 20.5 | Postgres credentials from `.env`, Redis unauthenticated |
+| 21 | Backup and restore with custom-format `pg_dump`, no `-j` |
+| 22 | Separate Origin allowlist with schemes |
+| 23 | Shared-secret gate for the HTTP transports |
+| 24 | `skills` are global |
+| 25 | Plain `CREATE INDEX` for the HNSW indexes |
+| 26 | No SERIALIZABLE `SET` on a connection already in a transaction |
+| 27 | Global `pytest-timeout` against a shutdown hang |
+| 28 | Migrations squashed into one initial schema |
+
+---
+
+## Decision 29: Postgres with pgvector and TimescaleDB for durable memory, Redis for working memory
+
+**Decided:** 2026-05-08
+
+**Decision:** facts, timeline events, the session log and skills live in one PostgreSQL database. Vectors are stored in it with pgvector, and `timeline_events` and `session_log` are TimescaleDB hypertables. The working memory of a chat (`session:{chat_id}`) is a Redis hash with a 48-hour TTL that is renewed on every access.
+
+**Rationale:**
+- Conflict detection (Decision 6) reads the nearest current fact by vector and then retires it and inserts the new version. With vectors and rows in one database this is one transaction; with a separate vector store the two writes could diverge.
+- One database means one backup and one restore procedure (Decision 21) and one place where a project's data can be exported.
+- Timeline and session-log reads are time-range queries over append-only rows, the workload hypertables are partitioned for. At the current data volume the gain over a plain table has not been measured.
+- Working memory is small, per chat and short-lived. A Redis hash gives sub-millisecond reads (the target for `get_session_context` is 5 ms) and expiry without a cleanup job. It is treated as a best-effort cache: the durable record of what happened in a chat is `session_log` in Postgres.
+
+**Alternatives:**
+- A dedicated vector database next to Postgres: a second service to run and back up, and no transaction across the vector lookup and the version write.
+- Plain Postgres tables instead of hypertables: workable at small volume; TimescaleDB was chosen for the time-range workload, and its image also ships pgvector (Decision 5).
+- Working memory in a Postgres table: needs its own expiry job and adds a database round-trip to every read.
+
+**Affected files:** `docker-compose.yml`, `alembic/versions/001_initial_schema.py`, `src/mlms/storage/`
+
+**See also:** Decision 5, Decision 6, Decision 21.
 
 ---
 
@@ -14,14 +65,14 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** `EMBEDDING_DIM = 1536` instead of the native 4096 of Qwen3-Embedding-8B.
 
-**Rationale:** pgvector 0.8.2 limits HNSW and IVFFlat indexes on `vector` to 2000 dimensions, and `halfvec` to 4000 ([pgvector README](https://github.com/pgvector/pgvector)). Neither fits 4096. Qwen3-Embedding-8B supports Matryoshka Representation Learning with output dimensions from 32 to 4096 ([model card](https://huggingface.co/Qwen/Qwen3-Embedding-8B); technique: [Kusupati et al., 2022](https://arxiv.org/abs/2205.13147)), so its vectors can be truncated to a prefix with a limited loss of quality. Truncating to 1536 brings the column under the 2000-dimension limit and makes an HNSW index possible (see Decision 2). The recall loss from truncation has not been measured in this project.
+**Rationale:** pgvector (0.8.7 in the pinned image, Decision 5) limits HNSW and IVFFlat indexes on `vector` to 2000 dimensions, and `halfvec` to 4000 ([pgvector README](https://github.com/pgvector/pgvector)). Neither fits 4096. Qwen3-Embedding-8B supports Matryoshka Representation Learning with output dimensions from 32 to 4096 ([model card](https://huggingface.co/Qwen/Qwen3-Embedding-8B); technique: [Kusupati et al., 2022](https://arxiv.org/abs/2205.13147)), so its vectors can be truncated to a prefix with a limited loss of quality. Truncating to 1536 brings the column under the 2000-dimension limit and makes an HNSW index possible (see Decision 2). The API request asks for 1536 dimensions, and `embedding.py` truncates any longer vector and L2-normalizes it. The recall loss from truncation has not been measured in this project. The choice is expensive to undo: the full vectors are not stored, so changing the dimension means re-embedding every fact.
 
 **Alternatives:**
 - Sequential scan with no index on `vector(4096)`: exact (recall 100%), but query cost grows linearly with table size.
 - `halfvec(4096)`: the 4000-dimension limit is below 4096.
 - Expression index on a 1536-dimension prefix (`subvector(embedding, 1, 1536)`, documented in the pgvector README for models that support it): a valid option, not chosen. It keeps the full 4096 dimensions in storage (16392 bytes per row versus 6152 at 1536, from the README formula `4 * dimensions + 8`), and every query has to use the same expression to hit the index.
 
-**Affected files:** `alembic/versions/001_initial_schema.py` (the `vector(1536)` column type and the HNSW indexes)
+**Affected files:** `alembic/versions/001_initial_schema.py` (the `vector(1536)` column type and the HNSW indexes), `src/mlms/config.py`, `src/mlms/embedding.py`
 
 **See also:** Decision 2.
 
@@ -35,7 +86,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** HNSW index on `facts.embedding` and `session_log.embedding`.
 
-**Rationale:** without an ANN index, similarity search is a sequential scan, so its cost grows linearly with table size. The schema initially used `VECTOR(4096)` with no index (the first versions of the `facts` and `session_log` migrations). IVFFlat was tried first and hit the same 2000-dimension limit as HNSW, so no ANN index was possible at 4096 dimensions. Truncating to 1536 (Decision 1) removed the limit and allowed the HNSW index.
+**Rationale:** without an ANN index, similarity search is a sequential scan, so its cost grows linearly with table size. At the native 4096 dimensions neither HNSW nor IVFFlat can be built (both are limited to 2000), so truncating to 1536 (Decision 1) is what makes the index possible.
 
 **Alternatives:**
 - Sequential scan: exact, but linear cost.
@@ -57,19 +108,21 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** the server uses a `psycopg_pool.AsyncConnectionPool` instead of one `AsyncConnection` held for the whole lifespan. Each tool call checks out a connection with `async with pool.connection()`.
 
-**Consequence:** the pool is created per MCP session, not per process. The SDK enters the lifespan in `Server.run` ([`lowlevel/server.py#L657`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L657)), and the streamable-HTTP session manager runs `Server.run` once for every new session ([`streamable_http_manager.py#L299`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/streamable_http_manager.py#L299)); the links are pinned to python-sdk `v1.27.2`, the version in `uv.lock`. The `sse` transport works the same way: its handler calls `Server.run` once per SSE connection ([`fastmcp/server.py#L845`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/fastmcp/server.py#L845)). Each client session therefore opens its own pool and holds at least one Postgres connection, up to `max_size`. stdio is a single session.
+**Consequence:** the pool is created per MCP session, not per process. The SDK enters the lifespan in `Server.run` ([`lowlevel/server.py#L657`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L657)), and the streamable-HTTP session manager runs `Server.run` once for every new session ([`streamable_http_manager.py#L299`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/streamable_http_manager.py#L299)); the links are pinned to python-sdk `v1.27.2`, the version in `uv.lock`. The `sse` transport works the same way: its handler calls `Server.run` once per SSE connection ([`fastmcp/server.py#L845`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/fastmcp/server.py#L845)). Each client session therefore opens its own pool and holds at least one Postgres connection, up to `max_size`. stdio is a single session. Over HTTP, a session that the client never ends with `DELETE` keeps its pool open, because the SDK sets no idle timeout (measured in Decision 27: 20 such sessions held 20 connections), so the number of connections has no fixed bound.
 
 **Rationale:** psycopg runs queries on one connection one at a time ([psycopg docs, "Concurrent operations"](https://www.psycopg.org/psycopg3/docs/advanced/async.html#concurrent-operations)), and the SDK handles each incoming message in its own task ([`lowlevel/server.py#L678`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.27.2/src/mcp/server/lowlevel/server.py#L678)). Several tool calls sent at once by one client therefore queue on a single connection. The pool lets them run in parallel. Concurrency is small (one person, a few clients) but real.
 
 **Configuration** (`server.py`):
-- `min_size=1, max_size=5` per pool, sized for one person's clients, not for multi-tenant traffic.
+- `min_size=1, max_size=5` per pool, sized for one person's clients.
 - No `check=AsyncConnectionPool.check_connection`: a psycopg discussion reports `PoolTimeout` when it is combined with background tasks ([psycopg #985](https://github.com/psycopg/psycopg/discussions/985)). Connections are recycled passively with `max_lifetime=3600, max_idle=300`.
-- `pool.open(wait=True, timeout=10)`. By default the pool accepts clients before `min_size` connections are ready ([psycopg_pool docs](https://www.psycopg.org/psycopg3/docs/advanced/pool.html#pool-startup-check)), so an unreachable database would give a "healthy" start and fail only on the first tool call. The old single `connect()` failed at startup, and `wait=True` keeps that.
-- `PoolTimeout` and `OperationalError` are caught in `_acquire()` and raised as a short `PoolUnavailable` message with no stack trace; `pool.get_stats()` is logged.
+- `pool.open(wait=True, timeout=10)`. By default the pool accepts clients before `min_size` connections are ready ([psycopg_pool docs](https://www.psycopg.org/psycopg3/docs/advanced/pool.html#pool-startup-check)), so an unreachable database would give a "healthy" start and fail only on the first tool call. With `wait=True` the server fails at startup instead.
+- `PoolTimeout` and `OperationalError` are caught in `_acquire()` and raised as a short `PoolUnavailable` message; the log line carries `pool.get_stats()` and no stack trace.
 
-**Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. Within one session, the single connection used to serialize the database part of tool calls, which made this race unlikely. The pool removes that serialization, so two overlapping `memorize()` calls with the same `chat_id` in one session can now overwrite each other's session-context write. Calls from different sessions never shared a connection, so for devices on separate sessions the race existed before the pool. Currently `_refresh_redis()` is the only code that writes the hash and the only field it changes is `last_activity`, so the practical loss is a slightly older timestamp; the race would start losing real data if another code path began writing `open_todos`, `active_entities` or `recent_decisions`. The cause is the read-modify-write on one Redis hash, not a mismatch between Postgres and Redis. Redis working memory is treated as a best-effort cache, not a source of truth, so this is left unfixed; recorded in `docs/known-issues.md` (#9).
+**Alternative not taken:** one pool per process, created outside the SDK lifespan and shared by all sessions. It would bound the connections whatever the number of sessions. It is not implemented; the per-session pool is recorded in `docs/known-issues.md` (#17).
 
-**Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py` (new).
+**Known issue, not fixed here:** `_refresh_redis()` in `memorize.py` does a non-atomic HGETALL → mutate → HSET on the session hash. With the pool, two overlapping `memorize()` calls with the same `chat_id` can overwrite each other's session-context write, within one session as well as across sessions. Currently `_refresh_redis()` is the only code that writes the hash and the only field it changes is `last_activity`, so the practical loss is a slightly older timestamp; the race would start losing real data if another code path began writing `open_todos`, `active_entities` or `recent_decisions`. Redis working memory is treated as a best-effort cache, so this is left unfixed; recorded in `docs/known-issues.md` (#7).
+
+**Affected files:** `src/mlms/server.py` (`_AppCtx`, `_lifespan`, `_acquire`), `pyproject.toml` (added `psycopg_pool>=3.2`), `tests/integration/test_pool.py`.
 
 **See also:** Decision 6, Decision 27.
 
@@ -81,13 +134,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-10-03 (upper bound `<2` added)
 
-**Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` and `allowed_origins` limited to loopback (`localhost`, `127.0.0.1`), and raise the dependency floor to `mcp>=1.23.0` (later raised to `mcp>=1.27.2`, see Decision 23).
+**Decision:** enable DNS rebinding protection explicitly for the HTTP transports, with `allowed_hosts` limited to loopback (`localhost` and `127.0.0.1`, with or without a port) and `allowed_origins` to the same hosts with a scheme (Decision 22), and raise the dependency floor to `mcp>=1.23.0` (later raised to `mcp>=1.27.2`, see Decision 23).
 
 **Rationale:** CVE-2025-66416 ([GHSA-9h52-p55h-vw2f](https://github.com/advisories/GHSA-9h52-p55h-vw2f)): the MCP Python SDK did not enable DNS rebinding protection by default (fixed in 1.23.0). It affects only `sse` and `streamable-http`; the default `stdio` transport opens no network port. The SDK now enables the protection automatically, but only when the host is `127.0.0.1`, `localhost` or `::1` ([`fastmcp/server.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/fastmcp/server.py)). MLMS defaults `mcp_host` to `0.0.0.0`, so the setting has to be explicit. `allowed_origins` is required too, because the SDK validates `Origin` inside the same gate ([`transport_security.py`](https://github.com/modelcontextprotocol/python-sdk/blob/v1.23.0/src/mcp/server/transport_security.py)). The floor guards against a re-resolve of `uv.lock` (currently `1.27.2`) going below the fixed version. The range is capped at `<2`: mcp 2.x renames `FastMCP` to `MCPServer`, which breaks the `mcp.server.fastmcp` import (Decision 20), so a resolution outside `uv.lock` stays on 1.x until the code is migrated.
 
-**Consequence:** if `MCP_HOST` points outside loopback (LAN, VPS, domain), every request gets `421 Invalid Host Header` until that host is added to both lists in `server.py`. This is deliberate; the same confusion is reported in other MCP servers ([blockscout/mcp-server #333](https://github.com/blockscout/mcp-server/issues/333)). A regression test (`tests/unit/test_server_transport_security.py`) fails if the protection is turned off again.
+**Consequence:** if `MCP_HOST` points outside loopback (LAN, VPS, domain), every request gets `421 Invalid Host Header` until that host is added to `_LOOPBACK_HOSTS` in `server.py` (the Origin list is built from it, Decision 22). This is deliberate; the same confusion is reported in other MCP servers ([blockscout/mcp-server #333](https://github.com/blockscout/mcp-server/issues/333)). A regression test (`tests/unit/test_server_transport_security.py`) fails if the protection is turned off again.
 
-**Alternatives:** a wider allowlist for hypothetical proxy or domain deployments was rejected as speculative, since adding a host later is a one-line change.
+**Alternatives:** a wider allowlist for hypothetical proxy or domain deployments was rejected as speculative. Adding a host later means editing `_LOOPBACK_HOSTS` in `server.py` (and rebuilding the image for the container).
 
 **Affected files:** `src/mlms/server.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_server_transport_security.py`
 
@@ -99,9 +152,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-10-12 (image tags pinned)
+**Last updated:** 2026-10-13 (image tags pinned; a tag is not an immutable image identity)
 
-**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha`, instead of `postgres` plus separately installed extensions. The tag is pinned to `pg16.15-ts2.30.2` (PostgreSQL 16.15, TimescaleDB 2.30.2, pgvector 0.8.7 as checked in that image) so that a new upstream image cannot change the database under an unchanged checkout. `redis` is pinned the same way (`7.4.11-alpine`). Dependabot proposes tag bumps.
+**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha`, instead of `postgres` plus separately installed extensions. The tag is pinned to `pg16.15-ts2.30.2` (PostgreSQL 16.15, TimescaleDB 2.30.2, pgvector 0.8.7 as checked in that image) so that a new upstream release cannot move the database to a later version under an unchanged checkout. A tag is not an immutable image identity: the registry can re-point it, and no digest is pinned. `redis` is pinned the same way (`7.4.11-alpine`). Dependabot proposes tag bumps.
 
 **Consequence:** the data directory in this image is `/home/postgres/pgdata/data`, not the stock `/var/lib/postgresql/data`. Switching to another Postgres image means changing the volume mapping too.
 
@@ -123,11 +176,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement. The isolation level is raised because at the default `READ COMMITTED` the check and the insert are separate statements, so two concurrent `memorize()` calls with near-identical content both pass the check and both insert an `is_current=TRUE` row. `get_facts` and `search_memory` filter on `is_current=TRUE`, so they would return both versions.
 
-**Verification:** checked by hand, in improvised conditions, not by a repeatable test. A throwaway script (not in the repository) ran two concurrent `upsert_fact` calls with the same embedding, 60 times per case (with and without an existing fact), against `timescale/timescaledb-ha:pg16`, on a `facts` table and HNSW index shaped like the ones in the initial migration. At `READ COMMITTED` both rows stayed `is_current=TRUE` in every trial; at `SERIALIZABLE` exactly one did, and neither writer got an error. No test in the repository covers this: the unit tests mock the connection and check only the order of statements, and the integration tests call `upsert_fact` sequentially.
+**Verification:** checked with an ad hoc script that is not in the repository, not by a repeatable test. The script ran two concurrent `upsert_fact` calls with the same embedding, 60 times per case (with and without an existing fact), against `timescale/timescaledb-ha:pg16`, on a `facts` table and HNSW index shaped like the ones in the initial migration. At `READ COMMITTED` both rows stayed `is_current=TRUE` in every trial; at `SERIALIZABLE` exactly one did, and neither writer got an error. No test in the repository covers this: the unit tests mock the connection and check only the order of statements, and the integration tests call `upsert_fact` sequentially.
 
-**Known limitation:** the retries are bounded. In the same improvised check, four concurrent writers on an existing fact produced 60 `SerializationFailure` errors over 60 trials (one per trial on average), and every trial still ended with exactly one current row. That is beyond the intended use of one person with a few clients (Decision 3), so there is no backoff and no larger bound. `SerializationFailure` is a subclass of psycopg's `OperationalError`, so `_acquire()` (Decision 3) reports it as the generic "database temporarily unavailable, try again shortly" and logs it as a pool problem.
+**Known limitation:** the retries are bounded. In the same check, four concurrent writers on an existing fact produced 60 `SerializationFailure` errors over 60 trials (one per trial on average), and every trial still ended with exactly one current row. That is beyond the intended use of one person with a few clients (Decision 3), so there is no backoff and no larger bound. `SerializationFailure` is a subclass of psycopg's `OperationalError`, so `_acquire()` (Decision 3) reports it as the generic "database temporarily unavailable, try again shortly" and logs it as a pool problem.
 
-**Threshold:** `COSINE_CONFLICT_THRESHOLD = 0.96` is a starting point that has not been calibrated against real data.
+**Threshold:** `COSINE_CONFLICT_THRESHOLD = 0.96` is a starting point that has not been calibrated against real data. On a separate labeled set of 76 pairs it detected no conflicts at all (`docs/known-issues.md`, #2).
 
 **Affected files:** `src/mlms/storage/facts.py` (`upsert_fact`), `src/mlms/config.py`
 
@@ -171,13 +224,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-13
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-10-13 (what the tool can reach beyond `limit`)
 
 **Decision:** the cursor is the pair `(time, id)` with `WHERE time > %s OR (time = %s AND id > %s)`, ordered by `time, id`, instead of `time` alone.
 
 **Rationale:** timestamps are not unique. With a `time`-only cursor, events sharing a timestamp across a page boundary are skipped or repeated. `id` gives a strict tie-break.
 
-**Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so the tool cannot return more than `limit` events. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#16).
+**Known limitation:** pagination is implemented and unit-tested in `storage/timeline.py`, but the `get_timeline` tool does not use it. It runs its own SQL without a cursor, so one call returns at most `limit` events; older rows need a larger `limit` or a different `time_range`. This is a limit of the tool, not of the pagination code; it is recorded in `docs/known-issues.md` (#14).
 
 **Affected files:** `src/mlms/storage/timeline.py` (`get_events`)
 
@@ -189,15 +242,15 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-09-01
 
-**Decision:** `content` above `MEMORY_CONTENT_MAX_LENGTH = 10_000` characters is rejected, not truncated. The check runs in the tool signature through a `BeforeValidator`, so the error reports the actual length and the limit; `Field(max_length=...)` stays alongside so the limit also appears in the tool's JSON Schema. The tool docstring recommends about 500 characters per fact (`MEMORY_CONTENT_RECOMMENDED_LENGTH`, guidance only), so composite facts are split across several calls.
+**Decision:** `content` above `MEMORY_CONTENT_MAX_LENGTH = 10_000` characters is rejected, not truncated. The check runs in the tool signature through a `BeforeValidator`, so the error reports the actual length and the limit; `Field(max_length=...)` stays alongside so the limit also appears in the tool's JSON Schema. The tool docstring recommends about 500 characters per fact (guidance only, not enforced), so composite facts are split across several calls.
 
-**Rationale:** `content` had no limit, and for facts the whole text is sent to the embedding API. At an assumed 1.5 characters per token for Cyrillic (an estimate, not measured with the real tokenizer), 10,000 characters is about 6,700 tokens. That is far below the 32k context of both Qwen3-Embedding models ([8B](https://huggingface.co/Qwen/Qwen3-Embedding-8B), [0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)) and within the `max_length = 8192` used in both model cards' usage examples. The margin is deliberate: the fallback `qwen3-embedding-0.6b` is intended for local serving (not implemented yet), where the usable context is set by the server.
+**Rationale:** for facts the whole text is sent to the embedding API. At an assumed 1.5 characters per token for Cyrillic (an estimate, not measured with the real tokenizer), 10,000 characters is about 6,700 tokens. That is far below the 32k context of both Qwen3-Embedding models ([8B](https://huggingface.co/Qwen/Qwen3-Embedding-8B), [0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)) and within the `max_length = 8192` used in both model cards' usage examples. The margin is deliberate: the fallback `qwen3-embedding-0.6b` is intended for local serving (not implemented yet), where the usable context is set by the server.
 
 **Alternatives:**
 - Truncate silently: loses part of a fact without warning, while an error lets the agent shorten or split the text.
 - Different limits per `memorize()` type: only `fact` content and the `session_log` label (already capped at 100 characters) reach the embedding API, so `event` and `skill` are not restricted in practice, and per-type limits would only add complexity.
 
-**Affected files:** `src/mlms/server.py` (`_check_content_length`, `_MemoryContent`, `memorize` signature and docstring), `src/mlms/config.py`, `tests/unit/test_memorize_content_limit.py` (new)
+**Affected files:** `src/mlms/server.py` (`_check_content_length`, `_MemoryContent`, `memorize` signature and docstring), `src/mlms/config.py`, `tests/unit/test_memorize_content_limit.py`
 
 ---
 
@@ -215,7 +268,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `destructiveHint=False` is a judgment call. No row is deleted (`is_current` is flipped), but for the calling agent a reverted fact disappears from the default `get_facts` and `search_memory` results, which both filter on `is_current=TRUE`.
 - `idempotentHint=False` is set conservatively: a concurrent `memorize()` can change the version chain between two calls.
 
-**Affected files:** `src/mlms/server.py`, `tests/unit/test_server_tool_annotations.py` (new)
+**Affected files:** `src/mlms/server.py`, `tests/unit/test_server_tool_annotations.py`
 
 **See also:** Decision 10.
 
@@ -230,14 +283,14 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 **Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
 
 **Rationale:**
-- Both tools used to filter in Python after the storage layer had already applied `LIMIT`. Matching rows ranked below the first `LIMIT` rows were lost even though they existed.
+- Filtering in Python after the storage layer has applied `LIMIT` loses matching rows ranked below the first `LIMIT` rows, even though they exist.
 - The HNSW index has the same effect: pgvector applies the filter after scanning the index's candidate list (`hnsw.ef_search`, default 40), so a selective filter can return fewer than `LIMIT` rows ([README, filtering](https://github.com/pgvector/pgvector#filtering)). Iterative scans (pgvector 0.8.0 and later) keep scanning until enough rows are found or `hnsw.max_scan_tuples` (20,000 by default) is reached ([README, iterative index scans](https://github.com/pgvector/pgvector#iterative-index-scans)).
 
 **Implementation note:** the pool runs with `autocommit=True` (`server.py`), so every bare `execute()` is its own transaction and `SET LOCAL` would be gone before the query runs. The `SET LOCAL` and the search `SELECT` therefore share one explicit transaction, the same pattern as `upsert_fact` (Decision 6). A plain `SET` is session-scoped ([PostgreSQL docs](https://www.postgresql.org/docs/current/sql-set.html)) and would stay on the pooled connection for the next borrower; the pool has no `reset` callback configured.
 
 **Alternatives:** exact (non-indexed) search on `session_log` avoids approximate-recall loss but gives up the HNSW index chosen in Decision 2. It was not pursued and not measured; it remains an option if approximate misses become visible.
 
-**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (new test class; runs only with `MLMS_INTEGRATION=1`, against the Compose stack or the CI service containers)
+**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (runs only with `MLMS_INTEGRATION=1`, against the Compose stack or the CI service containers)
 
 **See also:** Decision 2, Decision 19.
 
@@ -253,23 +306,23 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Trade-off:** the same docs prefer a local installation for production, linked against the system libpq and libssl so that OS updates apply to psycopg too. The binary wheel bundles its own copies, so a production image may build psycopg from source instead.
 
-**Stub removal:** the `types-redis` stub targets redis 4.6, and its [PyPI page](https://pypi.org/project/types-redis/) says redis ships its own annotations since 5.0.0 and asks to uninstall the stub. The locked redis-py 8.0.0 has `py.typed`. The stub caused false mypy errors: it has no `aclose` (which exists at runtime), and it makes `Redis` generic in its string type. Without it, `Redis[bytes]` in `embedding.py` became `Redis`, and no `# type: ignore` was needed.
+**Stub removal:** the `types-redis` stub targets redis 4.6, and its [PyPI page](https://pypi.org/project/types-redis/) says redis ships its own annotations since 5.0.0 and asks to uninstall the stub. The locked redis-py 8.0.0 has `py.typed`. The stub caused false mypy errors: it has no `aclose` (which exists at runtime), and it makes `Redis` generic in its string type. Without the stub, `embedding.py` annotates the client as plain `Redis` and needs no `# type: ignore`.
 
 **Affected files:** `pyproject.toml`, `uv.lock`, `src/mlms/embedding.py`
 
 ---
 
-## Decision 19: CI covers lint, types, unit tests and integration tests
+## Decision 19: CI covers lint, types, unit and integration tests and the image build
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-10-12 (integration tests added to CI; image tags pinned)
+**Last updated:** 2026-10-13 (integration tests, docs check and image build in CI; image tags pinned)
 
-**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`) and the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`). Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16.15-ts2.30.2`, Decision 5, and `redis:7.4.11-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
+**Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, the documentation consistency check (`scripts/check_docs.py`), `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`), the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`) and `docker build` of the server image. Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16.15-ts2.30.2`, Decision 5, and `redis:7.4.11-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
 
-**Rationale:** the integration tests cover what unit tests with mocked connections cannot: pool behavior, the conflict flow, and filtered session-log search with the HNSW iterative scan (Decision 17). Run only by hand against `docker compose up`, they left a green CI run saying nothing about those paths. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the two `-m` selections do not overlap. Without `MLMS_INTEGRATION=1` the integration tests skip themselves, which keeps a plain `pytest` run from reaching for a database that is not there.
+**Rationale:** the integration tests cover what unit tests with mocked connections cannot: pool behavior, the conflict flow, and filtered session-log search with the HNSW iterative scan (Decision 17). Without them in CI, a green run would say nothing about those paths. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the two `-m` selections do not overlap. Without `MLMS_INTEGRATION=1` the integration tests skip themselves, which keeps a plain `pytest` run from reaching for a database that is not there.
 
-**Consequence:** the coverage gate applies to the unit run only; the integration run passes no `--cov`. The images and credentials exist in both `docker-compose.yml` and `ci.yml`, and no test checks that they agree. The two pytest steps were reproduced locally against the same two images with the workflow's commands: the unit run passed with the coverage gate (244 passed, 31 deselected) and the integration run passed (31 passed, 244 deselected). A run on GitHub Actions itself was not checked.
+**Consequence:** the coverage gate applies to the unit run only; the integration run passes no `--cov`. The images and credentials exist in both `docker-compose.yml` and `ci.yml`, and no test checks that they agree. The workflow's steps were reproduced locally against the same two images. A run on GitHub Actions itself was not checked.
 
 **Reproducibility and hardening:**
 - `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
@@ -279,7 +332,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - A new push to the same pull request cancels its previous run. Runs on push to `main` are grouped per commit and never cancelled.
 - One job on Python 3.11, the lowest version allowed by `requires-python`.
 
-**Affected files:** `.github/workflows/ci.yml`, `tests/conftest.py`, `docs/known-issues.md` (the earlier entry about CI not running the integration tests is marked fixed), `README.md` (test commands and CI description)
+**Affected files:** `.github/workflows/ci.yml`, `tests/conftest.py`, `README.md` (test commands and CI description)
 
 **See also:** Decision 5, Decision 17, Decision 20, Decision 27.
 
@@ -291,13 +344,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-10-13 (healthcheck over TCP, cause of the startup race identified; `mlms` service behind the `app` profile; image build copies `README.md` and `LICENSE`)
 
-**Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
+**Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable` and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. The compose service sets `MCP_TRANSPORT=streamable-http`. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
 
 **Install from `uv.lock`, not `pip install .`:** `uv sync --locked` installs exactly the versions in `uv.lock`, the set the CI runs against (Decision 19), and fails if the lock is out of sync with `pyproject.toml`. `pip install .` ignores `uv.lock` and resolves from PyPI. `pyproject.toml` declares `mcp>=1.27.2,<2`, so that resolution stays on 1.x too: mcp 2.x renamed `FastMCP` to `MCPServer`, so `from mcp.server.fastmcp import FastMCP` raises `ModuleNotFoundError` ([migration guide](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/migration.md)), and an unbounded range would make the container fail on start with that error. The `<2` cap follows the SDK's own README, which recommends it until an application has migrated ([v1.x README](https://github.com/modelcontextprotocol/python-sdk/blob/v1.x/README.md)); it stays until the code moves to `MCPServer` (see Decision 4). `--no-editable` installs the package into the virtualenv as a regular copy instead of a link to `src/`.
 
 **Transport:** `stdio` needs the MCP client to start the server as a child process and attach its stdin. A detached Compose service has no such stdin, so the container must use an HTTP transport. `streamable-http` was chosen over `sse` because it replaces the HTTP+SSE transport in the MCP specification ([transports](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)); `config.py` accepts both.
 
-**Migrations on start, with retry:** a fresh `postgres_data` volume has no schema, so without an upgrade the server would fail on its first database call. Running the migrations manually was rejected for that reason, so `alembic.ini` and `alembic/` are copied into the image and every container start runs them. On a new volume the image starts a temporary server that listens only on the unix socket, runs its init scripts, stops it and starts the real one. A `pg_isready` healthcheck without `-h` asks the socket and passes against the temporary server, so `postgres` was marked healthy before the restart and the first `alembic upgrade head` could fail with a dropped connection; the healthcheck now uses `-h 127.0.0.1` (TCP), which only the real server answers. Three consecutive starts on fresh volumes ran the migration straight after `docker compose up --wait` with no failure. A Postgres that restarts later, or a slow start, can still make the first attempt fail, and `restart: unless-stopped` would recover from that only through an uncapped crash loop with a traceback. So the entrypoint retries `alembic upgrade head` itself, up to 10 attempts 2 seconds apart, and exits with status 1 after the last one. It then `exec`s `python -m mlms.server`, so `SIGTERM` reaches the server process, not a shell. The retry does not tell a startup race from a real failure (wrong `DATABASE_URL`, a broken migration): a misconfigured container waits at least 18 seconds (nine pauses), longer if each attempt has to time out, before it exits.
+**Migrations on start, with retry:** a fresh `postgres_data` volume has no schema, so without an upgrade the server would fail on its first database call. Running the migrations manually was rejected for that reason, so `alembic.ini` and `alembic/` are copied into the image and every container start runs them. The `postgres` healthcheck runs `pg_isready -h 127.0.0.1` (TCP). On a new volume the image starts a temporary server that listens only on the unix socket, runs its init scripts, stops it and starts the real one; a check over the socket would pass against the temporary server and mark `postgres` healthy before the restart, so the first `alembic upgrade head` could fail with a dropped connection. Only the real server answers over TCP. Three consecutive starts on fresh volumes ran the migration straight after `docker compose up --wait` with no failure. A Postgres that restarts later, or a slow start, can still make the first attempt fail, and `restart: unless-stopped` would recover from that only through an uncapped crash loop with a traceback. So the entrypoint retries `alembic upgrade head` itself, up to 10 attempts 2 seconds apart, and exits with status 1 after the last one. It then `exec`s `python -m mlms.server`, so `SIGTERM` reaches the server process, not a shell. The retry does not tell a startup race from a real failure (wrong `DATABASE_URL`, a broken migration). A misconfigured container therefore waits at least 18 seconds (nine pauses), longer if each attempt has to time out, before it exits.
 
 **`HEALTHCHECK`:** a TCP connect to `MCP_PORT` in Python. The `python:slim` image does not ship `curl`, and the check needs no MCP-specific request. It shows that the port accepts connections, not that the MCP endpoint works. Under Docker Compose the container reaches `healthy`.
 
@@ -317,11 +370,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** `docker-compose.yml`'s `postgres` service and the `mlms` service's `DATABASE_URL` both read `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` from environment variables with the same `mlms`/`mlms`/`mlms` default, declared in `.env.example`. The `postgres` healthcheck reads the same variables from the container's own environment (`$$POSTGRES_USER`/`$$POSTGRES_DB`, a literal not interpolated by Compose, per the [Compose spec](https://github.com/compose-spec/compose-spec/blob/master/12-interpolation.md)) instead of repeating the default a third time.
 
-**Rationale:** `mlms`/`mlms`/`mlms` used to be hardcoded in three places — `postgres`'s own environment, the `mlms` service's `DATABASE_URL`, and the healthcheck command. A password change meant editing all three consistently. `.env.example`'s variables are read only by Compose's interpolation; the application's own `Settings` (`extra="ignore"`) never reads `POSTGRES_*`, so the shipped default there is set equal to the app's `DATABASE_URL` default to avoid the two silently drifting apart.
+**Rationale:** the credentials appear in three places: `postgres`'s own environment, the `mlms` service's `DATABASE_URL` and the healthcheck command. Reading them from one set of variables means a password change is made once. `.env.example`'s variables are read only by Compose's interpolation; the application's own `Settings` (`extra="ignore"`) never reads `POSTGRES_*`, so the shipped default there is set equal to the app's `DATABASE_URL` default to avoid the two silently drifting apart.
 
-**Alternatives:** parametrizing `redis` the same way was not pursued. `redis` has no authentication enabled at all in this compose file, so there is no existing credential to expose through `.env` — that would mean turning auth on (`requirepass`), a bigger change than this one, left for later.
+**Alternatives:** parametrizing `redis` the same way was not pursued. `redis` has no authentication enabled at all in this compose file, so there is no credential to expose through `.env`; that would mean turning auth on (`requirepass`), which is left for later.
 
-**Known limitation:** changing `POSTGRES_PASSWORD` only takes effect against a fresh `postgres_data` volume — the image applies `POSTGRES_*` only at first initialization. An existing volume needs `docker compose down -v` or a manual `ALTER ROLE`. The characters `` @ : / % # `` in the password are not URL-encoded when composed into `DATABASE_URL`, so a password containing one of them breaks the connection string silently.
+**Known limitation:** changing `POSTGRES_PASSWORD` only takes effect against a fresh `postgres_data` volume, because the image applies `POSTGRES_*` only at first initialization. An existing volume needs `docker compose down -v` or a manual `ALTER ROLE`. The characters `` @ : / % # `` in the password are not URL-encoded when composed into `DATABASE_URL`, so a password containing one of them produces an invalid connection string, and the resulting error does not point at the password.
 
 **Affected files:** `docker-compose.yml`, `.env.example`, `README.md`
 
@@ -337,11 +390,11 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** the backup/restore guide in README uses `pg_dump -Fc` (custom format) with `timescaledb_pre_restore()` / `pg_restore` / `timescaledb_post_restore()`, not a plain-text dump restored with `psql`. `pg_restore` runs without `-j` (parallel restore).
 
-**Rationale:** TimescaleDB's own backup guide requires the custom format plus the pre/post-restore pair to reconstruct hypertable metadata (chunk structure), not just row data ([Logical backup](https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup)). The same page recommends against dumping individual tables with `pg_dump -t`: even naming the hypertable and every one of its chunks explicitly is not enough to recreate the hypertable on restore. `pg_restore -j` is documented there as not correctly restoring the TimescaleDB catalogs, with a long-standing report of restores failing on foreign-key errors in the catalog tables under it ([timescaledb#1584](https://github.com/timescale/timescaledb/issues/1584)); official support for `-j` is still an open feature request ([#698](https://github.com/timescale/timescaledb/issues/698)), so the option is left out entirely rather than offered as a speed trade-off.
+**Rationale:** TimescaleDB's own backup guide requires the custom format plus the pre/post-restore pair to reconstruct hypertable metadata (chunk structure) as well as row data ([Logical backup](https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup)). The same page recommends against dumping individual tables with `pg_dump -t`: even naming the hypertable and every one of its chunks explicitly is not enough to recreate the hypertable on restore. `pg_restore -j` is documented there as not correctly restoring the TimescaleDB catalogs, with a long-standing report of restores failing on foreign-key errors in the catalog tables under it ([timescaledb#1584](https://github.com/timescale/timescaledb/issues/1584)); official support for `-j` is still an open feature request ([#698](https://github.com/timescale/timescaledb/issues/698)), so the guide does not use it.
 
-**Restore targets a fresh database, not the live one:** running the guide's restore steps as originally written against an already-migrated `mlms` container (schema already applied by `alembic upgrade head` on startup) failed outright with "relation already exists" errors — `pg_restore` does not overwrite an existing schema. The guide now runs `DROP DATABASE` / `CREATE DATABASE` first rather than assuming an empty volume. No extra step is needed for extensions: `timescaledb` and `timescaledb_toolkit` are already installed into `template1` by the image's own init script ([`post_init.sh`](https://github.com/timescale/timescaledb-docker-ha/blob/master/scripts/post_init.sh)), so a freshly created database has them automatically, and `vector` is created by the dump itself (`pg_dump` includes `CREATE EXTENSION IF NOT EXISTS vector`). Restore was verified end-to-end: a memorized fact survived the full dump → drop → recreate → restore cycle with the same `id` and content, confirmed through a real `get_timeline` call, not just `SELECT COUNT(*)`.
+**Restore targets a fresh database, not the live one:** the server's startup migration has already created the schema, and `pg_restore` does not overwrite an existing schema, so restoring into the live database fails with "relation already exists". The guide runs `DROP DATABASE` / `CREATE DATABASE` first. No extra step is needed for extensions: `timescaledb` and `timescaledb_toolkit` are already installed into `template1` by the image's own init script ([`post_init.sh`](https://github.com/timescale/timescaledb-docker-ha/blob/master/scripts/post_init.sh)), so a freshly created database has them automatically, and `vector` is created by the dump itself (`pg_dump` includes `CREATE EXTENSION IF NOT EXISTS vector`). Restore was verified end-to-end: a memorized fact survived a dump, drop, recreate and restore with the same `id` and content, checked through a real `get_timeline` call.
 
-**Redis:** `SAVE` (not `BGSAVE`) runs synchronously before the file is copied out — simpler to reason about in a manual runbook, at the cost of blocking the server for the duration. `dump.rdb` is safe to copy while Redis keeps running: Redis writes the new snapshot to a temporary file and renames it into place only once it's complete ([Redis persistence docs](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)), so a copy taken mid-write still reads a complete, previous snapshot. `dump.rdb`/`/data` (`dbfilename`/`dir`) were confirmed via `CONFIG GET` against the running container, not assumed from the image defaults. Restore was verified the same way: a deleted `session:{chat_id}` key reappeared with its original content after restoring the snapshot.
+**Redis:** `SAVE` (not `BGSAVE`) runs synchronously before the file is copied out. That is simpler to reason about in a manual runbook, at the cost of blocking the server for the duration. `dump.rdb` is safe to copy while Redis keeps running: Redis writes the new snapshot to a temporary file and renames it into place only once it is complete ([Redis persistence docs](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)), so a copy taken mid-write still reads a complete, previous snapshot. `dump.rdb`/`/data` (`dbfilename`/`dir`) were checked with `CONFIG GET` against the running container. Restore was verified the same way: a deleted `session:{chat_id}` key reappeared with its original content after restoring the snapshot.
 
 **Alternatives:**
 - `redis-cli --rdb <file>` run from the host: rejected because the host's `redis-cli` version can drift from the `redis:7.4.11-alpine` version in the container, and the replication protocol used to stream the RDB is version-sensitive.
@@ -357,19 +410,17 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-09-19
 
-**Bug:** `_LOOPBACK_HOSTS` (`"127.0.0.1"`, `"localhost"`, no scheme) was reused for both `allowed_hosts` and `allowed_origins` in the DNS rebinding protection settings from Decision 4. A `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Comparing a real `Origin` header against the scheme-less list meant no `Origin` header could ever match, including a legitimate loopback one — every request carrying one was rejected with `403`. This went unnoticed because the check only matters for a client that actually sends an `Origin` header — a browser-based web client. A CLI/agent client that omits the header passes anyway, since the SDK treats a missing `Origin` as same-origin (`stdio`, the default transport, never runs this code at all — Decision 4). Found by testing the README hardening checklist below against a live `docker compose` stack, not by reading the SDK source.
+**Decision:** `allowed_origins` gets its own list, `_LOOPBACK_ORIGINS` (every entry of `_LOOPBACK_HOSTS` with `http://` and with `https://`), instead of reusing the Host list.
 
-**Fix:** a separate `_LOOPBACK_ORIGINS` list (`_LOOPBACK_HOSTS` × `http`/`https`) feeds `allowed_origins`; `allowed_hosts` is unchanged. The regression test drives a real HTTP request through `TestClient` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method. The app under test is a `FastMCP` instance that carries the real server's `transport_security` settings and a no-op lifespan, so the test does not open a database pool (Decision 27).
+**Rationale:** a `Host` header never carries a scheme; an `Origin` header always does (`"http://127.0.0.1"`, per the [Fetch spec](https://fetch.spec.whatwg.org/#origin-header)). Checked against the scheme-less Host list, no `Origin` header can match, including a legitimate loopback one, and every request that carries one is rejected with `403`. Only browser-based clients send `Origin`. A CLI or agent client that omits it passes anyway, because the SDK treats a missing `Origin` as same-origin, and `stdio` never runs this code (Decision 4).
 
-**README "Homelab/VPS hardening" section** (applies only when `MCP_TRANSPORT` is `sse`/`streamable-http`; `stdio` opens no port):
-- Firewall baseline: set `MCP_HOST=127.0.0.1` explicitly and deny inbound traffic on `MCP_PORT` at the firewall — the allowlist from Decision 4 rejects at the application layer, but the TCP port stays open underneath it.
-- Recommended: Tailscale or Cloudflare Tunnel, so no public port is opened at all. Whether either tool forwards the original `Host`/`Origin` through to the local server depends on the tool's own configuration (e.g. Cloudflare Tunnel's `originRequest.httpHostHeader`); this was not verified end-to-end against a live tunnel and is documented as unverified rather than assumed to work.
-- Alternative: a reverse proxy (nginx/caddy) terminating TLS in front of the server; every hostname it uses still has to be added to `_LOOPBACK_HOSTS`, or requests get `421`.
-- Verification recipe: `curl -H "Host: ..." -H "Origin: ..."` against `/mcp` (the transport's own route, not `/`), checking for `421` (bad Host), non-`421` (good Host), `403` (bad Origin) and non-`403` (good Origin) — run against a live `docker compose` instance, not assumed from the SDK source.
+**Test:** The regression test drives a real HTTP request through `TestClient` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method. The app under test is a `FastMCP` instance that carries the real server's `transport_security` settings and a no-op lifespan, so the test does not open a database pool (Decision 27).
 
-**Known gap, accepted:** the allowlist match is exact and case-sensitive with no host normalization, so `::1`, `LOCALHOST`, or a trailing-dot `localhost.` fail the check. This fails toward rejecting a legitimate request, not toward accepting an illegitimate one, so it is documented in the README rather than fixed.
+The README section "Homelab/VPS hardening" describes the deployment side: firewall, tunnels, a reverse proxy, and the `curl` recipe that checks the `421` and `403` responses. Whether a tunnel forwards the original `Host`/`Origin` was not verified against a live tunnel, and the README says so.
 
-**Alternatives:** an `MCP_ALLOWED_HOSTS` environment variable instead of editing `_LOOPBACK_HOSTS` directly — rejected as config infrastructure for a scenario (non-loopback deployment) that most users of a single-/few-user project won't hit.
+**Known gap, accepted:** the allowlist match is exact and case-sensitive with no host normalization, so `Host: [::1]`, `LOCALHOST`, or a trailing-dot `localhost.` fail the check. This fails toward rejecting a legitimate request, not toward accepting an illegitimate one, so it is documented in the README rather than fixed.
+
+**Alternatives:** an `MCP_ALLOWED_HOSTS` environment variable instead of editing `_LOOPBACK_HOSTS` directly. Rejected as configuration for a case (a non-loopback deployment) that most users of a single-user project will not hit.
 
 **Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `README.md`
 
@@ -381,25 +432,25 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-08
 
-**Last updated:** 2026-10-09 (compose: `app` profile, empty default for the secret)
+**Last updated:** 2026-10-11 (compose: `app` profile, empty default for the secret)
 
-**Decision:** the HTTP transport originally had no authentication layer at all — a deliberate choice for single-/few-user, local-by-default use, not an oversight. That posture is unchanged for `stdio` (no network port, so no risk to authenticate against), but does not hold once `sse`/`streamable-http` bind to a non-loopback host (homelab/VPS). A bare ASGI middleware (`_SharedSecretMiddleware`) wraps `sse_app()`/`streamable_http_app()` — rather than replacing `mcp.run()`'s own transport-security wiring, so the loopback allowlist from Decision 4 (built inside those same app factories) stays in effect underneath this new layer — and rejects any `http`-scope request with `401` unless its `Authorization: Bearer <token>` matches `MCP_SHARED_SECRET` via `secrets.compare_digest`. A non-loopback `MCP_HOST` without `MCP_SHARED_SECRET` set now refuses to start (`_require_secret_on_non_loopback_bind`) instead of listening unauthenticated; loopback binds (`127.0.0.1`/`localhost`/`::1`) keep the secret optional.
+**Decision:** `sse` and `streamable-http` are protected by one shared secret, `MCP_SHARED_SECRET`. `stdio` has no network port and stays unauthenticated. An ASGI middleware (`_SharedSecretMiddleware`) wraps the app returned by `sse_app()`/`streamable_http_app()` and rejects any `http`-scope request with `401` unless its `Authorization: Bearer <token>` matches the secret (`secrets.compare_digest`). The Host/Origin allowlist from Decision 4 is built inside those app factories, so it stays in effect underneath. When a secret is set, the server runs the wrapped app with `uvicorn.run` instead of `mcp.run()`. A non-loopback `MCP_HOST` without a secret refuses to start (`_require_secret_on_non_loopback_bind`); on a loopback bind (`127.0.0.1`/`localhost`/`::1`) the secret is optional.
 
-**Rationale:** the SDK's own `token_verifier`/`AuthSettings` path was rejected: `AuthSettings.issuer_url`/`.resource_server_url` are both required, and setting them makes the server publish OAuth discovery metadata even with no real authorization server behind it. A client that sees that metadata can ignore a configured static `Authorization` header and fail into a broken OAuth flow instead — reported for Claude Code's own MCP client ([anthropics/claude-code#59467](https://github.com/anthropics/claude-code/issues/59467)). The middleware does a flat token compare instead, with no discovery surface at all.
+**Rationale:** the SDK's own `token_verifier`/`AuthSettings` path was rejected: `AuthSettings.issuer_url`/`.resource_server_url` are both required, and setting them makes the server publish OAuth discovery metadata even with no real authorization server behind it. A client that sees that metadata can ignore a configured static `Authorization` header and fall into a broken OAuth flow instead, as reported for Claude Code's MCP client ([anthropics/claude-code#59467](https://github.com/anthropics/claude-code/issues/59467)). The middleware does a flat token compare instead, with no discovery surface at all.
 
 **Known limitations, accepted:**
-- CVE-2026-52869 ([GHSA-jpw9-pfvf-9f58](https://github.com/advisories/GHSA-jpw9-pfvf-9f58), fixed in `mcp` 1.27.2, raising the floor set by Decision 4) closes a session-hijack gap by tracking each session's owning principal and rejecting a mismatched requester — but only for the SDK's own `BearerAuthBackend`, which sets `scope["user"]`. This project's middleware never sets it, so the SDK's ownership check compares `None != None` and never rejects; the advisory itself says as much ("Deployments using a custom authentication backend other than the built-in `BearerAuthBackend` should enforce an equivalent check themselves"). Accepted rather than fixed: the data model has no per-user isolation to protect regardless (`project_id`/`chat_id` are plain tool arguments, not an identity scope), so a hijacked session exposes nothing a valid secret holder couldn't already reach directly. Multi-user auth, token rotation, per-user scoping and rate limiting are out of scope for the same reason.
-- Confused-deputy/token-passthrough (community discussion [modelcontextprotocol/modelcontextprotocol#1247](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1247)) is out of scope by architecture, not omission: the server holds its own state and never proxies a client's token to a downstream service.
+- CVE-2026-52869 ([GHSA-jpw9-pfvf-9f58](https://github.com/advisories/GHSA-jpw9-pfvf-9f58), fixed in `mcp` 1.27.2, raising the floor set by Decision 4) closes a session-hijack gap by tracking each session's owning principal and rejecting a mismatched requester, but only for the SDK's own `BearerAuthBackend`, which sets `scope["user"]`. This project's middleware never sets it, so the SDK's ownership check compares `None != None` and never rejects; the advisory itself says as much ("Deployments using a custom authentication backend other than the built-in `BearerAuthBackend` should enforce an equivalent check themselves"). It is accepted because the data model has no per-user isolation to protect regardless (`project_id`/`chat_id` are plain tool arguments, not an identity scope), so a hijacked session exposes nothing a valid secret holder couldn't already reach directly. Multi-user auth, token rotation, per-user scoping and rate limiting are out of scope for the same reason.
+- Confused-deputy and token passthrough (community discussion [modelcontextprotocol/modelcontextprotocol#1247](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1247)) do not apply: the server holds its own state and never passes a client's token to a downstream service.
 
-**Consequence:** `docker-compose.yml`'s `mlms` service binds `MCP_HOST=0.0.0.0` (Decision 20) with an empty default for `MCP_SHARED_SECRET` — unlike `POSTGRES_PASSWORD`, there is no safe default for an auth secret — so the container refuses to start until one is set in `.env`. The `mlms` service sits behind the `app` profile, so a plain `docker compose up` (Postgres and Redis for the `stdio` setup) needs no secret. A required `${MCP_SHARED_SECRET:?...}` was tried first and dropped: Compose substitutes variables in the whole file before it applies profiles, so it blocked the infrastructure-only start as well. Chosen deliberately over a warning-only migration: no real external user of this path yet. A cross-file test (`tests/unit/test_docker_compose_shared_secret.py`) parses the `mlms` block of `docker-compose.yml` directly (no `pyyaml`, not a declared dependency) and fails if a non-loopback `MCP_HOST` ever ships again without `MCP_SHARED_SECRET` wired through — a drift neither file's own unit tests can see on their own.
+**Consequence:** `docker-compose.yml`'s `mlms` service binds `MCP_HOST=0.0.0.0` (Decision 20) with an empty default for `MCP_SHARED_SECRET` (unlike a password, an auth secret has no safe default), so the container refuses to start until one is set in `.env`. The `mlms` service sits behind the `app` profile, so a plain `docker compose up` (Postgres and Redis for the `stdio` setup) needs no secret. A required `${MCP_SHARED_SECRET:?...}` is not used: Compose substitutes variables in the whole file before it applies profiles, so it would block the infrastructure-only start as well. A cross-file test (`tests/unit/test_docker_compose_shared_secret.py`) parses the `mlms` block of `docker-compose.yml` directly (no `pyyaml`, not a declared dependency) and fails if a non-loopback `MCP_HOST` is set there without `MCP_SHARED_SECRET` wired through, a drift that neither file's own tests would see.
 
 **Alternatives:**
 - SDK `token_verifier`/`AuthSettings`: rejected above.
-- A `middleware:` constructor parameter on `FastMCP`: does not exist in this SDK — that parameter belongs to the unrelated third-party `fastmcp` (jlowin) package, not `mcp.server.fastmcp`.
+- A `middleware:` constructor parameter on `FastMCP`: it does not exist in this SDK; that parameter belongs to the unrelated third-party `fastmcp` (jlowin) package, not `mcp.server.fastmcp`.
 
 **Affected files:** `src/mlms/server.py` (`_SharedSecretMiddleware`, `_BIND_LOOPBACK_HOSTS`, `_require_secret_on_non_loopback_bind`), `src/mlms/config.py` (`mcp_shared_secret`), `pyproject.toml` (`mcp>=1.27.2`), `.env.example`, `docker-compose.yml`, `README.md`, `tests/unit/test_server_shared_secret.py`, `tests/unit/test_docker_compose_shared_secret.py`
 
-**See also:** Decision 4 (loopback allowlist this layers on top of), Decision 20 (the compose bind this now gates), Decision 22 (same README hardening section).
+**See also:** Decision 4 (the loopback allowlist underneath), Decision 20 (the compose bind this gates), Decision 22 (the same README hardening section).
 
 ---
 
@@ -411,12 +462,12 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decision:** `skills` stays global: there is no `project_id` column, so no tool can scope skills by project. The initial schema (`alembic/versions/001_initial_schema.py`) creates `skills` with only `id, name, domain, content, trigger_conditions, version, created_at`, while `facts` and `timeline_events` carry a `project_id` foreign key from the start. The behavior follows from the schema; it is not a forgotten `WHERE`. `export_project` names its section `skills_global`.
 
-**Rationale:** without a column there is nothing to filter on, and adding one would also decide whether skills are per-project or deliberately shared across projects, an open design question. It is left for a deliberate redesign, not a patch.
+**Rationale:** without a column there is nothing to filter on, and adding one would also decide whether skills are per-project or deliberately shared across projects, an open design question. It is left for a redesign.
 
-**Consequence:** with several `project_id`s in one database, `export_project(project_id="X")` returns every skill in the system in its `skills_global` section, although the top-level `project_id` of the JSON is still X. `get_skills` has no `project_id` parameter, and the skill layer of `search_memory` searches all skills through the same storage function. The `export_project`/`get_skills` symptom is recorded in `docs/known-issues.md` (#15).
+**Consequence:** with several `project_id`s in one database, `export_project(project_id="X")` returns every skill in the system in its `skills_global` section, although the top-level `project_id` of the JSON is still X. `get_skills` has no `project_id` parameter, and the skill layer of `search_memory` searches all skills through the same storage function. The `export_project`/`get_skills` symptom is recorded in `docs/known-issues.md` (#13).
 
 **Alternatives:**
-- Add a `project_id` column to `skills` in a new migration: a real redesign that needs the per-project-or-global question answered first, not a mechanical edit.
+- Add a `project_id` column to `skills` in a new migration: needs the per-project-or-global question answered first.
 
 **Affected files:** `src/mlms/tools/export_project.py`, `src/mlms/tools/get_skills.py`, `src/mlms/tools/search_memory.py`, `src/mlms/storage/skills.py`, `alembic/versions/001_initial_schema.py`, `docs/known-issues.md`
 
@@ -428,7 +479,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-10-09 (rewritten after the migrations were squashed, Decision 28)
 
-**Decision:** the initial migration creates `facts_embedding_idx` and `session_log_embedding_idx` with a plain `CREATE INDEX`. Before the squash, a separate migration rebuilt `facts_embedding_idx` with `CREATE INDEX CONCURRENTLY` inside `autocommit_block()`; it was removed because it had nothing to rebuild on a new database.
+**Decision:** the initial migration creates `facts_embedding_idx` and `session_log_embedding_idx` with a plain `CREATE INDEX`.
 
 **Rationale:** the tables are empty when the migration runs, so a build that blocks writes costs nothing. `session_log` is a TimescaleDB hypertable, and TimescaleDB does not support `CREATE INDEX CONCURRENTLY` on hypertables ([docs](https://docs.tigerdata.com/api/latest/hypertable/create_index/)). On `timescale/timescaledb-ha:pg16` the statement fails with `FeatureNotSupported`, "hypertables do not support concurrent index creation", whether or not the hypertable has chunks. `facts` is a plain table and can be rebuilt concurrently. The limit comes from TimescaleDB, not from pgvector or HNSW.
 
@@ -462,21 +513,21 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-16
 
-**Last updated:** 2026-09-19 (test changed)
+**Last updated:** 2026-09-19 (the test no longer opens the real lifespan)
 
-**Decision:** `pyproject.toml` sets `timeout = 30` and `timeout_method = "signal"` for pytest, and `pytest-timeout` is a dev dependency. A test that hangs now fails after 30 seconds with a traceback instead of blocking the whole run. The test that hit the hang, `test_legitimate_loopback_origin_is_not_rejected` (`tests/unit/test_server_transport_security.py`), now builds its own `FastMCP` instance with the real server's `transport_security` settings and a no-op lifespan, so it never opens a database pool; the Host and Origin checks it asserts on do not use the database. It passed in 10 of 10 runs with nothing listening. The hang itself, in the pool's shutdown, is not fixed, and `_lifespan()` is unchanged.
+**Decision:** `pyproject.toml` sets `timeout = 30` and `timeout_method = "signal"` for pytest, and `pytest-timeout` is a dev dependency. A test that hangs fails after 30 seconds with a traceback instead of blocking the whole run. The only test that enters the `with` block of a `TestClient`, `test_legitimate_loopback_origin_is_not_rejected` (`tests/unit/test_server_transport_security.py`), builds its own `FastMCP` instance with the real server's `transport_security` settings and a no-op lifespan, so it never opens a database pool; the Host and Origin checks it asserts on do not use the database. It passes in 10 of 10 runs with nothing listening. The shared-secret tests skip the `with` block, and the integration tests do not use `TestClient`. The hang itself, in the pool's shutdown, is not fixed, and `_lifespan()` is unchanged.
 
-**The hang:** a test that drives the real ASGI app through `TestClient(mcp.streamable_http_app())` can block forever when its `with` block exits. No other test does this: the shared-secret tests skip the `with` block, and no integration test uses `TestClient`. Checked with a stack dump of the stuck process and with the library sources (mcp 1.27.2, psycopg_pool 3.3.1, the locked versions):
+**The hang:** a test that drives the real ASGI app with the real lifespan through `TestClient(mcp.streamable_http_app())` can block forever when its `with` block exits. Traced with a stack dump of the stuck process and the library sources (mcp 1.27.2, psycopg_pool 3.3.1, the locked versions):
 - Every MCP session runs `_lifespan()` (`server.py`), and in streamable-http a request without an `mcp-session-id` header starts a new session, so each such request opens its own `AsyncConnectionPool` (`pool-1`, `pool-2`, ... in the logs).
-- On exit `TestClient` stops the anyio portal thread, whose `asyncio.Runner` cancels all remaining tasks once and then waits for them. A pool worker task (`pool-N-worker-0`) that is cancelled while it runs a connection attempt does not end: psycopg_pool catches `asyncio.CancelledError` together with `Exception` (`CLIENT_EXCEPTIONS` in `pool_async.py`), and the worker goes back to waiting on its queue. That one task never finishes, so the wait never returns and the main thread stays in `Thread.join()`.
-- It depends on timing. With Postgres reachable the old version of the test hung in 10 of 10 runs (Python 3.11 and 3.12). With nothing listening on the port it hung in 6 of 20 runs (2 of 10 on 3.12, 4 of 10 on 3.11) and passed in about a second otherwise. So the hang is not an outage case: it needs only a pool task cancelled in the middle of a connection attempt.
+- On exit `TestClient` stops the anyio portal thread, whose `asyncio.Runner` cancels all remaining tasks once and then waits for them. A pool worker task (`pool-N-worker-0`) cancelled while it runs a connection attempt does not end: psycopg_pool catches `asyncio.CancelledError` together with `Exception` (`CLIENT_EXCEPTIONS` in `pool_async.py`), and the worker goes back to waiting on its queue. The wait never returns, so the main thread stays in `Thread.join()`.
+- No outage is needed, only a worker cancelled in the middle of a connection attempt, so the hang depends on timing. With Postgres reachable it occurred in 10 of 10 runs (Python 3.11 and 3.12). With nothing listening on the port it occurred in 6 of 20 runs (2 of 10 on 3.12, 4 of 10 on 3.11), and the test passed in about a second otherwise.
 
-**Why `signal`:** per the [pytest-timeout documentation](https://github.com/pytest-dev/pytest-timeout#readme), the `thread` method ends the whole process with `os._exit()` and no teardown, so the first hung test would abort the entire run; `signal` (SIGALRM) interrupts only that test. With Postgres reachable the old version of the test failed with `Failed: Timeout (>30.0s)` after about 31 seconds. The anyio portal thread is a daemon thread, so the thread left behind does not keep the interpreter from exiting.
+**Why `signal`:** per the [pytest-timeout documentation](https://github.com/pytest-dev/pytest-timeout#readme), the `thread` method ends the whole process with `os._exit()` and no teardown, so the first hung test would abort the entire run; `signal` (SIGALRM) interrupts only that test. A test hung this way fails with `Failed: Timeout (>30.0s)` after about 31 seconds. The anyio portal thread is a daemon thread, so the thread left behind does not keep the interpreter from exiting.
 
-**On the running server:** checked on the real app served by uvicorn over streamable-http (mcp 1.27.2, Postgres and Redis in containers), by counting backend connections in `pg_stat_activity` and tasks from `asyncio.all_tasks()` in the server process:
-- Sessions are stateful and have no idle timeout (`session_idle_timeout` is left at the SDK default of none). 20 `initialize` calls without a session header gave 20 sessions, 20 backend connections and about 8 more tasks per session (164 tasks against a baseline of 4), unchanged 30 seconds later. A session that is never ended with `DELETE` keeps its pool and connection; nothing closes it.
+**On the running server:** measured on the real app served by uvicorn over streamable-http (mcp 1.27.2, Postgres and Redis in containers), by counting backend connections in `pg_stat_activity` and tasks from `asyncio.all_tasks()` in the server process:
+- Sessions are stateful and have no idle timeout (`session_idle_timeout` is left at the SDK default of none). 20 `initialize` calls without a session header gave 20 sessions, 20 backend connections and about 8 more tasks per session (164 tasks against a baseline of 4), unchanged 30 seconds later. A session that is never ended with `DELETE` keeps its pool and connection.
 - `DELETE` closes a session's pool cleanly: after ending all 20, connections were back to 0 and tasks to the baseline.
-- A session ended while its pool is in the middle of a connection attempt leaves the worker task behind. With 5 sessions, their connections terminated and Postgres paused, `DELETE` left 5 `pool-N-worker-0` tasks alive for the 58 seconds observed, and they were gone 40 seconds after Postgres was resumed. So on the server an orphan lasts as long as the connection attempt it was in. Whether many orphans pile up under long real traffic was not measured.
+- A session ended while its pool is in the middle of a connection attempt leaves the worker task behind. With 5 sessions, their connections terminated and Postgres paused, `DELETE` left 5 `pool-N-worker-0` tasks alive for the 58 seconds observed, and they were gone 40 seconds after Postgres was resumed. An orphan therefore lasts as long as the connection attempt it was in. Whether orphans pile up under long real traffic was not measured.
 
 **Consequence:** the limit is global, so any test that runs longer than 30 seconds fails. The unit and integration suites finish in seconds. A new test that opens the real lifespan through `TestClient` can hit the hang again; the timeout turns that into a failure after 30 seconds.
 

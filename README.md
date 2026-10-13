@@ -20,10 +20,11 @@ agent never touches the database directly. It stores four kinds of memory:
 - **skills** — procedural memory, versioned, never deleted
 
 Storage is Postgres (pgvector + TimescaleDB) for everything durable, Redis for
-session-scoped working memory. Working memory currently stores only `last_activity`; the
-`open_todos`, `active_entities` and `recent_decisions` fields exist, but no tool writes them yet.
+session-scoped working memory. A session record holds five fields (`project_id`, `last_activity`,
+`open_todos`, `active_entities`, `recent_decisions`), but the tools only write the first two; the
+three lists stay empty because no tool fills them yet.
 
-This is built for **self-hosted, single-/few-user use** — one person or a small team
+This is built for **self-hosted, single-user use** — one person with a few trusted clients
 running their own instance, not a multi-tenant SaaS. The default `stdio` transport has no
 network port and no auth at all. `sse`/`streamable-http` have a single shared-secret gate
 (`MCP_SHARED_SECRET`; optional on loopback, the server refuses to start without it on any other
@@ -131,14 +132,20 @@ yourself, not a backup schedule.
 docker compose exec -T postgres pg_dump -U mlms -d mlms -Fc > mlms.bak
 
 # restore — into an empty database, not the live one: it already has this schema in it,
-# and pg_restore will refuse to recreate tables/constraints that already exist
+# and pg_restore will refuse to recreate tables/constraints that already exist.
+# DROP DATABASE fails while any connection is open, so stop the app first.
+docker compose stop mlms
 docker compose exec -T postgres psql -U mlms -d postgres -c "DROP DATABASE mlms;"
 docker compose exec -T postgres psql -U mlms -d postgres -c "CREATE DATABASE mlms OWNER mlms;"
 docker compose exec -T postgres psql -U mlms -d mlms -c "SELECT timescaledb_pre_restore();"
 docker compose exec -T postgres pg_restore -U mlms -d mlms --no-owner < mlms.bak
 docker compose exec -T postgres psql -U mlms -d mlms -c "SELECT timescaledb_post_restore();"
-docker compose restart mlms
+docker compose start mlms   # skip if you run the server on the host
 ```
+
+Stop every other client that holds a connection to the database too (a psql session, a
+host-run `python -m mlms.server`), or `DROP DATABASE` fails with "database is being accessed by
+other users". `docker compose stop mlms` is harmless when the `app` profile is not running.
 
 Skip `-j` on `pg_restore` — parallel restore is known to cause foreign-key errors when
 restoring TimescaleDB's catalog tables.
@@ -189,7 +196,7 @@ end up in proxy/access logs). A missing or wrong token gets `401`, checked befor
 reaches any tool.
 
 If `MCP_HOST` is a loopback address (`127.0.0.1`/`localhost`/`::1`), the secret stays optional —
-this matches the project's original single-/few-user, local-by-default posture (see
+this matches the project's original single-user, local-by-default posture (see
 [`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 23).
 If `MCP_HOST` is anything else (`0.0.0.0`, a LAN/VPN IP) — exactly the case this section is
 about — the server refuses to start at all without `MCP_SHARED_SECRET` set, rather than
@@ -201,11 +208,10 @@ and 3 still do the real perimeter work; this only adds a check on top of them.
 
 Three things it does **not** protect against, worth knowing rather than assuming away:
 
-- **`MCP_HOST=127.0.0.1` inside a container published as `-p 0.0.0.0:8000:8000` (or behind
-  any reverse proxy terminating publicly) is network-reachable even though the process binds
-  loopback.** The fail-fast above only looks at the `MCP_HOST` value the process itself sees —
-  it can't see the port mapping or proxy in front of it. Same blind spot as the `Host`/`Origin`
-  check two paragraphs below, just for the new gate instead of the old one.
+- **`MCP_HOST=127.0.0.1` behind a reverse proxy that terminates publicly is network-reachable
+  even though the process binds loopback.** The fail-fast above only looks at the `MCP_HOST`
+  value the process itself sees — it can't see a proxy in front of it. Same blind spot as the
+  `Host`/`Origin` check two paragraphs below, just for the new gate instead of the old one.
 - **The shared secret gives every holder equal access.** All clients use the same token, so any
   holder can read or replay another holder's session; the secret only walls off the server from
   outsiders, and does nothing to separate clients from each other on the inside. Look elsewhere
@@ -236,8 +242,8 @@ that list exists and Decision 22 for why it isn't wired up to an env var.
 
 **Verify it's actually working** — this was run against the `mlms` service started with
 `docker compose --profile app up` (Docker 29, rootless and rootful), not assumed from reading
-the SDK source. The Host/Origin check runs before anything else in
-the request, on the transport's own route — `/mcp` for `streamable-http`, `/sse` for `sse` —
+the SDK source. In a request the shared-secret check runs first and the Host/Origin check
+after it, on the transport's own route — `/mcp` for `streamable-http`, `/sse` for `sse` —
 not on `/`, so a plain `GET /` won't exercise it. You're only checking the status code, not a
 full MCP handshake, so a non-`421`/`403` code on a "good" request (`406` in local testing) is
 expected and fine — Host and Origin fail with *different* codes.
@@ -296,7 +302,7 @@ pytest -m unit                                                    # fast, no ext
 docker compose up -d --wait && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
 ```
 
-275 test functions across 27 files, unit + integration suites. CI
+295 test functions across 32 files, unit + integration suites. CI
 (`.github/workflows/ci.yml`) runs lint (ruff), types (mypy), and both the unit and
 integration suites against real Postgres + Redis `services:` containers on every push and
 PR to `main`. Coverage gate (`fail_under = 80`) and strict mypy are enforced there too.

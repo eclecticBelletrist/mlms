@@ -70,8 +70,8 @@ class TestRaceCondition:
 
         Connections here are AsyncMock-backed with no real I/O, so this does not exercise
         deadlock-safety under genuine interleaving — only that gather() over two upsert_fact()
-        coroutines resolves cleanly. DB-level serialization via transaction isolation is
-        verified in integration tests.
+        coroutines resolves cleanly. DB-level serialization via transaction isolation has no
+        repeatable test (KEY_DECISIONS.md, Decision 6).
         """
         conn_a, _ = _make_conn(None)
         conn_b, _ = _make_conn(None)
