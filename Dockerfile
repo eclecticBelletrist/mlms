@@ -9,7 +9,8 @@ WORKDIR /app
 # pip's resolver picks fresh off PyPI today — see KEY_DECISIONS.md Decision 20.
 RUN pip install --no-cache-dir uv
 
-COPY pyproject.toml uv.lock alembic.ini ./
+# pyproject.toml names README.md and LICENSE as package metadata; the build fails without them
+COPY pyproject.toml uv.lock alembic.ini README.md LICENSE ./
 COPY alembic/ ./alembic/
 COPY src/ ./src/
 COPY entrypoint.sh ./

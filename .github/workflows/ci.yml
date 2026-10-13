@@ -77,3 +77,6 @@ jobs:
         run: uv run pytest -m integration
         env:
           MLMS_INTEGRATION: "1"
+
+      - name: docker build
+        run: docker build -t mlms-ci .

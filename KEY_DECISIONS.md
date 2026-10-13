@@ -289,7 +289,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-04
 
-**Last updated:** 2026-10-09 (healthcheck over TCP, cause of the startup race identified; `mlms` service behind the `app` profile)
+**Last updated:** 2026-10-13 (healthcheck over TCP, cause of the startup race identified; `mlms` service behind the `app` profile; image build copies `README.md` and `LICENSE`)
 
 **Decision:** the MLMS server runs in a container built from `Dockerfile`, as the `mlms` service of `docker-compose.yml`. The image installs the project with `uv sync --locked --no-editable`, sets `MCP_TRANSPORT=streamable-http`, and starts through `entrypoint.sh`, which runs `alembic upgrade head` (with retries) and then the server. Inside the Compose network `DATABASE_URL` and `REDIS_URL` use the service names `postgres` and `redis`, not `localhost`, which differs deliberately from the host-run defaults in `.env.example`.
 
@@ -301,7 +301,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **`HEALTHCHECK`:** a TCP connect to `MCP_PORT` in Python. The `python:slim` image does not ship `curl`, and the check needs no MCP-specific request. It shows that the port accepts connections, not that the MCP endpoint works. Under Docker Compose the container reaches `healthy`.
 
-**Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `alembic/`, `src/` and `entrypoint.sh` and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose --profile app up -d --build`.
+**Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `README.md`, `LICENSE`, `alembic/`, `src/` and `entrypoint.sh` (`pyproject.toml` names the README and the licence file as package metadata, so the build needs both) and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose --profile app up -d --build`.
 
 **Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
 
