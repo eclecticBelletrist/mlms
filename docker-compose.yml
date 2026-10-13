@@ -8,7 +8,9 @@ services:
     volumes:
       - postgres_data:/home/postgres/pgdata/data
     ports:
-      - "5432:5432"
+      # Loopback only: the default password is mlms and Docker's published ports bypass
+      # ufw, so "5432:5432" would expose the database to the whole network on a VPS.
+      - "127.0.0.1:5432:5432"
     healthcheck:
       # $$ (not ${...}) reads the container's own POSTGRES_USER/POSTGRES_DB set above —
       # a second inline default here would duplicate the "mlms" fallback in two places.
@@ -25,7 +27,8 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      # Loopback only, for the same reason as postgres; redis has no password.
+      - "127.0.0.1:6379:6379"
     command: redis-server --save 60 1 --loglevel warning
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

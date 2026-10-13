@@ -113,8 +113,9 @@ That said, this is still a desktop/local setup, not a hardened production one: `
 credentials are now `.env`-driven (`POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` in
 `.env.example`), but the shipped default is still `mlms`/`mlms` — nothing changes out of the
 box, only the ability to change it. `redis` has no authentication at all, hardcoded or
-otherwise. Ports are open on the host. The defaults are for a local setup; for a homelab or VPS
-follow "Homelab/VPS hardening" below.
+otherwise. Both are published on the host's loopback (`127.0.0.1`) only, so they are not
+reachable from the network; the optional `mlms` service publishes `:8000` on all interfaces. The
+defaults are for a local setup; for a homelab or VPS follow "Homelab/VPS hardening" below.
 
 ## Backup and restore
 
