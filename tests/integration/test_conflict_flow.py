@@ -5,7 +5,9 @@ Run with: MLMS_INTEGRATION=1 pytest tests/integration/test_conflict_flow.py -v
 
 from __future__ import annotations
 
+import math
 import os
+import random
 import uuid
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -14,6 +16,8 @@ import psycopg
 import psycopg.rows
 import pytest
 
+from mlms.config import EMBEDDING_DIM
+from mlms.storage._vec import vec_literal
 from mlms.storage.facts import upsert_fact
 from mlms.tools.memorize import memorize
 
@@ -155,3 +159,85 @@ class TestConflictFlowViaMemoize:
         assert len(rows) == 2
         assert sum(1 for r in rows if r["is_current"]) == 1
         assert max(r["version"] for r in rows) == 2
+
+
+def _unit(v: list[float]) -> list[float]:
+    n = math.sqrt(sum(x * x for x in v))
+    return [x / n for x in v]
+
+
+def _random_unit(rnd: random.Random) -> list[float]:
+    return _unit([rnd.gauss(0, 1) for _ in range(EMBEDDING_DIM)])
+
+
+def _at_cosine(q: list[float], cos: float, rnd: random.Random) -> list[float]:
+    r = _random_unit(rnd)
+    d = sum(a * b for a, b in zip(r, q, strict=True))
+    ortho = _unit([a - d * b for a, b in zip(r, q, strict=True)])
+    s = math.sqrt(1 - cos * cos)
+    return [cos * a + s * b for a, b in zip(q, ortho, strict=True)]
+
+
+class TestConflictLookupInLargeProject:
+    """The HNSW candidates of the nearest-fact lookup can all belong to another project."""
+
+    async def test_conflict_found_when_other_project_holds_the_nearest_rows(
+        self, pg: psycopg.AsyncConnection[Any], project_id: uuid.UUID
+    ) -> None:
+        rnd = random.Random(7)
+        query = _random_unit(rnd)
+        other = uuid.uuid4()
+        insert = (
+            "INSERT INTO facts (id, content, embedding, project_id, version, is_current, updated_at)"
+            " VALUES (%s, %s, %s::vector, %s, 1, TRUE, now())"
+        )
+        await pg.execute(
+            "INSERT INTO projects (id, name) VALUES (%s, %s)", (other, f"other-{other}")
+        )
+        try:
+            async with pg.cursor() as cur:
+                await cur.executemany(
+                    insert,
+                    [
+                        (uuid.uuid4(), "filler", vec_literal(_random_unit(rnd)), project_id)
+                        for _ in range(800)
+                    ],
+                )
+                await cur.executemany(
+                    insert,
+                    [
+                        (uuid.uuid4(), "near", vec_literal(_at_cosine(query, 0.99, rnd)), other)
+                        for _ in range(100)
+                    ],
+                )
+            old = await upsert_fact(
+                content="target",
+                project_id=project_id,
+                embedding_vec=_at_cosine(query, 0.97, rnd),
+                conn=pg,
+            )
+            await pg.execute("ANALYZE facts")
+            await pg.commit()
+
+            plan = await (
+                await pg.execute(
+                    "EXPLAIN SELECT id FROM facts WHERE project_id = %s AND is_current = TRUE"
+                    " ORDER BY embedding <=> %s::vector LIMIT 1",
+                    (project_id, vec_literal(query)),
+                )
+            ).fetchall()
+            await pg.commit()
+            assert any("facts_embedding_idx" in row[0] for row in plan)
+
+            new = await upsert_fact(
+                content="target revised", project_id=project_id, embedding_vec=query, conn=pg
+            )
+            await pg.commit()
+
+            assert new.is_conflict
+            assert new.replaced_id == old.id
+        finally:
+            await pg.rollback()
+            await pg.execute("DELETE FROM facts WHERE project_id = %s", (other,))
+            await pg.execute("DELETE FROM projects WHERE id = %s", (other,))
+            await pg.commit()

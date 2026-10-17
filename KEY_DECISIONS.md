@@ -170,9 +170,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-10
 
-**Last updated:** 2026-10-09 (migrations squashed into one initial schema, Decision 28)
+**Last updated:** 2026-10-17 (the nearest-fact lookup uses the HNSW iterative scan)
 
-**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates. If the connection is already inside a transaction, the `SET` is skipped and the write runs at that transaction's isolation level (Decision 26).
+**Decision:** when a fact is written, its embedding is compared with the nearest `is_current=TRUE` fact of the same `project_id`. If the cosine distance is at most `1 - COSINE_CONFLICT_THRESHOLD`, the old row gets `is_current=FALSE` and the new row is inserted with `version + 1` and `replaces_id` pointing at the old row. Both statements run in one transaction whose first statement is `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`; the nearest-fact lookup runs with the HNSW iterative scan (Decision 17), so it finds the nearest current fact of the project even when the index's first candidates belong to other projects. A `SerializationFailure` restarts the whole transaction, at most 3 attempts in total and with no backoff; after the third failure the error propagates. If the connection is already inside a transaction, the `SET` is skipped and the write runs at that transaction's isolation level (Decision 26).
 
 **Rationale:** the transaction makes retire-and-insert atomic: a failure between the two statements cannot leave the old fact retired with no replacement. The isolation level is raised because at the default `READ COMMITTED` the check and the insert are separate statements, so two concurrent `memorize()` calls with near-identical content both pass the check and both insert an `is_current=TRUE` row. `get_facts` and `search_memory` filter on `is_current=TRUE`, so they would return both versions.
 
@@ -184,7 +184,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Affected files:** `src/mlms/storage/facts.py` (`upsert_fact`), `src/mlms/config.py`
 
-**See also:** Decision 3, Decision 10, Decision 26.
+**See also:** Decision 3, Decision 10, Decision 17, Decision 26.
 
 ---
 
@@ -274,23 +274,24 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 ---
 
-## Decision 17: Filters applied in SQL before `LIMIT`, HNSW iterative scan for filtered session-log search
+## Decision 17: Filters applied in SQL before `LIMIT`, HNSW iterative scan for filtered vector lookups
 
 **Decided:** 2026-09-01
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-10-17 (the conflict lookup in `upsert_fact` uses the iterative scan too)
 
-**Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. For the cross-session (vector) search in `get_session_log`, `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled.
+**Decision:** `get_session_log` (`entry_type`) and `get_skills` (`domain`) filter inside the SQL query, before `LIMIT`. `SET LOCAL hnsw.iterative_scan = 'strict_order'` is enabled for the cross-session (vector) search in `get_session_log` and for the nearest-fact lookup in `upsert_fact` (Decision 6). The statement is defined once, as `ITERATIVE_SCAN` in `storage/_vec.py`.
 
 **Rationale:**
 - Filtering in Python after the storage layer has applied `LIMIT` loses matching rows ranked below the first `LIMIT` rows, even though they exist.
 - The HNSW index has the same effect: pgvector applies the filter after scanning the index's candidate list (`hnsw.ef_search`, default 40), so a selective filter can return fewer than `LIMIT` rows ([README, filtering](https://github.com/pgvector/pgvector#filtering)). Iterative scans (pgvector 0.8.0 and later) keep scanning until enough rows are found or `hnsw.max_scan_tuples` (20,000 by default) is reached ([README, iterative index scans](https://github.com/pgvector/pgvector#iterative-index-scans)).
+- In the conflict lookup a miss leaves two current versions of a fact. The `facts` index holds every project and every retired version, so in a large project all candidates can belong to other projects or be retired rows. The lookup then returns nothing, the conflict is missed, and the new version is inserted next to the old one, both current. `tests/integration/test_conflict_flow.py` (`TestConflictLookupInLargeProject`) reproduces this with 800 facts in the project and 100 closer ones in another project, and checks that the plan uses the HNSW index.
 
 **Implementation note:** the pool runs with `autocommit=True` (`server.py`), so every bare `execute()` is its own transaction and `SET LOCAL` would be gone before the query runs. The `SET LOCAL` and the search `SELECT` therefore share one explicit transaction, the same pattern as `upsert_fact` (Decision 6). A plain `SET` is session-scoped ([PostgreSQL docs](https://www.postgresql.org/docs/current/sql-set.html)) and would stay on the pooled connection for the next borrower; the pool has no `reset` callback configured.
 
 **Alternatives:** exact (non-indexed) search on `session_log` avoids approximate-recall loss but gives up the HNSW index chosen in Decision 2. It was not pursued and not measured; it remains an option if approximate misses become visible.
 
-**Affected files:** `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_session_rag.py` (runs only with `MLMS_INTEGRATION=1`, against the Compose stack or the CI service containers)
+**Affected files:** `src/mlms/storage/_vec.py`, `src/mlms/storage/facts.py`, `src/mlms/storage/session_log.py`, `src/mlms/storage/skills.py`, `src/mlms/tools/get_session_log.py`, `src/mlms/tools/get_skills.py`, `tests/unit/test_session_log.py`, `tests/unit/test_skills.py`, `tests/unit/test_get_session_log.py`, `tests/unit/test_get_skills.py`, `tests/integration/test_conflict_flow.py`, `tests/integration/test_session_rag.py` (runs only with `MLMS_INTEGRATION=1`, against the Compose stack or the CI service containers)
 
 **See also:** Decision 2, Decision 19.
 

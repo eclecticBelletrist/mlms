@@ -12,7 +12,7 @@ import psycopg
 import psycopg.rows
 
 from mlms.config import COSINE_CONFLICT_THRESHOLD
-from mlms.storage._vec import vec_literal
+from mlms.storage._vec import ITERATIVE_SCAN, vec_literal
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,10 @@ async def upsert_fact(
                 cur = conn.cursor(row_factory=psycopg.rows.dict_row)
                 if conn_was_idle:
                     await cur.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+                # The index holds every project and every retired version, so without the
+                # iterative scan all ef_search candidates can fail the WHERE, the lookup
+                # returns nothing and a second current version is inserted.
+                await cur.execute(ITERATIVE_SCAN)
 
                 await cur.execute(_SELECT_NEAREST, (vec_lit, project_id, vec_lit))
                 row = await cur.fetchone()

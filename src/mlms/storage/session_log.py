@@ -11,7 +11,7 @@ import psycopg
 import psycopg.rows
 from psycopg.types.json import Jsonb
 
-from mlms.storage._vec import vec_literal
+from mlms.storage._vec import ITERATIVE_SCAN, vec_literal
 
 
 @dataclass(frozen=True)
@@ -37,12 +37,6 @@ _INSERT = """
 """
 
 _SELECT_COLS = "SELECT time, chat_id, type, label, content, tags, meta FROM session_log"
-
-# pgvector HNSW is approximate: it pulls its ef_search candidate window (default 40)
-# before any WHERE filter runs, so a selective type/project filter can leave fewer than
-# LIMIT matches even when plenty exist in the table. hnsw.iterative_scan makes the index
-# keep expanding the search until LIMIT is filled (or hnsw.max_scan_tuples is hit).
-_ITERATIVE_SCAN = "SET LOCAL hnsw.iterative_scan = 'strict_order'"
 
 
 async def insert_session_entry(
@@ -114,7 +108,7 @@ async def get_session_log(
         # SELECT must share one explicit transaction, or the setting is gone before the
         # query runs.
         async with conn.transaction():
-            await cur.execute(_ITERATIVE_SCAN)
+            await cur.execute(ITERATIVE_SCAN)
             await cur.execute(query, params)
 
     rows: list[dict[str, Any]] = await cur.fetchall()

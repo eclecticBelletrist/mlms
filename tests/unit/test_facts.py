@@ -126,12 +126,13 @@ class TestUpsertFact:
             conn=conn,
         )
 
-        assert cur.execute.call_count == 4
+        assert cur.execute.call_count == 5
         sql_calls = [c.args[0] for c in cur.execute.call_args_list]
         assert "SERIALIZABLE" in sql_calls[0]
-        assert "SELECT" in sql_calls[1]
-        assert "UPDATE" in sql_calls[2]
-        assert "INSERT" in sql_calls[3]
+        assert "hnsw.iterative_scan" in sql_calls[1]
+        assert "SELECT" in sql_calls[2]
+        assert "UPDATE" in sql_calls[3]
+        assert "INSERT" in sql_calls[4]
 
     async def test_no_conflict_skips_update(self) -> None:
         conn, cur = _make_conn(None)
@@ -143,7 +144,7 @@ class TestUpsertFact:
             conn=conn,
         )
 
-        assert cur.execute.call_count == 3
+        assert cur.execute.call_count == 4
         sql_calls = [c.args[0] for c in cur.execute.call_args_list]
         assert not any("UPDATE" in s for s in sql_calls)
 
