@@ -97,7 +97,7 @@ Smaller gaps, accepted for now. A write that has already committed to Postgres c
 
 ### 17. One connection pool per MCP session
 
-The Postgres pool is opened in the SDK lifespan, which runs once per client session, not once per process (`KEY_DECISIONS.md`, Decision 3). Over HTTP, a session the client never closes with `DELETE` keeps its pool and at least one connection open, because the SDK sets no idle timeout. In a measurement, 20 such sessions held 20 connections. Many clients that drop sessions without closing them can exhaust Postgres `max_connections`. A fix is one pool per process, shared by all sessions; it is not implemented.
+The Postgres pool is opened in the SDK lifespan, which runs once per client session, not once per process (`KEY_DECISIONS.md`, Decision 3). Over HTTP, a session the client never closes with `DELETE` keeps its pool and at least one connection open until the SDK closes it after 30 minutes without requests. The SDK allows up to 10,000 open sessions and Postgres allows 100 connections by default, so many clients that drop sessions without closing them can exhaust `max_connections` within that window. A fix is one pool per process, shared by all sessions; it is not implemented.
 
 ### 18. `MCP_HOST=::1` passes the secret check but not the Host allowlist
 
