@@ -44,6 +44,10 @@ dev = [
     "rank-bm25>=0.2",
 ]
 
+[project.urls]
+Repository = "https://github.com/eclecticBelletrist/mlms"
+Changelog = "https://github.com/eclecticBelletrist/mlms/blob/main/CHANGELOG.md"
+
 # ─── Ruff ────────────────────────────────────────────────────────────────────
 
 [tool.ruff]

@@ -57,7 +57,7 @@ graph TD
 Requires Docker (for Postgres + Redis) and Python 3.11+.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/eclecticBelletrist/mlms.git
 cd mlms
 
 # infrastructure

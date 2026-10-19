@@ -1,0 +1,8 @@
+# Formatting-only commits, skipped by `git blame` (GitHub honors this file automatically;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs).
+
+# chore: apply ruff format across repo
+89e3d21bd9881f1251cae30126d92d51e82d14b7
+
+# style: ruff format config.py and facts.py
+540cc3fb8d175ccfc5c1fc34d9ace48d01619352

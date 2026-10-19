@@ -3,9 +3,9 @@
 All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-19
 
-First public version (0.1.0).
+First public version.
 
 ### Added
 
@@ -18,5 +18,5 @@ First public version (0.1.0).
   optional shared-secret gate (`MCP_SHARED_SECRET`, required on a non-loopback bind).
 - Docker Compose setup: Postgres and Redis by default, the server itself behind the `app` profile.
 - One Alembic migration, `001_initial_schema.py`, that creates the whole schema.
-- CI: ruff, mypy, unit and integration tests, and a documentation consistency check
-  (`scripts/check_docs.py`).
+- CI: ruff, mypy, unit and integration tests, a documentation consistency check
+  (`scripts/check_docs.py`) and the server image build.
