@@ -152,9 +152,9 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-05-08
 
-**Last updated:** 2026-10-13 (image tags pinned; a tag is not an immutable image identity)
+**Last updated:** 2026-10-19 (Dependabot skips major image upgrades)
 
-**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha`, instead of `postgres` plus separately installed extensions. The tag is pinned to `pg16.15-ts2.30.2` (PostgreSQL 16.15, TimescaleDB 2.30.2, pgvector 0.8.7 as checked in that image) so that a new upstream release cannot move the database to a later version under an unchanged checkout. A tag is not an immutable image identity: the registry can re-point it, and no digest is pinned. `redis` is pinned the same way (`7.4.11-alpine`). Dependabot proposes tag bumps.
+**Decision:** `docker-compose.yml` uses one image, `timescale/timescaledb-ha`, instead of `postgres` plus separately installed extensions. The tag is pinned to `pg16.15-ts2.30.2` (PostgreSQL 16.15, TimescaleDB 2.30.2, pgvector 0.8.7 as checked in that image) so that a new upstream release cannot move the database to a later version under an unchanged checkout. A tag is not an immutable image identity: the registry can re-point it, and no digest is pinned. `redis` is pinned the same way (`7.4.11-alpine`). Dependabot proposes tag bumps within the same major version.
 
 **Consequence:** the data directory in this image is `/home/postgres/pgdata/data`, not the stock `/var/lib/postgresql/data`. Switching to another Postgres image means changing the volume mapping too.
 

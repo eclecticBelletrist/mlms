@@ -4,9 +4,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    groups:
-      python-dependencies:
-        update-types: [minor, patch]
+    # Version updates are off; security updates have their own limit and still open.
+    open-pull-requests-limit: 0
     ignore:
       # Capped below 2 until the code moves to MCPServer (Decisions 4 and 20).
       - dependency-name: mcp
@@ -21,8 +20,16 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The image stays on the Python version CI runs (3.11).
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
 
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # A major Postgres or Redis upgrade needs a data migration, not a tag bump.
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
