@@ -317,7 +317,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-10-13 (integration tests, docs check and image build in CI; image tags pinned)
+**Last updated:** 2026-10-19 (setup-uv v10.3.0)
 
 **Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, the documentation consistency check (`scripts/check_docs.py`), `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`), the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`) and `docker build` of the server image. Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16.15-ts2.30.2`, Decision 5, and `redis:7.4.11-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
 
@@ -327,7 +327,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Reproducibility and hardening:**
 - `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
-- Actions are pinned to exact tags (`actions/checkout@v7.0.1`, `astral-sh/setup-uv@v10.0.1`), not moving major tags. From v8.0.0 `setup-uv` no longer publishes major or minor tags ([release notes](https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0)); `checkout` is pinned the same way for consistency. A commit SHA would be stricter (the same release notes recommend it) and was not used.
+- Actions are pinned to exact tags (`actions/checkout@v7.0.1`, `astral-sh/setup-uv@v10.3.0`), not moving major tags. From v8.0.0 `setup-uv` no longer publishes major or minor tags ([release notes](https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0)); `checkout` is pinned the same way for consistency. A commit SHA would be stricter (the same release notes recommend it) and was not used.
 - `permissions: contents: read` limits the workflow token, `timeout-minutes: 10` stops a hung job, and `ubuntu-24.04` replaces the floating `ubuntu-latest`.
 - A per-test limit of 30 seconds is set in the pytest configuration (Decision 27).
 - A new push to the same pull request cancels its previous run. Runs on push to `main` are grouped per commit and never cancelled.
