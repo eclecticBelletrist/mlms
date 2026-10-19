@@ -317,13 +317,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Decided:** 2026-09-03
 
-**Last updated:** 2026-10-19 (setup-uv v10.3.0)
+**Last updated:** 2026-10-19 (setup-uv v10.3.0; the workflow runs on GitHub Actions)
 
 **Decision:** the GitHub Actions workflow (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy src`, the documentation consistency check (`scripts/check_docs.py`), `alembic upgrade head`, the unit tests with the coverage gate (`pytest -m unit`, `fail_under = 80` in `pyproject.toml`), the integration tests (`MLMS_INTEGRATION=1 pytest -m integration`) and `docker build` of the server image. Postgres and Redis run as job `services:` containers from the images in `docker-compose.yml` (`timescale/timescaledb-ha:pg16.15-ts2.30.2`, Decision 5, and `redis:7.4.11-alpine`) with the same credentials; a comment in the workflow says to keep the two files in sync.
 
 **Rationale:** the integration tests cover what unit tests with mocked connections cannot: pool behavior, the conflict flow, and filtered session-log search with the HNSW iterative scan (Decision 17). Without them in CI, a green run would say nothing about those paths. A hook in `tests/conftest.py` marks every test under `tests/unit/` as `unit` and every test under `tests/integration/` as `integration`, so the two `-m` selections do not overlap. Without `MLMS_INTEGRATION=1` the integration tests skip themselves, which keeps a plain `pytest` run from reaching for a database that is not there.
 
-**Consequence:** the coverage gate applies to the unit run only; the integration run passes no `--cov`. The images and credentials exist in both `docker-compose.yml` and `ci.yml`, and no test checks that they agree. The workflow's steps were reproduced locally against the same two images. A run on GitHub Actions itself was not checked.
+**Consequence:** the coverage gate applies to the unit run only; the integration run passes no `--cov`. The images and credentials exist in both `docker-compose.yml` and `ci.yml`, and no test checks that they agree. The workflow runs on GitHub Actions on every push and pull request to `main`.
 
 **Reproducibility and hardening:**
 - `uv sync --locked --extra dev` fails the build if `uv.lock` is out of sync with `pyproject.toml`.
