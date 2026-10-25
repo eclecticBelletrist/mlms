@@ -1,10 +1,13 @@
 # MLMS: Multi-Layer Memory System
 
 A self-hosted [MCP](https://modelcontextprotocol.io) server giving LLM agents persistent,
-cross-session memory across four CoALA-style layers: semantic facts, episodic timeline
-events, procedural skills, and session-scoped working memory.
+cross-session memory across four [CoALA](https://arxiv.org/abs/2309.02427)-style layers:
+semantic facts, episodic timeline events, procedural skills, and session-scoped working memory.
+Text to embed is sent to an OpenAI-compatible embeddings API, OpenRouter by default.
 
-Python 3.11+ · Apache-2.0 · early-stage, pre-1.0
+[![CI](https://github.com/eclecticBelletrist/mlms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/eclecticBelletrist/mlms/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 
 ---
 
@@ -14,75 +17,65 @@ An LLM agent uses MLMS only through MCP tool calls and never touches the databas
 It has four memory layers:
 
 - Semantic, `facts`: versioned, with embedding-based conflict detection and soft delete
-  (`is_current`), so history is never lost.
+  (`is_current`). Old versions stay in the database; the tools return the current one, and
+  `revert_fact` restores the previous one.
 - Episodic, `timeline_events` and `session_log`: events at project scale (a TimescaleDB
   hypertable) and entries at chat scale (in-session and cross-session retrieval).
 - Procedural, `skills`: versioned, never deleted.
-- Working, a per-chat session record in Redis.
+- Working, a per-chat session record in Redis with a 48-hour TTL, renewed on every access. It
+  holds the project and the time of the last write; its `open_todos`, `active_entities` and
+  `recent_decisions` fields are reserved and always empty.
 
-Everything durable is stored in Postgres (pgvector + TimescaleDB); Redis holds only the
-session-scoped working memory.
+Everything durable is stored in Postgres (pgvector + TimescaleDB). Redis holds the
+session-scoped working memory and a 24-hour cache of computed embeddings.
 
 MLMS is built for self-hosted, single-user use: one person with a few trusted clients running
 their own instance. It is not a multi-tenant service. The default `stdio` transport has no
-network port and no auth. `sse` and `streamable-http` have a single shared-secret gate
-(`MCP_SHARED_SECRET`), optional on loopback; on any other bind the server refuses to start
-without it (see "Homelab/VPS hardening" below). Every holder gets equal, full read/write access,
+network port and no auth. The HTTP transports (`sse`, `streamable-http`) are protected by one
+shared secret (see "Homelab/VPS hardening" below). Every holder gets equal, full read/write access,
 so there is no per-user auth or isolation (see [`KEY_DECISIONS.md`](KEY_DECISIONS.md),
 Decision 23). Adding them would be a redesign.
 
-Conflict detection compares embeddings by cosine similarity, but its threshold is not
-independently calibrated yet, and there is no forgetting or decay mechanism. Known limitations
-are listed in [`docs/known-issues.md`](docs/known-issues.md); read it before relying on this
-for anything beyond experimentation.
-
-## Architecture
-
-```mermaid
-graph TD
-  LLM[LLM Client] -->|MCP JSON-RPC only| Server[MCP Server]
-  Server --> EmbAPI[Embedding API\nQwen3-Embedding-8B]
-  Server --> PG[(PostgreSQL\npgvector + TimescaleDB)]
-  Server --> RD[(Redis)]
-
-  PG --> F[facts]
-  PG --> TE[timeline_events]
-  PG --> SL[session_log]
-  PG --> SK[skills]
-  RD --> SC[session context]
-```
+MLMS is experimental (version 0.1). Conflict detection compares embeddings by cosine similarity, but
+its threshold is not independently calibrated yet, and there is no forgetting or decay mechanism.
+Known limitations are listed in [`docs/known-issues.md`](docs/known-issues.md); read it before
+relying on this for anything beyond experimentation.
 
 ## Quick start
 
-Requires Docker (for Postgres + Redis) and Python 3.11+.
+Requires Docker (for Postgres + Redis), Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/eclecticBelletrist/mlms.git
 cd mlms
 
-# infrastructure
+# Postgres + Redis; all stored memory is in two volumes (docker compose down -v deletes them)
 docker compose up -d --wait
 
-# app
-pip install -e ".[dev]"
+# app: installs the versions pinned in uv.lock into .venv
+uv sync --locked --extra dev
+source .venv/bin/activate
 alembic upgrade head
 
-# embedding API key — see src/mlms/config.py for all settings
+# embedding API key (all settings: src/mlms/config.py)
 export EMBEDDING_API_KEY=your-key-here
 
 python -m mlms.server
 ```
 
+Without uv, `pip install -e ".[dev]"` in a virtualenv of your own installs the same package, but
+resolves dependency versions from PyPI instead of `uv.lock`.
+
 Default transport is `stdio`: the MCP client launches the server as a subprocess and talks to it
 over stdin/stdout. Started by hand in a terminal, it just waits for input and prints nothing
-(apart from a warning if `EMBEDDING_API_KEY` is empty). To connect from Claude Desktop, add to
-`claude_desktop_config.json`:
+(apart from a warning if `EMBEDDING_API_KEY` is empty). Example client config in the
+`mcpServers` format (used by Claude Desktop's `claude_desktop_config.json` and other clients):
 
 ```json
 {
   "mcpServers": {
     "mlms": {
-      "command": "python",
+      "command": "/path/to/mlms/.venv/bin/python",
       "args": ["-m", "mlms.server"],
       "env": {
         "EMBEDDING_API_KEY": "your-key-here",
@@ -94,13 +87,33 @@ over stdin/stdout. Started by hand in a terminal, it just waits for input and pr
 }
 ```
 
-`command` must be the Python that has MLMS installed. If you installed it into a virtualenv, give
-the full path to that environment's interpreter (for example `/path/to/mlms/.venv/bin/python`);
-a plain `python` starts the system interpreter, which does not have the package.
+`command` must be the full path to the Python that has MLMS installed (`.venv/bin/python` in the
+clone after `uv sync`). A plain `python` starts the system interpreter, which does not have the
+package.
 
-HTTP transports (`sse`, `streamable-http`) are selected with `MCP_TRANSPORT` and protected by a
-shared-secret gate (optional on loopback). See "Homelab/VPS hardening" below before exposing one
-off `localhost`.
+**What leaves your machine.** The embedding API receives the content of every fact and
+`session_log` label and every semantic search query (`about`, `query`, `semantic_query`). Events
+and skills are not embedded. Apart from this API, the server connects only to Postgres and Redis.
+
+<details>
+<summary>Environment variables</summary>
+
+Read from the environment or from `.env` in the working directory (template:
+[`.env.example`](.env.example)). Defaults are in `src/mlms/config.py`.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `EMBEDDING_API_KEY` | empty | Key for the embedding API. Empty: facts, `session_log` and semantic search fail; events, skills and `get_timeline` work |
+| `EMBEDDING_API_BASE` | `https://openrouter.ai/api/v1` | Embedding endpoint, called as `<base>/embeddings` |
+| `DATABASE_URL` | `postgresql+psycopg://mlms:mlms@localhost:5432/mlms` | Postgres; must use the `postgresql+psycopg://` scheme |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis |
+| `MCP_TRANSPORT` | `stdio` | `stdio`, `sse` or `streamable-http` |
+| `MCP_HOST` | `0.0.0.0` | Bind address for the HTTP transports |
+| `MCP_PORT` | `8000` | Port for the HTTP transports |
+| `MCP_SHARED_SECRET` | unset | Bearer token for the HTTP transports; required when `MCP_HOST` is not loopback |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `mlms` | Used by `docker-compose.yml` only |
+
+</details>
 
 ## Walkthrough
 
@@ -170,9 +183,69 @@ search_memory  {"query": "webhooks", "filters": {"project_id": "<project_id>"}}
    {"layer": "event", "content": "Billing moves from REST polling to webhooks", …}]
 ```
 
-Session-Augmented RAG (enriching a query with the session log before embedding) is a research
-experiment measured in [`docs/mlms_benchmark_design.md`](docs/mlms_benchmark_design.md); it is not
-part of the served tools.
+## Architecture
+
+```mermaid
+graph TD
+  LLM[LLM Client] -->|MCP JSON-RPC only| Server[MCP Server]
+  Server --> EmbAPI[Embedding API\nQwen3-Embedding-8B]
+  Server --> PG[(PostgreSQL\npgvector + TimescaleDB)]
+  Server --> RD[(Redis)]
+
+  PG --> F[facts]
+  PG --> TE[timeline_events]
+  PG --> SL[session_log]
+  PG --> SK[skills]
+  RD --> SC[session context]
+```
+
+## Tools
+
+10 tools, registered over MCP `tools/list`:
+
+| Tool | Kind | What it does |
+|---|---|---|
+| `create_project` | write | Get or create a project by name. Call this first, once per project |
+| `memorize` | write | Store a fact, event, skill, or session_log entry |
+| `get_facts` | read (embeds on `about`) | Retrieve current facts, optional semantic query |
+| `get_timeline` | read | Query timeline events (phases, actions, decisions) |
+| `get_session_log` | read (embeds on `semantic_query`) | Session log entries, in-session or cross-session (mutually exclusive modes) |
+| `get_session_context` | read | Working memory for a chat session, from Redis. `open_todos`, `active_entities` and `recent_decisions` are always empty: no tool fills them |
+| `get_skills` | read | Procedural skills, optional domain filter |
+| `revert_fact` | write | Revert a fact to its previous version (soft, `is_current` flip) |
+| `search_memory` | read (embeds unless `memory_type` scopes to event/skill) | Cross-layer search over facts + timeline + skills |
+| `export_project` | read | Export all current facts, timeline events, and skills for a project as JSON |
+
+## Measured
+
+Latency, `scripts/measure_latency.py`, 100 calls per operation, Docker Desktop on Windows 11:
+
+| Operation | p50 | p99 | Target |
+|---|---|---|---|
+| `get_facts`, query embedding already cached | 4.7 ms | 16.0 ms | < 200 ms, met |
+| `get_session_context` (Redis) | 1.6 ms | 9.9 ms | ≤ 5 ms, missed by one slow call of 100 |
+| embed through the API and store a fact | 1158 ms | 9237 ms | none set |
+
+Retrieval, Recall@5 on `synthetic_hard`: 93 scenarios over a shared corpus of 400 facts, each
+with 2 to 5 relevant facts and a query worded so that word matching fails. Cosine search with
+Qwen3-Embedding-8B at 1536 dimensions (in memory, without Postgres) puts on average 0.320 of the
+relevant facts in the top 5; BM25 on the same queries, 0.040. Both datasets are LLM-generated,
+so the numbers compare methods and do not predict quality on real data. How they were measured,
+the per-type results and the limits are in
+[`docs/mlms_benchmark_design.md`](docs/mlms_benchmark_design.md).
+
+## Testing
+
+```bash
+pytest -m unit                              # ~4 s, no external services
+MLMS_INTEGRATION=1 pytest -m integration    # Postgres + Redis from Quick start, migrated
+```
+
+32 test files, split into unit and integration suites. CI (`.github/workflows/ci.yml`) runs
+on every push and PR to `main`: lint (ruff), types (strict mypy), the docs consistency check
+(`scripts/check_docs.py`), the migrations, the unit suite with the coverage gate
+(`fail_under = 80`), the integration suite against real Postgres + Redis `services:` containers,
+and a Docker image build.
 
 ## Deployment status
 
@@ -205,7 +278,7 @@ Nothing runs on a schedule.
 # snapshot
 docker compose exec -T postgres pg_dump -U mlms -d mlms -Fc > mlms.bak
 
-# restore — into an empty database, not the live one: it already has this schema in it,
+# restore into an empty database, not the live one: it already has this schema in it,
 # and pg_restore will refuse to recreate tables/constraints that already exist.
 # DROP DATABASE fails while any connection is open, so stop the app first.
 docker compose stop mlms
@@ -246,10 +319,10 @@ default `stdio` transport doesn't listen on the network at all, so none of this 
 **Layer 1: don't rely on the app alone to keep the port closed.** `MCP_HOST` defaults to
 `0.0.0.0`, and the server's `allowed_hosts`/`allowed_origins` allowlist (see
 [`KEY_DECISIONS.md`](KEY_DECISIONS.md), Decision 4) only rejects requests at the application
-layer (`421` for a bad Host, `403` for a bad Origin); the TCP port itself is still open to the world underneath that check.
-Set `MCP_HOST=127.0.0.1` explicitly and add a firewall rule (`ufw`/`iptables`) denying inbound
-traffic on `MCP_PORT` from outside. The firewall still holds even if someone later changes
-`MCP_HOST` and forgets why.
+layer (`421` for a bad Host, `403` for a bad Origin); the TCP port itself is still open to the
+world underneath that check. Set `MCP_HOST=127.0.0.1` explicitly and add a firewall rule
+(`ufw`/`iptables`) denying inbound traffic on `MCP_PORT` from outside. The firewall still holds
+even if someone later changes `MCP_HOST` and forgets why.
 
 The compose deploy works differently. Inside the container `MCP_HOST` has to stay `0.0.0.0`,
 because with `127.0.0.1` Docker's port forwarding cannot reach the server. The `mlms` service
@@ -263,7 +336,7 @@ let a client reach the server over a private mesh or an outbound-only connection
 `MCP_HOST` staying `127.0.0.1`. Nothing below replaces this. A shared secret narrows who
 can use the server once a request arrives, not who can reach the port.
 
-**Layer 1.5: shared-secret token, `MCP_SHARED_SECRET`.** Only checked on `sse`/
+**On top of the layers: a shared-secret token, `MCP_SHARED_SECRET`.** Only checked on `sse`/
 `streamable-http`; `stdio` has no network port, so it never applies there. Generate one with:
 
 ```bash
@@ -286,7 +359,8 @@ This is a single static token: no rotation, no per-user scoping, no rate limitin
 gap where anyone who can reach the port gets full read/write access to every memory. Layers 1, 2
 and 3 still do the real perimeter work; the token is an extra check on top of them.
 
-It does not protect against three things:
+<details>
+<summary>Three things the shared secret does not protect against</summary>
 
 - **`MCP_HOST=127.0.0.1` behind a reverse proxy that terminates publicly is network-reachable
   even though the process binds loopback.** The fail-fast above only looks at the `MCP_HOST`
@@ -302,6 +376,8 @@ It does not protect against three things:
   that is the query-string leak this section already tells you to avoid. If your `sse` client is
   a browser tab making a raw `EventSource` connection (not an MCP client library that controls
   its own headers), this gate isn't compatible with it.
+
+</details>
 
 `allowed_hosts`/`allowed_origins` validate the `Host`/`Origin` headers of the incoming
 request, not which interface the connection came in on. This does not work out of the box with
@@ -320,7 +396,10 @@ through to `_LOOPBACK_HOSTS` in `src/mlms/server.py` (it feeds both `allowed_hos
 `allowed_origins`), or every request gets `421 Invalid Host Header`. See Decision 4 for why
 that list exists and Decision 22 for why it isn't wired up to an env var.
 
-**Verify it's actually working.** This was run against the `mlms` service started with
+<details>
+<summary>Verify it's actually working: <code>curl</code> checks for the 421 and 403 responses</summary>
+
+This was run against the `mlms` service started with
 `docker compose --profile app up` (Docker 29, rootless and rootful). In a request the
 shared-secret check runs first and the Host/Origin check after it, on the transport's own
 route (`/mcp` for `streamable-http`, `/sse` for `sse`), not on `/`, so a plain `GET /` won't
@@ -337,17 +416,17 @@ bare `MCP_HOST=127.0.0.1` run instead (no secret required there), drop that head
 ```bash
 TOKEN=your-mcp-shared-secret   # only needed if MCP_HOST is non-loopback (e.g. the compose deploy)
 
-# 421 — Host not on the allowlist
+# 421: Host not on the allowlist
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: evil.example.com" http://<your-host>:<mcp-port>/mcp
 
-# not 421 (406 in local testing) — Host passed the check
+# not 421 (406 in local testing): Host passed the check
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" http://<your-host>:<mcp-port>/mcp
 
-# not 403 — a legitimate loopback Origin (with scheme — Origin headers always carry one)
+# not 403: a legitimate loopback Origin (with a scheme, which Origin headers always carry)
 # should pass, same as sending no Origin at all
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" -H "Origin: http://127.0.0.1" http://<your-host>:<mcp-port>/mcp
 
-# 403 — Origin present and not allowlisted (a different failure code from Host, not 421)
+# 403: Origin present and not allowlisted (a different failure code from Host, not 421)
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" -H "Host: 127.0.0.1" -H "Origin: https://evil.example.com" http://<your-host>:<mcp-port>/mcp
 ```
 
@@ -358,35 +437,7 @@ legitimate. The same applies to `MCP_HOST=::1`: it counts as loopback for the sh
 check, but `[::1]` is not on the Host allowlist. The check fails toward rejecting a request, so
 this is safe, but it explains a `421` from a local client.
 
-## Tools
-
-10 tools, registered over MCP `tools/list`:
-
-| Tool | Kind | What it does |
-|---|---|---|
-| `create_project` | write | Get or create a project by name. Call this first, once per project |
-| `memorize` | write | Store a fact, event, skill, or session_log entry |
-| `get_facts` | read (embeds on `about`) | Retrieve current facts, optional semantic query |
-| `get_timeline` | read | Query timeline events (phases, actions, decisions) |
-| `get_session_log` | read (embeds on `semantic_query`) | Session log entries, in-session or cross-session (mutually exclusive modes) |
-| `get_session_context` | read | Working memory for a chat session, from Redis. `open_todos`, `active_entities` and `recent_decisions` are always empty: no tool fills them |
-| `get_skills` | read | Procedural skills, optional domain filter |
-| `revert_fact` | write | Revert a fact to its previous version (soft, `is_current` flip) |
-| `search_memory` | read (embeds unless `memory_type` scopes to event/skill) | Cross-layer search over facts + timeline + skills |
-| `export_project` | read | Export all current facts, timeline events, and skills for a project as JSON |
-
-## Testing
-
-```bash
-pytest -m unit                                                    # fast, no external services
-docker compose up -d --wait && alembic upgrade head && MLMS_INTEGRATION=1 pytest -m integration  # needs Postgres + Redis
-```
-
-32 test files, split into unit and integration suites. CI (`.github/workflows/ci.yml`) runs
-on every push and PR to `main`: lint (ruff), types (strict mypy), the docs consistency check
-(`scripts/check_docs.py`), the migrations, the unit suite with the coverage gate
-(`fail_under = 80`), the integration suite against real Postgres + Redis `services:` containers,
-and a Docker image build.
+</details>
 
 ## Design decisions & known limitations
 
