@@ -357,7 +357,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Trade-off:** no dependency-only layer. The build copies `pyproject.toml`, `uv.lock`, `alembic.ini`, `README.md`, `LICENSE`, `alembic/`, `src/` and `entrypoint.sh` (`pyproject.toml` names the README and the licence file as package metadata, so the build needs both) and runs one `uv sync`, so any code change reinstalls all dependencies. A separate layer is possible with `uv sync --no-install-project`; it was left out to keep the Dockerfile simple. The image is not published to a registry; users build it with `docker compose --profile app up -d --build`.
 
-**Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`
+**Affected files:** `Dockerfile`, `entrypoint.sh`, `.dockerignore`, `.gitignore`, `docker-compose.yml`, `README.md`, `docs/deployment.md`
 
 **See also:** Decision 4, Decision 9, Decision 19, Decision 20.5, and Decision 25.
 
@@ -377,7 +377,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Known limitation:** changing `POSTGRES_PASSWORD` only takes effect against a fresh `postgres_data` volume, because the image applies `POSTGRES_*` only at first initialization. An existing volume needs `docker compose down -v` or a manual `ALTER ROLE`. The characters `` @ : / % # `` in the password are not URL-encoded when composed into `DATABASE_URL`, so a password containing one of them produces an invalid connection string, and the resulting error does not point at the password.
 
-**Affected files:** `docker-compose.yml`, `.env.example`, `README.md`
+**Affected files:** `docker-compose.yml`, `.env.example`, `docs/deployment.md`
 
 **See also:** Decision 5, Decision 20.
 
@@ -389,7 +389,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Last updated:** 2026-10-12 (image tags pinned)
 
-**Decision:** the backup/restore guide in README uses `pg_dump -Fc` (custom format) with `timescaledb_pre_restore()` / `pg_restore` / `timescaledb_post_restore()`, not a plain-text dump restored with `psql`. `pg_restore` runs without `-j` (parallel restore).
+**Decision:** the backup/restore guide in `docs/deployment.md` uses `pg_dump -Fc` (custom format) with `timescaledb_pre_restore()` / `pg_restore` / `timescaledb_post_restore()`, not a plain-text dump restored with `psql`. `pg_restore` runs without `-j` (parallel restore).
 
 **Rationale:** TimescaleDB's own backup guide requires the custom format plus the pre/post-restore pair to reconstruct hypertable metadata (chunk structure) as well as row data ([Logical backup](https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup)). The same page recommends against dumping individual tables with `pg_dump -t`: even naming the hypertable and every one of its chunks explicitly is not enough to recreate the hypertable on restore. `pg_restore -j` is documented there as not correctly restoring the TimescaleDB catalogs, with a long-standing report of restores failing on foreign-key errors in the catalog tables under it ([timescaledb#1584](https://github.com/timescale/timescaledb/issues/1584)); official support for `-j` is still an open feature request ([#698](https://github.com/timescale/timescaledb/issues/698)), so the guide does not use it.
 
@@ -401,7 +401,7 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 - `redis-cli --rdb <file>` run from the host: rejected because the host's `redis-cli` version can drift from the `redis:7.4.11-alpine` version in the container, and the replication protocol used to stream the RDB is version-sensitive.
 - The same command from a matching container (`docker run --network <compose-net> redis:7.4.11-alpine redis-cli -h redis --rdb -`) avoids that mismatch and was confirmed to work, but needs the compose network's name; `SAVE` + `docker compose cp` was kept as the shorter default.
 
-**Affected files:** `README.md`
+**Affected files:** `docs/deployment.md`
 
 ---
 
@@ -417,13 +417,13 @@ Dates are the days the decisions were made. Commit history before 2026-08 was re
 
 **Test:** The regression test drives a real HTTP request through `TestClient` rather than calling the SDK's private `_validate_origin` method directly, so it keeps working across an SDK version that renames or removes that method. The app under test is a `FastMCP` instance that carries the real server's `transport_security` settings and a no-op lifespan, so the test does not open a database pool (Decision 27).
 
-The README section "Homelab/VPS hardening" describes the deployment side: firewall, tunnels, a reverse proxy, and the `curl` recipe that checks the `421` and `403` responses. Whether a tunnel forwards the original `Host`/`Origin` was not verified against a live tunnel, and the README says so.
+The "Homelab/VPS hardening" section of `docs/deployment.md` describes the deployment side: firewall, tunnels, a reverse proxy, and the `curl` recipe that checks the `421` and `403` responses. Whether a tunnel forwards the original `Host`/`Origin` was not verified against a live tunnel, and that section says so.
 
-**Known gap, accepted:** the allowlist match is exact and case-sensitive with no host normalization, so `Host: [::1]`, `LOCALHOST`, or a trailing-dot `localhost.` fail the check. This fails toward rejecting a legitimate request, not toward accepting an illegitimate one, so it is documented in the README rather than fixed.
+**Known gap, accepted:** the allowlist match is exact and case-sensitive with no host normalization, so `Host: [::1]`, `LOCALHOST`, or a trailing-dot `localhost.` fail the check. This fails toward rejecting a legitimate request, not toward accepting an illegitimate one, so it is documented in `docs/deployment.md` rather than fixed.
 
 **Alternatives:** an `MCP_ALLOWED_HOSTS` environment variable instead of editing `_LOOPBACK_HOSTS` directly. Rejected as configuration for a case (a non-loopback deployment) that most users of a single-user project will not hit.
 
-**Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `README.md`
+**Affected files:** `src/mlms/server.py` (`_LOOPBACK_ORIGINS`), `tests/unit/test_server_transport_security.py`, `docs/deployment.md`
 
 **See also:** Decision 4, Decision 23, and Decision 27.
 
@@ -449,9 +449,9 @@ The README section "Homelab/VPS hardening" describes the deployment side: firewa
 - SDK `token_verifier`/`AuthSettings`: rejected above.
 - A `middleware:` constructor parameter on `FastMCP`: it does not exist in this SDK; that parameter belongs to the unrelated third-party `fastmcp` (jlowin) package, not `mcp.server.fastmcp`.
 
-**Affected files:** `src/mlms/server.py` (`_SharedSecretMiddleware`, `_BIND_LOOPBACK_HOSTS`, `_require_secret_on_non_loopback_bind`), `src/mlms/config.py` (`mcp_shared_secret`), `pyproject.toml` (`mcp>=1.27.2`), `.env.example`, `docker-compose.yml`, `README.md`, `tests/unit/test_server_shared_secret.py`, `tests/unit/test_docker_compose_shared_secret.py`
+**Affected files:** `src/mlms/server.py` (`_SharedSecretMiddleware`, `_BIND_LOOPBACK_HOSTS`, `_require_secret_on_non_loopback_bind`), `src/mlms/config.py` (`mcp_shared_secret`), `pyproject.toml` (`mcp>=1.27.2`), `.env.example`, `docker-compose.yml`, `README.md`, `docs/deployment.md`, `tests/unit/test_server_shared_secret.py`, `tests/unit/test_docker_compose_shared_secret.py`
 
-**See also:** Decision 4 (the loopback allowlist underneath), Decision 20 (the compose bind this gates), Decision 22 (the same README hardening section).
+**See also:** Decision 4 (the loopback allowlist underneath), Decision 20 (the compose bind this gates), Decision 22 (the same hardening section in `docs/deployment.md`).
 
 ---
 
