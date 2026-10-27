@@ -3,7 +3,7 @@
 All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.0] - 2026-10-19
+## [0.1.0] - 2026-10-27
 
 First public version.
 
@@ -16,6 +16,9 @@ First public version.
 - Storage in Postgres (pgvector + TimescaleDB) with HNSW indexes, and Redis for working memory.
 - Transports: `stdio` (default), `sse` and `streamable-http`, with a Host/Origin allowlist and an
   optional shared-secret gate (`MCP_SHARED_SECRET`, required on a non-loopback bind).
+- Server instructions in the `initialize` response that tell the agent when to look memory up and
+  when to store a fact, an event or a skill (Decision 30).
+- Claude Code plugin and marketplace manifests in `.claude-plugin/`.
 - Docker Compose setup: Postgres and Redis by default, the server itself behind the `app` profile.
 - One Alembic migration, `001_initial_schema.py`, that creates the whole schema.
 - CI: ruff, mypy, unit and integration tests, a documentation consistency check
