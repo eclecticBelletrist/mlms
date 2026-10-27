@@ -172,6 +172,33 @@ class TestEmbed:
         ):
             await embed("hello", redis)
 
+    async def test_both_models_fail_message_names_each_cause(self, redis: AsyncMock) -> None:
+        request = httpx.Request("POST", "https://example.test/embeddings")
+        response = httpx.Response(401, request=request)
+
+        async def expired_key(text: str, model: str) -> list[float]:
+            raise httpx.HTTPStatusError("401 Unauthorized", request=request, response=response)
+
+        with (
+            patch("mlms.embedding._call_api", side_effect=expired_key),
+            pytest.raises(RuntimeError) as info,
+        ):
+            await embed("hello", redis)
+
+        message = str(info.value)
+        assert f"primary {EMBEDDING_MODEL}: HTTP 401" in message
+        assert f"fallback {EMBEDDING_FALLBACK}: HTTP 401" in message
+
+    async def test_both_models_fail_message_names_transport_errors(self, redis: AsyncMock) -> None:
+        async def timeout(text: str, model: str) -> list[float]:
+            raise httpx.ConnectTimeout("timed out")
+
+        with (
+            patch("mlms.embedding._call_api", side_effect=timeout),
+            pytest.raises(RuntimeError, match=f"primary {EMBEDDING_MODEL}: ConnectTimeout"),
+        ):
+            await embed("hello", redis)
+
     async def test_result_is_l2_normalised(self, redis: AsyncMock) -> None:
         raw_vec = list(range(1, 4097))  # 4096-dim, un-normalized
 

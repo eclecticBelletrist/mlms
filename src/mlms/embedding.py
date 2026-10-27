@@ -87,6 +87,7 @@ async def _call_api(text: str, model: str, *, max_retries: int = 3) -> list[floa
 async def embed(text: str, redis: Redis) -> list[float]:
     """Return cached embedding or call API; falls back to smaller model on failure."""
     last_exc: Exception | None = None
+    failures: list[str] = []
 
     for model, label in (
         (EMBEDDING_MODEL, "primary"),
@@ -110,5 +111,15 @@ async def embed(text: str, redis: Redis) -> list[float]:
         except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.ConnectError) as exc:
             logger.warning("embedding %s failed: %s", label, exc)
             last_exc = exc
+            reason = (
+                f"HTTP {exc.response.status_code}"
+                if isinstance(exc, httpx.HTTPStatusError)
+                else type(exc).__name__
+            )
+            failures.append(f"{label} {model}: {reason}")
 
-    raise RuntimeError("Both embedding models are unavailable") from last_exc
+    # The tool error is the only place the agent and the user see the cause (for example an
+    # expired key returns 401), so the message carries both failures.
+    raise RuntimeError(
+        "Both embedding models are unavailable: " + "; ".join(failures)
+    ) from last_exc
