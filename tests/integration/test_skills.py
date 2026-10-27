@@ -48,3 +48,24 @@ class TestLatestVersionFilters:
         name, _, _ = await _two_versions(pg)
         tag = name.removeprefix("skill-")
         assert await get_skills(search=f"old recipe {tag}", conn=pg) == []
+
+
+class TestSearchByWords:
+    async def test_natural_language_query_matches_word_forms(
+        self, pg: psycopg.AsyncConnection[Any]
+    ) -> None:
+        tag = uuid.uuid4().hex[:8]
+        await insert_skill(
+            name=f"replay-{tag}",
+            content=f"Debugging webhooks {tag}: replay the stored payload instead of waiting.",
+            conn=pg,
+        )
+        result = await get_skills(search=f"how to debug a webhook {tag}", conn=pg)
+        assert [s.name for s in result] == [f"replay-{tag}"]
+
+    async def test_query_word_missing_from_the_skill_does_not_match(
+        self, pg: psycopg.AsyncConnection[Any]
+    ) -> None:
+        tag = uuid.uuid4().hex[:8]
+        await insert_skill(name=f"replay-{tag}", content=f"Debugging webhooks {tag}", conn=pg)
+        assert await get_skills(search=f"debug a queue {tag}", conn=pg) == []

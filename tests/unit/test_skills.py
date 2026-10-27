@@ -228,7 +228,7 @@ class TestGetSkills:
         conn, cur = _make_get_conn([])
         await get_skills(search="index", conn=conn)
         sql: str = cur.execute.call_args[0][0]
-        assert sql.index("DISTINCT ON") < sql.index("ILIKE")
+        assert sql.index("DISTINCT ON") < sql.index("plainto_tsquery") < sql.index("ILIKE")
 
     async def test_no_domain_omits_domain_filter(self) -> None:
         conn, cur = _make_get_conn([])

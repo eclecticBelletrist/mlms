@@ -55,9 +55,13 @@ _GET_LATEST_BY_NAME = (
     f"SELECT {_SELECT_COLS} FROM skills WHERE name = %s ORDER BY version DESC LIMIT 1"
 )
 
+# Full-text match on the words of the query, as for events in search_memory, so a
+# natural-language query ("how to debug a webhook") finds "Debugging webhooks: ...".
+# ILIKE keeps the exact-substring match for text the english configuration does not stem.
 _GET_ALL_LATEST_BY_SEARCH = (
     f"SELECT {_SELECT_COLS} FROM {_LATEST_PER_NAME}"
-    " WHERE content ILIKE %s OR name ILIKE %s ORDER BY name LIMIT %s"
+    " WHERE to_tsvector('english', name || ' ' || content) @@ plainto_tsquery('english', %s)"
+    " OR content ILIKE %s OR name ILIKE %s ORDER BY name LIMIT %s"
 )
 
 
@@ -112,7 +116,7 @@ async def get_skills(
         await cur.execute(_GET_ALL_LATEST_BY_DOMAIN, (domain, limit))
     elif search is not None:
         pattern = f"%{search}%"
-        await cur.execute(_GET_ALL_LATEST_BY_SEARCH, (pattern, pattern, limit))
+        await cur.execute(_GET_ALL_LATEST_BY_SEARCH, (search, pattern, pattern, limit))
     else:
         await cur.execute(_GET_ALL_LATEST, (limit,))
     rows: list[dict[str, Any]] = await cur.fetchall()
