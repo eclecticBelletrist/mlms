@@ -1,0 +1,20 @@
+{
+  "name": "mlms",
+  "version": "0.1.0",
+  "description": "Persistent cross-chat memory for the agent: facts, events, skills and session context in PostgreSQL and Redis. Needs the Docker stack from the README running.",
+  "author": {
+    "name": "eclecticBelletrist"
+  },
+  "homepage": "https://github.com/eclecticBelletrist/mlms",
+  "repository": "https://github.com/eclecticBelletrist/mlms",
+  "license": "Apache-2.0",
+  "mcpServers": {
+    "mlms": {
+      "command": "uv",
+      "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "--locked", "python", "-m", "mlms.server"],
+      "env": {
+        "EMBEDDING_API_KEY": "${EMBEDDING_API_KEY:-}"
+      }
+    }
+  }
+}

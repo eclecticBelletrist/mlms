@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mlms",
+  "owner": {
+    "name": "eclecticBelletrist"
+  },
+  "metadata": {
+    "description": "MLMS: self-hosted MCP memory server for LLM agents"
+  },
+  "plugins": [
+    {
+      "name": "mlms",
+      "description": "Persistent cross-chat memory for the agent: facts, events, skills and session context in PostgreSQL and Redis. Needs the Docker stack from the README running.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}
