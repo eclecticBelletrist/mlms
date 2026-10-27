@@ -77,6 +77,11 @@ Claude Code:
 claude mcp add mlms -e EMBEDDING_API_KEY=your-key-here -- /path/to/mlms/.venv/bin/python -m mlms.server
 ```
 
+Claude Code can also install the server as a plugin:
+`/plugin marketplace add eclecticBelletrist/mlms`, then `/plugin install mlms@mlms`. The plugin
+starts the server through `uv`, so Postgres and Redis from the steps above must be running, and
+`EMBEDDING_API_KEY` must be set in the environment Claude Code is started from.
+
 Claude Desktop (`claude_desktop_config.json`) and other clients that use the `mcpServers` format:
 
 ```json
