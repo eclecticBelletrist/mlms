@@ -13,8 +13,12 @@ Text to embed is sent to an OpenAI-compatible embeddings API, OpenRouter by defa
 
 ## What this is
 
-An LLM agent uses MLMS only through MCP tool calls and never touches the database directly.
-It has four memory layers:
+With MLMS connected, the agent looks up what earlier chats stored before it answers, and stores
+new values, decisions and procedures as they come up, without being told to remember (see the
+[Walkthrough](#walkthrough)).
+
+The agent uses MLMS only through MCP tool calls and never touches the database directly. There
+are four memory layers:
 
 - Semantic, `facts`: versioned, with embedding-based conflict detection and soft delete
   (`is_current`). Old versions stay in the database; the tools return the current one, and
@@ -36,8 +40,9 @@ shared secret (see "Running over HTTP" below). Every holder gets equal, full rea
 so there is no per-user auth or isolation (see [`KEY_DECISIONS.md`](KEY_DECISIONS.md),
 Decision 23). Adding them would be a redesign.
 
-MLMS is experimental (version 0.1). Conflict detection compares embeddings by cosine similarity, but
-its threshold is not independently calibrated yet, and there is no forgetting or decay mechanism.
+MLMS is experimental (version 0.1). Conflict detection compares embeddings by cosine
+similarity, but its threshold is not independently calibrated yet, and there is no forgetting
+or decay mechanism.
 Known limitations are listed in [`docs/known-issues.md`](docs/known-issues.md); read it before
 relying on this for anything beyond experimentation.
 
@@ -56,11 +61,6 @@ docker compose up -d --wait
 uv sync --locked --extra dev
 source .venv/bin/activate
 alembic upgrade head
-
-# embedding API key (all settings: src/mlms/config.py)
-export EMBEDDING_API_KEY=your-key-here
-
-python -m mlms.server
 ```
 
 Without uv, `pip install -e ".[dev]"` in a virtualenv of your own installs the same package, but
@@ -68,8 +68,16 @@ resolves dependency versions from PyPI instead of `uv.lock`.
 
 Default transport is `stdio`: the MCP client launches the server as a subprocess and talks to it
 over stdin/stdout. Started by hand in a terminal, it just waits for input and prints nothing
-(apart from a warning if `EMBEDDING_API_KEY` is empty). Example client config in the
-`mcpServers` format (used by Claude Desktop's `claude_desktop_config.json` and other clients):
+(apart from a warning if `EMBEDDING_API_KEY` is empty). The client starts it in its own working
+directory, so a `.env` in the clone is not read: pass the key in the client config.
+
+Claude Code:
+
+```bash
+claude mcp add mlms -e EMBEDDING_API_KEY=your-key-here -- /path/to/mlms/.venv/bin/python -m mlms.server
+```
+
+Claude Desktop (`claude_desktop_config.json`) and other clients that use the `mcpServers` format:
 
 ```json
 {
@@ -117,71 +125,47 @@ Read from the environment or from `.env` in the working directory (template:
 
 ## Walkthrough
 
-Once the server is connected to your agent (Quick start above), these calls show what it does. Ask
-the agent to make each call with exactly these arguments. IDs and timestamps in your output will
-differ; outputs below are trimmed to the relevant fields. Steps 2 to 5 embed text, so they need
-a working `EMBEDDING_API_KEY`; without one only events, skills and `get_timeline` work.
+Two prompts that show the main behavior. Send each in a new chat, so the agent has nothing to go
+on but memory. Neither asks the agent to remember anything: the server's instructions
+(`KEY_DECISIONS.md`, Decision 30) tell it when to read and write memory. Facts and searches need
+a working `EMBEDDING_API_KEY`.
 
-**1. Create a project.** Everything else is scoped to the returned `project_id`.
+**Chat 1.** The agent stores a fact, a decision and a skill.
 
-```json
-create_project  {"name": "billing-service", "description": "Billing backend"}
-→ {"project_id": "4b4af135-…", "name": "billing-service", …}
-```
+> I'm working on the billing-service project. Today we decided to move payment notifications
+> from REST polling to webhooks. Failed webhook deliveries will be retried 5 times with
+> exponential backoff. A trick I always use when debugging webhooks: replay the stored payload
+> with `stripe events resend <id>` instead of waiting for a new event. Can you sketch the retry
+> schedule for me, assuming a 30-second base delay?
 
-**2. Store a fact and an event** (use your `project_id`).
+**Chat 2.** The agent changes the fact, which retires the old version, and recalls the decision
+and the skill from the first chat.
 
-```json
-memorize  {"content": "Failed webhook deliveries are retried 5 times with exponential backoff.",
-           "type": "fact", "metadata": {"project_id": "<project_id>", "chat_id": "session-1"}}
-→ {"ok": true, "memory_id": "953207f6-…"}
+> billing-service update: failed webhook deliveries are now retried 8 times instead of 5. Remind
+> me too: what did we decide about payment notifications, and how do I usually debug a webhook?
 
-memorize  {"content": "Billing moves from REST polling to webhooks", "type": "event",
-           "metadata": {"project_id": "<project_id>", "title": "Webhooks replace polling",
-                        "event_type": "decision", "chat_id": "session-1"}}
-→ {"ok": true, "memory_id": "2f9f2f14-…"}
-```
-
-**3. Find the fact by meaning, from a new session.** Start a fresh conversation (the agent has
-no memory of step 2) and ask in different words:
-
-```json
-get_facts  {"about": "how many times do we retry failed notifications?", "project_id": "<project_id>"}
-→ [{"content": "Failed webhook deliveries are retried 5 times with exponential backoff.",
-    "version": 1, "is_current": true, …}]
-```
-
-**4. Change the fact.** Store the same statement with a new value:
-
-```json
-memorize  {"content": "Failed webhook deliveries are retried 8 times with exponential backoff.",
-           "type": "fact", "metadata": {"project_id": "<project_id>", "chat_id": "session-2"}}
-→ {"ok": true, "memory_id": "360f7a80-…"}
-
-get_facts  {"about": "how many times do we retry failed notifications?", "project_id": "<project_id>"}
-→ [{"content": "Failed webhook deliveries are retried 8 times with exponential backoff.",
-    "version": 2, "is_current": true, …}]
-```
-
-Only the current version comes back. The old row is retired, not deleted; see it in the database:
+The old version is retired, not deleted:
 
 ```bash
 docker compose exec postgres psql -U mlms -d mlms \
   -c "select version, is_current, content from facts order by created_at"
 ```
 
-Which new facts count as a change to an old one is decided by embedding similarity (at least
-0.96 to a current fact in the same project). That threshold is not calibrated, so two
-differently worded statements about the same thing can both stay current. The MCP tools return
-only the current version of a fact; they do not show history.
-
-**5. Search every layer at once.**
-
-```json
-search_memory  {"query": "webhooks", "filters": {"project_id": "<project_id>"}}
-→ [{"layer": "fact",  "content": "Failed webhook deliveries are retried 8 times with …", …},
-   {"layer": "event", "content": "Billing moves from REST polling to webhooks", …}]
+```text
+ version | is_current | content   (other facts trimmed)
+---------+------------+-----------------------------------------------------------------------
+       1 | f          | Failed webhook deliveries are retried 5 times with exponential backoff.
+       2 | t          | Failed webhook deliveries are retried 8 times with exponential backoff.
 ```
+
+A new fact replaces an old one when its embedding is at least 0.96 similar to a current fact in
+the same project. That threshold is not calibrated, so an update worded differently from the
+original can leave both current; this is why the instructions ask the agent to reuse the old
+wording. The tools return only the current version of a fact. If an update was a mistake, tell
+the agent: it calls `revert_fact` and the previous version is current again.
+
+A client that does not pass server instructions to the agent needs the same text in its own
+system prompt, or an explicit "remember this".
 
 ## Architecture
 
@@ -226,12 +210,20 @@ Latency, `scripts/measure_latency.py`, 100 calls per operation, Docker Desktop o
 | `get_session_context` (Redis) | 1.6 ms | 9.9 ms | ≤ 5 ms, missed by one slow call of 100 |
 | embed through the API and store a fact | 1158 ms | 9237 ms | none set |
 
-Retrieval, Recall@5 on `synthetic_hard`: 93 scenarios over a shared corpus of 400 facts, each
-with 2 to 5 relevant facts and a query worded so that word matching fails. Cosine search with
-Qwen3-Embedding-8B at 1536 dimensions (in memory, without Postgres) puts on average 0.320 of the
-relevant facts in the top 5; BM25 on the same queries, 0.040. Both datasets are LLM-generated,
-so the numbers compare methods and do not predict quality on real data. How they were measured,
-the per-type results and the limits are in
+Retrieval on `synthetic_hard`: 93 scenarios over a shared corpus of 400 facts, each with 2 to 5
+relevant facts and a query worded so that word matching fails. Recall@5 is the average share of
+the relevant facts that land in the top 5:
+
+| Retriever, in memory without Postgres | Recall@5 |
+|---|---|
+| Cosine search, Qwen3-Embedding-8B at 1536 dimensions | 0.320 |
+| BM25 on the same queries | 0.040 |
+
+The dataset is LLM-generated, so the numbers only compare the methods with each other and say
+nothing about quality on real data. In particular it cannot show whether Session-Augmented RAG
+(adding the chat's session log to the query) helps: the session logs were written to contain the
+facts' words, and BM25 gains almost as much from them as the embedding model does. How the
+numbers were measured, the per-type results and the limits are in
 [`docs/mlms_benchmark_design.md`](docs/mlms_benchmark_design.md).
 
 ## Testing
@@ -268,6 +260,16 @@ and reverse-proxy setup, `curl` checks for these responses, and backup and resto
 - [`KEY_DECISIONS.md`](KEY_DECISIONS.md): non-obvious architectural decisions, alternatives
   rejected, trade-offs
 - [`docs/known-issues.md`](docs/known-issues.md): known, accepted-but-unfixed limitations
+
+## To do
+
+- [ ] Install with one command, with setup for Claude Code and other clients (OpenCode, Codex
+  and others)
+- [ ] Support more embedding models: Qwen3-Embedding-0.6B and a few others
+- [ ] Rework how session-augmented search (SAR) is used and re-run its tests on data that does
+  not leak the answer
+- [ ] Rethink the four memory layers, working memory in particular
+- [ ] Run public memory benchmarks such as LoCoMo
 
 ## License
 
