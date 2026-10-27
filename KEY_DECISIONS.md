@@ -560,3 +560,23 @@ The "Homelab/VPS hardening" section of `docs/deployment.md` describes the deploy
 **See also:** Decision 1, Decision 2, Decision 25.
 
 ---
+
+## Decision 30: Server instructions tell the agent to use memory without being asked
+
+**Decided:** 2026-10-26
+
+**Decision:** `FastMCP` is created with `instructions` (`_INSTRUCTIONS` in `src/mlms/server.py`). The text is sent in the `initialize` response, and clients that support server instructions add it to the agent's context. It tells the agent to call `create_project` with the project's name at the start, to look memory up before answering or saying it does not know, and to store facts, events and skills as they come up, without asking. It also says that a changed value is stored as a fact worded like the old one, and that `revert_fact` undoes a change the user calls a mistake.
+
+**Rationale:** the tool descriptions say how to call each tool, not when. The instructions say when, so that a user does not have to ask the agent to remember anything. Checked with Claude Code 2.1.310 in print mode, with MLMS as the only MCP server and no built-in tools, on four separate chats with ordinary prompts that never say "remember": the first states a decision, a retry count and a debugging trick, the second changes the count, the third asks for all three, the fourth calls the change a mistake. Haiku and Sonnet stored all three in the first chat, the second chat produced version 2 of the fact, the third answered all three questions from memory and the fourth reverted the fact, in 2 of 2 runs per model.
+
+**Why "worded like the old one":** conflict detection retires the old version only at cosine similarity of 0.96 or more, and that threshold is uncalibrated (`docs/known-issues.md`, item 2). A rephrased update stays below it and leaves both versions current. With the wording rule, every update in the runs above produced version 2.
+
+**Alternatives:** putting the rule only in the tool descriptions: they are read one tool at a time, so how a fact, an event and a skill divide the work would be repeated in several places. An MCP prompt: the user has to invoke it in each chat. A client-side instruction (`CLAUDE.md`, a skill, a system prompt): works only in the client it is written for, and the user has to install it; it can still be added on top for a specific client.
+
+**Trade-offs:** the text is added to every session's context, including sessions that never touch memory. A client that does not pass server instructions to the agent gets none of this; the same text can go into that client's system prompt. Two runs per model are a smoke test, not a measurement of how reliably agents store what they should; storing the wrong things or too much was not measured.
+
+**Affected files:** `src/mlms/server.py`, `tests/unit/test_server_instructions.py`, `README.md`
+
+**See also:** Decision 24.
+
+---

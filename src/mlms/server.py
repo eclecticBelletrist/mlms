@@ -93,7 +93,33 @@ async def _acquire(app: _AppCtx) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
         raise PoolUnavailable("database temporarily unavailable, try again shortly") from exc
 
 
-mcp: FastMCP = FastMCP("mlms", lifespan=_lifespan)
+# Sent to the client in the initialize response; clients that support server instructions
+# add them to the agent's context.
+_INSTRUCTIONS = """\
+MLMS is the user's long-term memory across chats. Use it without being asked.
+
+When the conversation is about a project, call `create_project` with the project's name first:
+the same name returns the same project_id in every chat. Then look up what is already known with
+`search_memory` or `get_facts` before answering from your own assumptions, and search memory
+before telling the user you don't know something about the project.
+
+Store new information with `memorize` as it comes up, without asking for permission:
+- fact: the current value of something that may matter in a later chat: a setting, a number,
+  a constraint ("Failed webhook deliveries are retried 5 times"). Values go into facts, not
+  only into events. When a stored value changes, store the new statement as a fact again,
+  worded like the old one with only the value changed: the server retires the old version
+  only when the two are very similar.
+- event: that something was decided, changed or done (event_type "decision", "phase" or
+  "action"). A decision that sets a value is stored twice: the value as a fact, the decision
+  as an event.
+- skill: a reusable procedure or trick the user relies on.
+
+Store one statement per call. Don't store small talk, your own guesses, or anything the user
+asks you not to keep. If the user says a stored change was a mistake, call `revert_fact` on the
+current version of the fact to restore the previous one.
+"""
+
+mcp: FastMCP = FastMCP("mlms", instructions=_INSTRUCTIONS, lifespan=_lifespan)
 
 # CVE-2025-66416 (GHSA-9h52-p55h-vw2f): HTTP-based transports (sse/streamable-http) need
 # explicit DNS rebinding protection — mcp_host defaults to 0.0.0.0, so the SDK's automatic

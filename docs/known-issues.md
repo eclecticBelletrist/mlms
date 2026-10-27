@@ -62,7 +62,7 @@ SAR (Session-Augmented RAG) shows delta=0 on synthetic_100, because nearly every
 
 ### 12. No automated MCP smoke test
 
-No test starts the server and calls the 10 tools through an MCP client; the tools are tested directly from Python. The server has been driven by hand through the MCP SDK's stdio client (tool listing and the calls in the README walkthrough), but not through Claude Desktop or MCPJam.
+No test in CI starts the server and calls the tools through an MCP client; the tools are tested directly from Python. The server has been driven through the MCP SDK's stdio client (tool listing and the calls of a store, change and recall scenario) and through Claude Code 2.1.310 in print mode with Haiku and Sonnet, on a scenario of four chats (store, change, recall, revert; `KEY_DECISIONS.md`, Decision 30) and on the two prompts of the README walkthrough. Those runs are manual and were not repeated in other clients, such as Claude Desktop or MCPJam.
 
 ### 13. export_project and get_skills are not scoped by project_id
 
