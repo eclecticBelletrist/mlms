@@ -5,13 +5,14 @@ synthetic datasets, how each was built and why the second one exists, the result
 those results do and do not show. All numbers below come from files in this repository
 (`scripts/*.json`, `tests/fixtures/*.json`) unless a section says otherwise.
 
-In short: on `synthetic_100` Recall@5 is 0.990, but that dataset cannot fail: almost
-every scenario has no more facts than the five that are returned. On `synthetic_hard` the
-Session-Augmented RAG (SAR) experiment raises Recall@5 for Qwen3-Embedding-8B from 0.320 to 0.624,
-but the generator was told to put the words of the relevant facts into the session log, and
-scenarios where SAR would not help were filtered out. Neither number is evidence of retrieval
-quality on real data. Section 6 explains both in detail, and section 8 lists what the next
-version of the benchmark changes.
+The question behind the benchmark is whether Session-Augmented RAG (SAR) helps: prepending the
+current chat's session log to the query, so that a query that shares no words with a stored fact
+can still find it. Neither dataset tests it. On `synthetic_100` Recall@5 is 0.990, but that
+dataset cannot fail: almost every scenario has no more facts than the five that are returned. On
+`synthetic_hard` SAR raises Recall@5 for Qwen3-Embedding-8B from 0.320 to 0.624, but the generator
+was told to put the words of the relevant facts into the session log, and scenarios where SAR
+would not help were filtered out. Neither number is evidence of retrieval quality on real data.
+Section 6 lists what went wrong, and section 8 describes a test that could evaluate SAR.
 
 ## 1. What is measured
 
@@ -114,7 +115,8 @@ SAR delta is 0, and it is why the second dataset was built.
 ### 3.1 Design
 
 The fix for the saturation was a shared corpus much larger than k, and queries that word match
-cannot solve.
+cannot solve. The dataset was also meant to test the SAR hypothesis, and section 6 explains why it
+does not.
 
 - Corpus: 400 facts, 40 in each of 10 domains (kubernetes, postgresql, redis, kafka,
   fastapi, react, docker, elasticsearch, nginx, pytorch), shared by all scenarios.
@@ -189,49 +191,55 @@ deleted in a `finally` block, so scenarios never see each other's data. For `cro
 facts are filtered by project, not by chat, which is the behavior the category is meant to
 exercise.
 
-## 6. What the numbers do and do not show
+## 6. Post-mortem: what went wrong
 
-FR-1 on `synthetic_100` is not evidence. As section 2.4 explains, the result is 1.0 for almost
-any retriever. On top of that, `run_benchmark.py` scores each `semantic_drift` scenario as the
-better of the naive and the SAR run (`max(naive, sar)`), and a scenario that raises an error is
-scored 0 instead of being reported as an error.
+Neither dataset tests the SAR hypothesis, and part of the other numbers does not measure what its
+name says. The problems, in the order they matter:
 
-The SAR gain on `synthetic_hard` is built into the dataset. The generator prompt asks for a
-session log that contains exactly the technical words of the relevant facts and a query that
-contains none of them, and the second verifier keeps only scenarios that SAR can solve. Measured on
-the fixture: in 72 of the 93 scenarios a term from `sar_bridge_terms` appears both in the session
-log and in a relevant fact, and in 85 of 93 the session log shares three or more words longer than
-four letters with the relevant facts. Prepending the session log therefore adds the answer's
-vocabulary to the query, which is also why BM25 gains +0.272 without any embedding. What the +0.303
-does show: when the chat history already contains the terms of the stored facts, adding it to the
-query lets Qwen3-Embedding-8B find about twice as many relevant facts in a 400-fact corpus. It does
-not show how often real chat histories contain those terms. There is one run, no confidence
-interval, and `multi_hop` has 9 scenarios.
+1. `synthetic_100` saturates. As section 2.4 explains, Recall@5 is 1.0 for almost any
+   retriever, so FR-1 (0.990) is not evidence, and the SAR delta of 0 says nothing about SAR.
+2. The scoring hides failures. `run_benchmark.py` scores each `semantic_drift` scenario as the
+   better of the naive and the SAR run (`max(naive, sar)`), and a scenario that raises an error
+   is scored 0 and not reported as an error. The multi-backend run recorded failed calls as 0 the
+   same way (section 7).
+3. The session logs in `synthetic_hard` contain the answer's vocabulary. The generator prompt
+   asks for a session log that holds exactly the technical words of the relevant facts and a query
+   that holds none of them. Measured on the fixture: in 72 of the 93 scenarios a term from
+   `sar_bridge_terms` appears both in the session log and in a relevant fact, and in 85 of 93 the
+   session log shares three or more words longer than four letters with the relevant facts.
+   Prepending the session log therefore adds the answer's words to the query.
+4. The dataset was selected for SAR to win. The third check in section 3.2 keeps only the
+   scenarios that `grok-4.20` judges SAR can solve. Scenarios where SAR would not help are
+   absent, so the delta cannot be negative.
+5. A warning from the generator's own check was ignored. BM25 on the raw queries scored 0.118
+   against a target range of 0.20 to 0.55. The script printed a warning and kept the dataset.
+6. BM25 gains almost as much as the embedding model. The delta is +0.272 for BM25, which has
+   no semantics, and +0.303 for Qwen3-Embedding-8B. That points to the added vocabulary (item 3)
+   as the source of the gain. What the +0.303 does show: when the chat history already contains
+   the terms of the stored facts, adding it to the query lets Qwen3-Embedding-8B find about twice
+   as many relevant facts in a 400-fact corpus. It does not show how often real chat histories
+   contain those terms.
+7. The `conflict` category does not test version handling. The verifier changed the labels of
+   14 of the 25 conflict scenarios, and each of those 14 now has more than one relevant fact: the
+   outdated version is labeled relevant next to the current one (for example `conflict_005`,
+   `conflict_021`). Recall@5 counts either version as a hit. The `is_current` behavior is covered
+   by the integration tests instead.
 
-The `conflict` category does not test version handling. The verifier changed the labels of
-14 of the 25 conflict scenarios, and each of those 14 now has more than one relevant fact: the
-outdated version is labeled relevant next to the current one (for example `conflict_005`,
-`conflict_021`). Recall@5 counts either version as a hit. The `is_current` behavior is covered by
-the integration tests instead.
-
-The single miss in `conflict` is probably the opposite of a missed conflict. `conflict_019` has five facts.
-If both versions had stayed current, all five would be in the top 5 and the scenario would score
-1.0. A miss means the current fact was not returned, and the likely reason is that the threshold
-did fire: the facts are inserted in listed order, the current version first, so the outdated one
-arrived second and retired the current one. The similarity values of that run were not saved, so this is not
-confirmed. Separately, on a labeled set of 76 pairs that is not in this repository the 0.96
-threshold detected no conflicts at all (`docs/known-issues.md`, item 2); the threshold is
-uncalibrated.
-
-`cross_session` does not record the source chat. Facts are stored per project and the
-runner does not keep the source `chat_id`, so the category checks that facts are visible project
-wide, which `lexical` already shows.
-
-A quarter of the `synthetic_100` labels were written by the verifier. 25 of 100 scenarios are
-`auto_fixed` (conflict 14, cross_session 9, semantic_drift 2), and no labels were checked by a
-person.
-
-All runs are single runs on Windows with Docker Desktop.
+   The single miss in `conflict` is probably the opposite of a missed conflict. `conflict_019`
+   has five facts. If both versions had stayed current, all five would be in the top 5 and the
+   scenario would score 1.0. A miss means the current fact was not returned, and the likely reason
+   is that the threshold did fire: the facts are inserted in listed order, the current version
+   first, so the outdated one arrived second and retired the current one. The similarity values of
+   that run were not saved, so this is not confirmed. Separately, on a labeled set of 76 pairs that
+   is not in this repository the 0.96 threshold detected no conflicts at all
+   (`docs/known-issues.md`, item 2); the threshold is uncalibrated.
+8. `cross_session` does not record the source chat. Facts are stored per project and the
+   runner does not keep the source `chat_id`, so the category checks that facts are visible
+   project wide, which `lexical` already shows.
+9. No human checked the labels, and every number is a single run. 25 of the 100
+   `synthetic_100` scenarios are `auto_fixed` (conflict 14, cross_session 9, semantic_drift 2),
+   so a quarter of those labels were written by the verifier. There is no confidence interval,
+   `multi_hop` has 9 scenarios, and all runs are on Windows with Docker Desktop.
 
 ## 7. Reproducing
 
@@ -255,13 +263,25 @@ not used: every backend ties for the reason in section 2.4, and failed calls wer
 
 ## 8. Next version
 
-- A corpus much larger than k for every category, and Recall@k for several k plus MRR, with a
-  random ranker as a control that must fail the target.
+### 8.1 A test that can evaluate SAR
+
 - A session log written without seeing the relevant facts (by another model, or from real chat
   transcripts), and results reported on the unfiltered set, with the number of rejected scenarios.
+- A control where the session log is unrelated to the query. SAR has to lose there, or the gain
+  comes from query length and not from context.
+- A corpus much larger than k for every category, and Recall@k for several k plus MRR, with a
+  random ranker as a control that must fail the target.
 - A sample of labels checked by hand, and the verifier's original verdicts kept.
 - A conflict metric that penalizes an outdated version in the results, and the `is_current` state
   logged after the facts are inserted.
 - Errors reported separately from misses, no `max` over conditions, and bootstrap confidence
   intervals for every delta.
 - Latency on Linux, with new queries (cache misses) and a corpus of at least 10,000 facts.
+
+### 8.2 Public benchmarks
+
+LongMemEval and LoCoMo are public benchmarks for long-term conversational memory, and running them
+would allow a comparison with other memory systems. They were not run. A score on such a benchmark
+depends on the reader model that writes the answer and on the judge that grades it, so a
+comparison needs the same reader and judge for every system, plus baselines that use no memory
+system (the full conversation in the prompt, `grep`, BM25).
